@@ -27,7 +27,7 @@ enum class TaskPriority {
  */
 class Task {
 public:
-    Task(const char* name, void (*function)(void*), void* param, 
+    Task(const char* name, void (*function)(byte, void*), void* param, 
          size_t stackSize, TaskPriority priority);
     ~Task();
     
@@ -47,7 +47,7 @@ public:
     void* getParameter() const { return parameter; }
     
     // Execution
-    void (*getFunction())(void*) { return taskFunction; }
+    void (*getFunction())(byte, void*) { return taskFunction; }
     
 private:
     static uint32_t nextId;
@@ -57,7 +57,7 @@ private:
     TaskState state;
     TaskPriority priority;
     
-    void (*taskFunction)(void*);
+    void (*taskFunction)(byte, void*);
     void* parameter;
     
     size_t stackSize;
@@ -75,7 +75,7 @@ public:
     bool init();
     
     // Task management
-    Task* createTask(const char* name, void (*function)(void*), 
+    Task* createTask(const char* name, void (*function)(byte, void*), 
                      void* param = nullptr, size_t stackSize = 4096,
                      TaskPriority priority = TaskPriority::NORMAL);
     bool destroyTask(uint32_t taskId);

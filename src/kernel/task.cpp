@@ -6,7 +6,7 @@ namespace dialOS {
 
 uint32_t Task::nextId = 1;
 
-Task::Task(const char* taskName, void (*function)(void*), void* param, 
+Task::Task(const char* taskName, void (*function)(byte, void*), void* param, 
            size_t stack, TaskPriority prio)
     : id(nextId++)
     , state(TaskState::READY)
@@ -48,7 +48,7 @@ bool TaskScheduler::init() {
     return true;
 }
 
-Task* TaskScheduler::createTask(const char* name, void (*function)(void*), 
+Task* TaskScheduler::createTask(const char* name, void (*function)(byte, void*), 
                                 void* param, size_t stackSize, TaskPriority priority) {
     if (taskCount >= MAX_TASKS) {
         Kernel::instance().getSystemServices()->log(LogLevel::ERROR, "Maximum tasks reached");
@@ -149,7 +149,7 @@ void TaskScheduler::schedule() {
         currentTask->setState(TaskState::RUNNING);
         
         // Execute current task
-        currentTask->getFunction()(currentTask->getParameter());
+        currentTask->getFunction()(currentTask->getId(), currentTask->getParameter());
     }
 }
 

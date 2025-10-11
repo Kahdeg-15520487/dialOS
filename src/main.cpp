@@ -13,43 +13,39 @@ using namespace dialOS;
 int encoderValue = 0;
 bool kernelEnabled = false;
 
-void memoryTestTask(void *param) {
+void memoryTestTask(byte taskId, void *param) {
   static bool initialized = false;
   static void *allocations[10] = {nullptr};
   static int allocationSizes[10] = {512, 768,  1024, 256, 2048,
                                     512, 1024, 384,  640, 896};
   static int currentStep = 0;
-  static unsigned long lastActionTime = 0;
   static bool allocating = true;
 
-  unsigned long now = millis();
+  TaskScheduler *scheduler = Kernel::instance().getScheduler();
+  MemoryManager *mem = Kernel::instance().getMemoryManager();
+  SystemServices *sys = Kernel::instance().getSystemServices();
 
   // Initialize on first run
   if (!initialized) {
-    SystemServices *sys = Kernel::instance().getSystemServices();
     sys->log(LogLevel::INFO,
              "Memory Test: Starting allocation/deallocation cycle");
     initialized = true;
-    lastActionTime = now;
+    scheduler->sleepTask(taskId, 500);
     return;
   }
-
-  // Perform action every 500ms
-  if (now - lastActionTime < 500) {
-    return;
-  }
-  lastActionTime = now;
-
-  MemoryManager *mem = Kernel::instance().getMemoryManager();
-  SystemServices *sys = Kernel::instance().getSystemServices();
 
   if (allocating) {
     // Allocation phase
     if (currentStep < 10) {
       allocations[currentStep] =
-          mem->allocate(allocationSizes[currentStep], 5); // Task ID 5
+          mem->allocate(allocationSizes[currentStep], taskId);
       if (allocations[currentStep]) {
-        sys->logf(LogLevel::INFO, "Allocated %d bytes at step %d",
+        // Use the allocated memory - fill it with test pattern
+        uint8_t *data = (uint8_t *)allocations[currentStep];
+        for (int i = 0; i < allocationSizes[currentStep]; i++) {
+          data[i] = (uint8_t)(i % 256);  // Fill with repeating pattern 0-255
+        }
+        sys->logf(LogLevel::INFO, "Allocated and filled %d bytes at step %d",
                   allocationSizes[currentStep], currentStep);
       } else {
         sys->logf(LogLevel::WARNING, "Failed to allocate %d bytes at step %d",
@@ -60,13 +56,31 @@ void memoryTestTask(void *param) {
       // Switch to deallocation phase
       allocating = false;
       currentStep = 0;
-      sys->log(LogLevel::INFO, "Memory Test: Switching to deallocation phase");
+      sys->log(LogLevel::INFO, "Memory Test: Switching to verification phase");
     }
   } else {
-    // Deallocation phase
+    // Verification and deallocation phase
     if (currentStep < 10) {
       if (allocations[currentStep]) {
-        mem->free(allocations[currentStep], 5); // Task ID 5
+        // Verify the memory contents before freeing
+        uint8_t *data = (uint8_t *)allocations[currentStep];
+        bool dataValid = true;
+        for (int i = 0; i < allocationSizes[currentStep]; i++) {
+          if (data[i] != (uint8_t)(i % 256)) {
+            dataValid = false;
+            break;
+          }
+        }
+        
+        if (dataValid) {
+          sys->logf(LogLevel::INFO, "Verified %d bytes at step %d - data intact",
+                    allocationSizes[currentStep], currentStep);
+        } else {
+          sys->logf(LogLevel::WARNING, "Data corruption detected in %d bytes at step %d",
+                    allocationSizes[currentStep], currentStep);
+        }
+        
+        mem->free(allocations[currentStep], taskId);
         sys->logf(LogLevel::INFO, "Freed %d bytes at step %d",
                   allocationSizes[currentStep], currentStep);
         allocations[currentStep] = nullptr;
@@ -79,9 +93,12 @@ void memoryTestTask(void *param) {
       sys->log(LogLevel::INFO, "Memory Test: Cycle complete, restarting");
     }
   }
+  
+  // Sleep for 500ms before next action
+  scheduler->sleepTask(taskId, 500);
 }
 
-void memoryGaugeTask(void *param) {
+void memoryGaugeTask(byte taskId, void *param) {
   // Get memory stats
   MemoryManager::MemoryStats stats =
       Kernel::instance().getMemoryManager()->getStats();
@@ -133,15 +150,22 @@ void memoryGaugeTask(void *param) {
                         stats.totalHeap);
 }
 
-void displayTask(void *param) {
+void displayTask(byte taskId, void *param) {
   static int counter = 0;
+  
+  TaskScheduler *scheduler = Kernel::instance().getScheduler();
+  
+  // Update display
   M5Dial.Display.setTextSize(2);
   M5Dial.Display.setTextColor(TFT_GREEN, TFT_BLACK);
   M5Dial.Display.setCursor(40, 80);
   M5Dial.Display.printf("dialOS\n\tTask: %d", counter++);
+  
+  // Sleep for 1 second before next update
+  scheduler->sleepTask(taskId, 1000);
 }
 
-void encoderTask(void *param) {
+void encoderTask(byte taskId, void *param) {
   int newValue = get_encoder();
   if (newValue != encoderValue) {
     encoderValue = newValue;
@@ -150,7 +174,7 @@ void encoderTask(void *param) {
   }
 }
 
-void ramfsTestTask(void *param) {
+void ramfsTestTask(byte taskId, void *param) {
   static bool testRun = false;
   if (testRun)
     return; // Only run once
@@ -198,6 +222,30 @@ void ramfsTestTask(void *param) {
   testRun = true;
 }
 
+void sleepDemoTask(byte taskId, void *param) {
+  static int wakeCount = 0;
+  static bool sleeping = false;
+  
+  TaskScheduler *scheduler = Kernel::instance().getScheduler();
+  SystemServices *sys = Kernel::instance().getSystemServices();
+  
+  if (!sleeping) {
+    // Task just woke up
+    wakeCount++;
+    sys->logf(LogLevel::INFO, "💤 Sleep Demo: Wake #%d - Going to sleep for 2 seconds...", wakeCount);
+    
+    // Put this task to sleep for 2000ms (2 seconds)
+    scheduler->sleepTask(taskId, 2000);
+    sleeping = true;
+  } else {
+    // We woke up from sleep!
+    sys->logf(LogLevel::INFO, "⏰ Sleep Demo: Woke up! (after 2s sleep)");
+    sleeping = false;
+    
+    // After wake, sleep again next time
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -243,8 +291,10 @@ void setup() {
                                       2048, TaskPriority::LOW_PRIORITY);
   Task *task5 = scheduler->createTask("MemoryTest", memoryTestTask, nullptr,
                                       2048, TaskPriority::NORMAL);
+  Task *task6 = scheduler->createTask("SleepDemo", sleepDemoTask, nullptr,
+                                      2048, TaskPriority::NORMAL);
 
-  if (task1 && task2 && task3) {
+  if (task1 && task2 && task3 && task4 && task5 && task6) {
     Serial.println("Kernel tasks created");
   }
 
