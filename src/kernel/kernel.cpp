@@ -1,0 +1,89 @@
+#include "kernel/kernel.h"
+#include "kernel/task.h"
+#include "kernel/memory.h"
+#include "kernel/system.h"
+#include "kernel/ramfs.h"
+
+namespace dialOS {
+
+Kernel::Kernel() 
+    : scheduler(nullptr)
+    , memoryManager(nullptr)
+    , systemServices(nullptr)
+    , ramFS(nullptr)
+    , initialized(false) {
+}
+
+Kernel::~Kernel() {
+    if (scheduler) delete scheduler;
+    if (memoryManager) delete memoryManager;
+    if (systemServices) delete systemServices;
+    if (ramFS) delete ramFS;
+}
+
+Kernel& Kernel::instance() {
+    static Kernel instance;
+    return instance;
+}
+
+bool Kernel::init() {
+    if (initialized) {
+        return true;
+    }
+    
+    Serial.begin(115200);
+    Serial.println("dialOS Kernel initializing...");
+    
+    // Initialize system services first
+    systemServices = new SystemServices();
+    if (!systemServices || !systemServices->init()) {
+        Serial.println("Failed to initialize system services");
+        return false;
+    }
+    systemServices->log(LogLevel::INFO, "System services initialized");
+    
+    // Initialize memory manager
+    memoryManager = new MemoryManager();
+    if (!memoryManager || !memoryManager->init(32768)) {
+        systemServices->log(LogLevel::ERROR, "Failed to initialize memory manager");
+        return false;
+    }
+    systemServices->log(LogLevel::INFO, "Memory manager initialized");
+    
+    // Initialize task scheduler
+    scheduler = new TaskScheduler();
+    if (!scheduler || !scheduler->init()) {
+        systemServices->log(LogLevel::ERROR, "Failed to initialize task scheduler");
+        return false;
+    }
+    systemServices->log(LogLevel::INFO, "Task scheduler initialized");
+    
+    // Initialize RamFS
+    ramFS = new RamFS();
+    if (!ramFS || !ramFS->init(16, 16 * 1024)) {  // 16 max files, 16KB storage
+        systemServices->log(LogLevel::ERROR, "Failed to initialize RamFS");
+        return false;
+    }
+    systemServices->log(LogLevel::INFO, "RamFS initialized");
+    
+    initialized = true;
+    systemServices->log(LogLevel::INFO, "dialOS Kernel ready");
+    
+    return true;
+}
+
+void Kernel::run() {
+    if (!initialized) {
+        Serial.println("ERROR: Kernel not initialized!");
+        return;
+    }
+    
+    // Main kernel loop - run scheduler
+    while (true) {
+        scheduler->schedule();
+        systemServices->feedWatchdog();
+        yield();  // Arduino yield for background tasks
+    }
+}
+
+} // namespace dialOS

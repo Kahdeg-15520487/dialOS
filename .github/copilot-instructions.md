@@ -15,7 +15,7 @@ dialOS is a multi-tasking operating system for the M5 Dial development board (ES
 ### Hardware Platform
 - **Target**: M5Stack Stamps3 (ESP32-S3) with M5 Dial peripherals
 - **Display**: 1.28" circular TFT touch screen (240x240px, GC9A01 driver, FT3267 touch)
-- **Input**: Rotary encoder (16 positions, 64 pulses/revolution) + button + RFID (13.56MHz)
+- **Input**: Rotary encoder (16 positions, 64 pulses/revolution, GPIO40/41, custom PCNT driver) + button + RFID (13.56MHz)
 - **Expansion Ports**: 
   - **PORT.A**: GPIO13, GPIO15 (HY2.0-4P Grove connector, 5V power)
   - **PORT.B**: GPIO2, GPIO1 (HY2.0-4P Grove connector, 5V power)
