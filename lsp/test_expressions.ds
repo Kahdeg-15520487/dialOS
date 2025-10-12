@@ -1,0 +1,32 @@
+// Test expression-based initialization and ternary operator
+
+// Expression-based initialization
+var sum: 10 + 20;
+var product: 5 * 6;
+var result: sum / product;
+
+// Ternary operator
+var max: (sum > product) ? sum : product;
+var min: (sum < product) ? sum : product;
+
+// Complex expressions
+var minutes: 120 / 60;
+var seconds: 120 % 60;
+var formatted: `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+
+// Nested ternary
+var status: (result > 10) ? "high" : (result > 5) ? "medium" : "low";
+
+// With member access
+class Timer {
+    seconds: int;
+    
+    constructor(s: int) {
+        assign this.seconds s;
+    }
+}
+
+var timer: Timer(120);
+var mins: timer.seconds / 60;
+var secs: timer.seconds % 60;
+var timeStr: `${mins}:${secs < 10 ? "0" : ""}${secs}`;

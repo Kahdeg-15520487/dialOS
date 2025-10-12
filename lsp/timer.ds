@@ -1,0 +1,129 @@
+/*
+ * Timer App - dialScript Final Syntax
+ */
+
+class Timer {
+    seconds: int;
+    running: bool;
+    
+    constructor(initial: int) {
+        assign this.seconds initial;
+        assign this.running false;
+    }
+    
+    start(): void {
+        assign this.running true;
+    }
+    
+    stop(): void {
+        assign this.running false;
+    }
+    
+    tick(): void {
+        if (this.running and this.seconds > 0) {
+            assign this.seconds this.seconds - 1;
+        }
+    }
+    
+    reset(value: int): void {
+        assign this.seconds value;
+        assign this.running false;
+    }
+    
+    isFinished(): bool {
+        return this.seconds = 0;
+    }
+}
+
+class TimerDisplay {
+    timer: Timer;
+    
+    constructor(timer: Timer) {
+        assign this.timer timer;
+    }
+    
+    render(): void {
+        os.display.clear(0x0000);
+        
+        // Title
+        os.display.drawText(70, 40, "Timer", 0xFFFF, 2);
+        
+        // Time display
+        var mins: this.timer.seconds / 60;
+        var secs: this.timer.seconds % 60;
+        var timeStr: `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+        
+        // Color based on state
+        var color: 0xFFFF;  // White default
+        if (this.timer.running) {
+            assign color 0x07E0;  // Green when running
+        } else if (this.timer.isFinished()) {
+            assign color 0xF800;  // Red when finished
+        }
+        
+        os.display.drawText(60, 110, timeStr, color, 3);
+        
+        // Status
+        var status: this.timer.running ? "Running" : "Paused";
+        os.display.drawText(80, 180, status, 0x7BEF, 1);
+    }
+}
+
+// Global state with type inference
+var timer: Timer(60);           // 60 second timer
+var display: TimerDisplay(timer);
+var lastTick: 0;               // int inferred
+
+// Handler functions
+function handleEncoderButton(): void {
+    if (timer.running) {
+        timer.stop();
+        os.buzzer.beep(440, 50);
+    } else {
+        timer.start();
+        os.buzzer.beep(880, 50);
+    }
+    display.render();
+}
+
+function handleEncoderTurn(delta: int): void {
+    if (not timer.running) {
+        var newTime: timer.seconds + (delta * 5);
+        if (newTime < 0) {
+            assign newTime 0;
+        }
+        if (newTime > 3600) {  // Max 1 hour
+            assign newTime 3600;
+        }
+        timer.reset(newTime);
+        display.render();
+    }
+}
+
+function handleTimerTick(): void {
+    var now: os.system.getTime();
+    
+    if (now - lastTick >= 1000) {
+        assign lastTick now;
+        timer.tick();
+        display.render();
+        
+        // Beep when finished
+        if (timer.isFinished() and timer.running) {
+            timer.stop();
+            os.buzzer.beep(880, 500);
+        }
+    }
+}
+
+function appOnLoad(): void {
+    display.render();
+    
+    // Register event handlers
+    os.encoder.onButton(handleEncoderButton);
+    os.encoder.onTurn(handleEncoderTurn);
+    os.timer.setInterval(handleTimerTick, 100);
+}
+
+// Set app lifecycle handler
+assign app.onLoad appOnLoad;

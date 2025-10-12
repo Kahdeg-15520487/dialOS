@@ -1,0 +1,22 @@
+// Test dialScript file
+var count: 0;
+var message: "Hello dialOS";
+
+class Counter {
+    value: int;
+    
+    constructor(initial: int) {
+        assign this.value initial;
+    }
+    
+    increment(): void {
+        assign this.value this.value + 1;
+    }
+}
+
+var counter: Counter(42);
+
+if (count = 0) {
+    counter.increment();
+    os.console.log(message);
+}
