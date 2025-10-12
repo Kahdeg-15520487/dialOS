@@ -222,30 +222,6 @@ void ramfsTestTask(byte taskId, void *param) {
   testRun = true;
 }
 
-void sleepDemoTask(byte taskId, void *param) {
-  static int wakeCount = 0;
-  static bool sleeping = false;
-  
-  TaskScheduler *scheduler = Kernel::instance().getScheduler();
-  SystemServices *sys = Kernel::instance().getSystemServices();
-  
-  if (!sleeping) {
-    // Task just woke up
-    wakeCount++;
-    sys->logf(LogLevel::INFO, "💤 Sleep Demo: Wake #%d - Going to sleep for 2 seconds...", wakeCount);
-    
-    // Put this task to sleep for 2000ms (2 seconds)
-    scheduler->sleepTask(taskId, 2000);
-    sleeping = true;
-  } else {
-    // We woke up from sleep!
-    sys->logf(LogLevel::INFO, "⏰ Sleep Demo: Woke up! (after 2s sleep)");
-    sleeping = false;
-    
-    // After wake, sleep again next time
-  }
-}
-
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -291,10 +267,8 @@ void setup() {
                                       2048, TaskPriority::LOW_PRIORITY);
   Task *task5 = scheduler->createTask("MemoryTest", memoryTestTask, nullptr,
                                       2048, TaskPriority::NORMAL);
-  Task *task6 = scheduler->createTask("SleepDemo", sleepDemoTask, nullptr,
-                                      2048, TaskPriority::NORMAL);
 
-  if (task1 && task2 && task3 && task4 && task5 && task6) {
+  if (task1 && task2 && task3 && task4 && task5) {
     Serial.println("Kernel tasks created");
   }
 

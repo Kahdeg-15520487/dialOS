@@ -42,13 +42,19 @@ bool Kernel::init() {
     }
     systemServices->log(LogLevel::INFO, "System services initialized");
     
-    // Initialize memory manager
+    // Initialize memory manager with available ESP32 heap
+    size_t availableHeap = ESP.getFreeHeap();
+    // Reserve 50% of available heap for kernel memory manager
+    // Keep other 50% for system overhead, stack, etc.
+    size_t kernelHeap = availableHeap / 2;
+    
     memoryManager = new MemoryManager();
-    if (!memoryManager || !memoryManager->init(32768)) {
+    if (!memoryManager || !memoryManager->init(kernelHeap)) {
         systemServices->log(LogLevel::ERROR, "Failed to initialize memory manager");
         return false;
     }
-    systemServices->log(LogLevel::INFO, "Memory manager initialized");
+    systemServices->logf(LogLevel::INFO, "Memory manager initialized: %d KB available (%.1f KB total heap)", 
+                        kernelHeap / 1024, availableHeap / 1024.0);
     
     // Initialize task scheduler
     scheduler = new TaskScheduler();
