@@ -1,0 +1,1520 @@
+{
+  "type": "Program",
+  "statements": [
+    {
+      "type": "ClassDeclaration",
+      "name": "Timer",
+      "fields": [
+        {
+          "type": "FieldDeclaration",
+          "name": "seconds",
+          "fieldType": {
+            "type": "PrimitiveType",
+            "kind": "int"
+          }
+        },
+        {
+          "type": "FieldDeclaration",
+          "name": "running",
+          "fieldType": {
+            "type": "PrimitiveType",
+            "kind": "bool"
+          }
+        }
+      ],
+      "constructor": {
+        "type": "ConstructorDeclaration",
+        "parameters": [
+          {
+            "type": "Parameter",
+            "name": "initial",
+            "paramType": {
+              "type": "PrimitiveType",
+              "kind": "int"
+            }
+          }
+        ],
+        "body": {
+          "type": "Block",
+          "statements": [
+            {
+              "type": "Assignment",
+              "target": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "Identifier",
+                  "name": "this"
+                },
+                "property": "seconds"
+              },
+              "value": {
+                "type": "Identifier",
+                "name": "initial"
+              },
+              "line": 10,
+              "column": 16
+            },
+            {
+              "type": "Assignment",
+              "target": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "Identifier",
+                  "name": "this"
+                },
+                "property": "running"
+              },
+              "value": {
+                "type": "BooleanLiteral",
+                "value": false
+              },
+              "line": 11,
+              "column": 16
+            }
+          ]
+        }
+      },
+      "methods": [
+        {
+          "type": "MethodDeclaration",
+          "name": "start",
+          "parameters": [
+          ],
+          "returnType": {
+            "type": "PrimitiveType",
+            "kind": "void"
+          },
+          "body": {
+            "type": "Block",
+            "statements": [
+              {
+                "type": "Assignment",
+                "target": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "this"
+                  },
+                  "property": "running"
+                },
+                "value": {
+                  "type": "BooleanLiteral",
+                  "value": false
+                },
+                "line": 15,
+                "column": 16
+              }
+            ]
+          }
+        },
+        {
+          "type": "MethodDeclaration",
+          "name": "stop",
+          "parameters": [
+          ],
+          "returnType": {
+            "type": "PrimitiveType",
+            "kind": "void"
+          },
+          "body": {
+            "type": "Block",
+            "statements": [
+              {
+                "type": "Assignment",
+                "target": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "this"
+                  },
+                  "property": "running"
+                },
+                "value": {
+                  "type": "BooleanLiteral",
+                  "value": false
+                },
+                "line": 19,
+                "column": 16
+              }
+            ]
+          }
+        },
+        {
+          "type": "MethodDeclaration",
+          "name": "tick",
+          "parameters": [
+          ],
+          "returnType": {
+            "type": "PrimitiveType",
+            "kind": "void"
+          },
+          "body": {
+            "type": "Block",
+            "statements": [
+              {
+                "type": "IfStatement",
+                "condition": {
+                  "type": "BinaryExpression",
+                  "operator": "and",
+                  "left": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "Identifier",
+                      "name": "this"
+                    },
+                    "property": "running"
+                  },
+                  "right": {
+                    "type": "BinaryExpression",
+                    "operator": ">",
+                    "left": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "this"
+                      },
+                      "property": "seconds"
+                    },
+                    "right": {
+                      "type": "NumberLiteral",
+                      "value": "0",
+                      "isFloat": false,
+                      "isHex": false
+                    }
+                  }
+                },
+                "consequence": {
+                  "type": "Block",
+                  "statements": [
+                    {
+                      "type": "Assignment",
+                      "target": {
+                        "type": "MemberAccess",
+                        "object": {
+                          "type": "Identifier",
+                          "name": "this"
+                        },
+                        "property": "seconds"
+                      },
+                      "value": {
+                        "type": "BinaryExpression",
+                        "operator": "-",
+                        "left": {
+                          "type": "MemberAccess",
+                          "object": {
+                            "type": "Identifier",
+                            "name": "this"
+                          },
+                          "property": "seconds"
+                        },
+                        "right": {
+                          "type": "NumberLiteral",
+                          "value": "1",
+                          "isFloat": false,
+                          "isHex": false
+                        }
+                      },
+                      "line": 24,
+                      "column": 20
+                    }
+                  ]
+                },
+                "line": 23,
+                "column": 13
+              }
+            ]
+          }
+        },
+        {
+          "type": "MethodDeclaration",
+          "name": "reset",
+          "parameters": [
+            {
+              "type": "Parameter",
+              "name": "value",
+              "paramType": {
+                "type": "PrimitiveType",
+                "kind": "int"
+              }
+            }
+          ],
+          "returnType": {
+            "type": "PrimitiveType",
+            "kind": "void"
+          },
+          "body": {
+            "type": "Block",
+            "statements": [
+              {
+                "type": "Assignment",
+                "target": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "this"
+                  },
+                  "property": "seconds"
+                },
+                "value": {
+                  "type": "Identifier",
+                  "name": "value"
+                },
+                "line": 29,
+                "column": 16
+              },
+              {
+                "type": "Assignment",
+                "target": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "this"
+                  },
+                  "property": "running"
+                },
+                "value": {
+                  "type": "BooleanLiteral",
+                  "value": false
+                },
+                "line": 30,
+                "column": 16
+              }
+            ]
+          }
+        },
+        {
+          "type": "MethodDeclaration",
+          "name": "isFinished",
+          "parameters": [
+          ],
+          "returnType": {
+            "type": "PrimitiveType",
+            "kind": "bool"
+          },
+          "body": {
+            "type": "Block",
+            "statements": [
+              {
+                "type": "ReturnStatement",
+                "value": {
+                  "type": "BinaryExpression",
+                  "operator": "=",
+                  "left": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "Identifier",
+                      "name": "this"
+                    },
+                    "property": "seconds"
+                  },
+                  "right": {
+                    "type": "NumberLiteral",
+                    "value": "0",
+                    "isFloat": false,
+                    "isHex": false
+                  }
+                },
+                "line": 34,
+                "column": 16
+              }
+            ]
+          }
+        }
+      ],
+      "line": 5,
+      "column": 7
+    },
+    {
+      "type": "ClassDeclaration",
+      "name": "TimerDisplay",
+      "fields": [
+        {
+          "type": "FieldDeclaration",
+          "name": "timer",
+          "fieldType": {
+            "type": "NamedType",
+            "name": "Timer"
+          }
+        }
+      ],
+      "constructor": {
+        "type": "ConstructorDeclaration",
+        "parameters": [
+          {
+            "type": "Parameter",
+            "name": "timer",
+            "paramType": {
+              "type": "NamedType",
+              "name": "Timer"
+            }
+          }
+        ],
+        "body": {
+          "type": "Block",
+          "statements": [
+            {
+              "type": "Assignment",
+              "target": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "Identifier",
+                  "name": "this"
+                },
+                "property": "timer"
+              },
+              "value": {
+                "type": "Identifier",
+                "name": "timer"
+              },
+              "line": 42,
+              "column": 16
+            }
+          ]
+        }
+      },
+      "methods": [
+        {
+          "type": "MethodDeclaration",
+          "name": "render",
+          "parameters": [
+          ],
+          "returnType": {
+            "type": "PrimitiveType",
+            "kind": "void"
+          },
+          "body": {
+            "type": "Block",
+            "statements": [
+              {
+                "type": "ExpressionStatement",
+                "expression": {
+                  "type": "CallExpression",
+                  "callee": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "os"
+                      },
+                      "property": "display"
+                    },
+                    "property": "clear"
+                  },
+                  "arguments": [
+                    {
+                      "type": "NumberLiteral",
+                      "value": "0x0000",
+                      "isFloat": false,
+                      "isHex": true
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "ExpressionStatement",
+                "expression": {
+                  "type": "CallExpression",
+                  "callee": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "os"
+                      },
+                      "property": "display"
+                    },
+                    "property": "drawText"
+                  },
+                  "arguments": [
+                    {
+                      "type": "NumberLiteral",
+                      "value": "70",
+                      "isFloat": false,
+                      "isHex": false
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "40",
+                      "isFloat": false,
+                      "isHex": false
+                    },
+                    {
+                      "type": "StringLiteral",
+                      "value": "Timer"
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "0xFFFF",
+                      "isFloat": false,
+                      "isHex": true
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "2",
+                      "isFloat": false,
+                      "isHex": false
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "VariableDeclaration",
+                "name": "mins",
+                "initializer": {
+                  "type": "BinaryExpression",
+                  "operator": "/",
+                  "left": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "this"
+                      },
+                      "property": "timer"
+                    },
+                    "property": "seconds"
+                  },
+                  "right": {
+                    "type": "NumberLiteral",
+                    "value": "60",
+                    "isFloat": false,
+                    "isHex": false
+                  }
+                },
+                "line": 52,
+                "column": 13
+              },
+              {
+                "type": "VariableDeclaration",
+                "name": "secs",
+                "initializer": {
+                  "type": "BinaryExpression",
+                  "operator": "%",
+                  "left": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "this"
+                      },
+                      "property": "timer"
+                    },
+                    "property": "seconds"
+                  },
+                  "right": {
+                    "type": "NumberLiteral",
+                    "value": "60",
+                    "isFloat": false,
+                    "isHex": false
+                  }
+                },
+                "line": 53,
+                "column": 13
+              },
+              {
+                "type": "VariableDeclaration",
+                "name": "timeStr",
+                "initializer": {
+                  "type": "TemplateLiteral",
+                  "parts": [
+                    {
+                      "type": "expression",
+                      "expression": {
+                        "type": "Identifier",
+                        "name": "mins"
+                      }
+                    },
+                    {
+                      "type": "string",
+                      "value": ":"
+                    },
+                    {
+                      "type": "expression",
+                      "expression": {
+                        "type": "TernaryExpression",
+                        "condition": {
+                          "type": "BinaryExpression",
+                          "operator": "<",
+                          "left": {
+                            "type": "Identifier",
+                            "name": "secs"
+                          },
+                          "right": {
+                            "type": "NumberLiteral",
+                            "value": "10",
+                            "isFloat": false,
+                            "isHex": false
+                          }
+                        },
+                        "consequence": {
+                          "type": "StringLiteral",
+                          "value": "0"
+                        },
+                        "alternative": {
+                          "type": "StringLiteral",
+                          "value": ""
+                        }
+                      }
+                    },
+                    {
+                      "type": "expression",
+                      "expression": {
+                        "type": "Identifier",
+                        "name": "secs"
+                      }
+                    }
+                  ]
+                },
+                "line": 54,
+                "column": 13
+              },
+              {
+                "type": "VariableDeclaration",
+                "name": "color",
+                "initializer": {
+                  "type": "NumberLiteral",
+                  "value": "0xFFFF",
+                  "isFloat": false,
+                  "isHex": true
+                },
+                "line": 57,
+                "column": 13
+              },
+              {
+                "type": "IfStatement",
+                "condition": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "Identifier",
+                      "name": "this"
+                    },
+                    "property": "timer"
+                  },
+                  "property": "running"
+                },
+                "consequence": {
+                  "type": "Block",
+                  "statements": [
+                    {
+                      "type": "Assignment",
+                      "target": {
+                        "type": "Identifier",
+                        "name": "color"
+                      },
+                      "value": {
+                        "type": "NumberLiteral",
+                        "value": "0x07E0",
+                        "isFloat": false,
+                        "isHex": true
+                      },
+                      "line": 59,
+                      "column": 20
+                    }
+                  ]
+                },
+                "alternative": {
+                  "type": "IfStatement",
+                  "condition": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "MemberAccess",
+                        "object": {
+                          "type": "Identifier",
+                          "name": "this"
+                        },
+                        "property": "timer"
+                      },
+                      "property": "isFinished"
+                    },
+                    "arguments": [
+                    ]
+                  },
+                  "consequence": {
+                    "type": "Block",
+                    "statements": [
+                      {
+                        "type": "Assignment",
+                        "target": {
+                          "type": "Identifier",
+                          "name": "color"
+                        },
+                        "value": {
+                          "type": "NumberLiteral",
+                          "value": "0xF800",
+                          "isFloat": false,
+                          "isHex": true
+                        },
+                        "line": 61,
+                        "column": 20
+                      }
+                    ]
+                  },
+                  "line": 60,
+                  "column": 20
+                },
+                "line": 58,
+                "column": 13
+              },
+              {
+                "type": "ExpressionStatement",
+                "expression": {
+                  "type": "CallExpression",
+                  "callee": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "os"
+                      },
+                      "property": "display"
+                    },
+                    "property": "drawText"
+                  },
+                  "arguments": [
+                    {
+                      "type": "NumberLiteral",
+                      "value": "60",
+                      "isFloat": false,
+                      "isHex": false
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "110",
+                      "isFloat": false,
+                      "isHex": false
+                    },
+                    {
+                      "type": "Identifier",
+                      "name": "timeStr"
+                    },
+                    {
+                      "type": "Identifier",
+                      "name": "color"
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "3",
+                      "isFloat": false,
+                      "isHex": false
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "VariableDeclaration",
+                "name": "status",
+                "initializer": {
+                  "type": "TernaryExpression",
+                  "condition": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "this"
+                      },
+                      "property": "timer"
+                    },
+                    "property": "running"
+                  },
+                  "consequence": {
+                    "type": "StringLiteral",
+                    "value": "Running"
+                  },
+                  "alternative": {
+                    "type": "StringLiteral",
+                    "value": "Paused"
+                  }
+                },
+                "line": 67,
+                "column": 13
+              },
+              {
+                "type": "ExpressionStatement",
+                "expression": {
+                  "type": "CallExpression",
+                  "callee": {
+                    "type": "MemberAccess",
+                    "object": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "os"
+                      },
+                      "property": "display"
+                    },
+                    "property": "drawText"
+                  },
+                  "arguments": [
+                    {
+                      "type": "NumberLiteral",
+                      "value": "80",
+                      "isFloat": false,
+                      "isHex": false
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "180",
+                      "isFloat": false,
+                      "isHex": false
+                    },
+                    {
+                      "type": "Identifier",
+                      "name": "status"
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "0x7BEF",
+                      "isFloat": false,
+                      "isHex": true
+                    },
+                    {
+                      "type": "NumberLiteral",
+                      "value": "1",
+                      "isFloat": false,
+                      "isHex": false
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "line": 38,
+      "column": 7
+    },
+    {
+      "type": "VariableDeclaration",
+      "name": "timer",
+      "initializer": {
+        "type": "ConstructorCall",
+        "typeName": "Timer",
+        "arguments": [
+          {
+            "type": "NumberLiteral",
+            "value": "60",
+            "isFloat": false,
+            "isHex": false
+          }
+        ]
+      },
+      "line": 73,
+      "column": 5
+    },
+    {
+      "type": "VariableDeclaration",
+      "name": "display",
+      "initializer": {
+        "type": "ConstructorCall",
+        "typeName": "TimerDisplay",
+        "arguments": [
+          {
+            "type": "Identifier",
+            "name": "timer"
+          }
+        ]
+      },
+      "line": 74,
+      "column": 5
+    },
+    {
+      "type": "VariableDeclaration",
+      "name": "lastTick",
+      "initializer": {
+        "type": "NumberLiteral",
+        "value": "0",
+        "isFloat": false,
+        "isHex": false
+      },
+      "line": 75,
+      "column": 5
+    },
+    {
+      "type": "FunctionDeclaration",
+      "name": "handleEncoderButton",
+      "parameters": [
+      ],
+      "returnType": {
+        "type": "PrimitiveType",
+        "kind": "void"
+      },
+      "body": {
+        "type": "Block",
+        "statements": [
+          {
+            "type": "IfStatement",
+            "condition": {
+              "type": "MemberAccess",
+              "object": {
+                "type": "Identifier",
+                "name": "timer"
+              },
+              "property": "running"
+            },
+            "consequence": {
+              "type": "Block",
+              "statements": [
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "timer"
+                      },
+                      "property": "stop"
+                    },
+                    "arguments": [
+                    ]
+                  }
+                },
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "MemberAccess",
+                        "object": {
+                          "type": "Identifier",
+                          "name": "os"
+                        },
+                        "property": "buzzer"
+                      },
+                      "property": "beep"
+                    },
+                    "arguments": [
+                      {
+                        "type": "NumberLiteral",
+                        "value": "440",
+                        "isFloat": false,
+                        "isHex": false
+                      },
+                      {
+                        "type": "NumberLiteral",
+                        "value": "50",
+                        "isFloat": false,
+                        "isHex": false
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "type": "Block",
+              "statements": [
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "timer"
+                      },
+                      "property": "start"
+                    },
+                    "arguments": [
+                    ]
+                  }
+                },
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "MemberAccess",
+                        "object": {
+                          "type": "Identifier",
+                          "name": "os"
+                        },
+                        "property": "buzzer"
+                      },
+                      "property": "beep"
+                    },
+                    "arguments": [
+                      {
+                        "type": "NumberLiteral",
+                        "value": "880",
+                        "isFloat": false,
+                        "isHex": false
+                      },
+                      {
+                        "type": "NumberLiteral",
+                        "value": "50",
+                        "isFloat": false,
+                        "isHex": false
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "line": 79,
+            "column": 9
+          },
+          {
+            "type": "ExpressionStatement",
+            "expression": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "Identifier",
+                  "name": "display"
+                },
+                "property": "render"
+              },
+              "arguments": [
+              ]
+            }
+          }
+        ]
+      },
+      "line": 78,
+      "column": 10
+    },
+    {
+      "type": "FunctionDeclaration",
+      "name": "handleEncoderTurn",
+      "parameters": [
+        {
+          "type": "Parameter",
+          "name": "delta",
+          "paramType": {
+            "type": "PrimitiveType",
+            "kind": "int"
+          }
+        }
+      ],
+      "returnType": {
+        "type": "PrimitiveType",
+        "kind": "void"
+      },
+      "body": {
+        "type": "Block",
+        "statements": [
+          {
+            "type": "IfStatement",
+            "condition": {
+              "type": "UnaryExpression",
+              "operator": "not",
+              "operand": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "Identifier",
+                  "name": "timer"
+                },
+                "property": "running"
+              }
+            },
+            "consequence": {
+              "type": "Block",
+              "statements": [
+                {
+                  "type": "VariableDeclaration",
+                  "name": "newTime",
+                  "initializer": {
+                    "type": "BinaryExpression",
+                    "operator": "+",
+                    "left": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "timer"
+                      },
+                      "property": "seconds"
+                    },
+                    "right": {
+                      "type": "ParenthesizedExpression",
+                      "expression": {
+                        "type": "BinaryExpression",
+                        "operator": "*",
+                        "left": {
+                          "type": "Identifier",
+                          "name": "delta"
+                        },
+                        "right": {
+                          "type": "NumberLiteral",
+                          "value": "5",
+                          "isFloat": false,
+                          "isHex": false
+                        }
+                      }
+                    }
+                  },
+                  "line": 91,
+                  "column": 13
+                },
+                {
+                  "type": "IfStatement",
+                  "condition": {
+                    "type": "BinaryExpression",
+                    "operator": "<",
+                    "left": {
+                      "type": "Identifier",
+                      "name": "newTime"
+                    },
+                    "right": {
+                      "type": "NumberLiteral",
+                      "value": "0",
+                      "isFloat": false,
+                      "isHex": false
+                    }
+                  },
+                  "consequence": {
+                    "type": "Block",
+                    "statements": [
+                      {
+                        "type": "Assignment",
+                        "target": {
+                          "type": "Identifier",
+                          "name": "newTime"
+                        },
+                        "value": {
+                          "type": "NumberLiteral",
+                          "value": "0",
+                          "isFloat": false,
+                          "isHex": false
+                        },
+                        "line": 93,
+                        "column": 20
+                      }
+                    ]
+                  },
+                  "line": 92,
+                  "column": 13
+                },
+                {
+                  "type": "IfStatement",
+                  "condition": {
+                    "type": "BinaryExpression",
+                    "operator": ">",
+                    "left": {
+                      "type": "Identifier",
+                      "name": "newTime"
+                    },
+                    "right": {
+                      "type": "NumberLiteral",
+                      "value": "3600",
+                      "isFloat": false,
+                      "isHex": false
+                    }
+                  },
+                  "consequence": {
+                    "type": "Block",
+                    "statements": [
+                      {
+                        "type": "Assignment",
+                        "target": {
+                          "type": "Identifier",
+                          "name": "newTime"
+                        },
+                        "value": {
+                          "type": "NumberLiteral",
+                          "value": "3600",
+                          "isFloat": false,
+                          "isHex": false
+                        },
+                        "line": 96,
+                        "column": 20
+                      }
+                    ]
+                  },
+                  "line": 95,
+                  "column": 13
+                },
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "timer"
+                      },
+                      "property": "reset"
+                    },
+                    "arguments": [
+                      {
+                        "type": "Identifier",
+                        "name": "newTime"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "display"
+                      },
+                      "property": "render"
+                    },
+                    "arguments": [
+                    ]
+                  }
+                }
+              ]
+            },
+            "line": 90,
+            "column": 9
+          }
+        ]
+      },
+      "line": 89,
+      "column": 10
+    },
+    {
+      "type": "FunctionDeclaration",
+      "name": "handleTimerTick",
+      "parameters": [
+      ],
+      "returnType": {
+        "type": "PrimitiveType",
+        "kind": "void"
+      },
+      "body": {
+        "type": "Block",
+        "statements": [
+          {
+            "type": "VariableDeclaration",
+            "name": "now",
+            "initializer": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "os"
+                  },
+                  "property": "system"
+                },
+                "property": "getTime"
+              },
+              "arguments": [
+              ]
+            },
+            "line": 104,
+            "column": 9
+          },
+          {
+            "type": "IfStatement",
+            "condition": {
+              "type": "BinaryExpression",
+              "operator": ">=",
+              "left": {
+                "type": "BinaryExpression",
+                "operator": "-",
+                "left": {
+                  "type": "Identifier",
+                  "name": "now"
+                },
+                "right": {
+                  "type": "Identifier",
+                  "name": "lastTick"
+                }
+              },
+              "right": {
+                "type": "NumberLiteral",
+                "value": "1000",
+                "isFloat": false,
+                "isHex": false
+              }
+            },
+            "consequence": {
+              "type": "Block",
+              "statements": [
+                {
+                  "type": "Assignment",
+                  "target": {
+                    "type": "Identifier",
+                    "name": "lastTick"
+                  },
+                  "value": {
+                    "type": "Identifier",
+                    "name": "now"
+                  },
+                  "line": 107,
+                  "column": 16
+                },
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "timer"
+                      },
+                      "property": "tick"
+                    },
+                    "arguments": [
+                    ]
+                  }
+                },
+                {
+                  "type": "ExpressionStatement",
+                  "expression": {
+                    "type": "CallExpression",
+                    "callee": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "display"
+                      },
+                      "property": "render"
+                    },
+                    "arguments": [
+                    ]
+                  }
+                },
+                {
+                  "type": "IfStatement",
+                  "condition": {
+                    "type": "BinaryExpression",
+                    "operator": "and",
+                    "left": {
+                      "type": "CallExpression",
+                      "callee": {
+                        "type": "MemberAccess",
+                        "object": {
+                          "type": "Identifier",
+                          "name": "timer"
+                        },
+                        "property": "isFinished"
+                      },
+                      "arguments": [
+                      ]
+                    },
+                    "right": {
+                      "type": "MemberAccess",
+                      "object": {
+                        "type": "Identifier",
+                        "name": "timer"
+                      },
+                      "property": "running"
+                    }
+                  },
+                  "consequence": {
+                    "type": "Block",
+                    "statements": [
+                      {
+                        "type": "ExpressionStatement",
+                        "expression": {
+                          "type": "CallExpression",
+                          "callee": {
+                            "type": "MemberAccess",
+                            "object": {
+                              "type": "Identifier",
+                              "name": "timer"
+                            },
+                            "property": "stop"
+                          },
+                          "arguments": [
+                          ]
+                        }
+                      },
+                      {
+                        "type": "ExpressionStatement",
+                        "expression": {
+                          "type": "CallExpression",
+                          "callee": {
+                            "type": "MemberAccess",
+                            "object": {
+                              "type": "MemberAccess",
+                              "object": {
+                                "type": "Identifier",
+                                "name": "os"
+                              },
+                              "property": "buzzer"
+                            },
+                            "property": "beep"
+                          },
+                          "arguments": [
+                            {
+                              "type": "NumberLiteral",
+                              "value": "880",
+                              "isFloat": false,
+                              "isHex": false
+                            },
+                            {
+                              "type": "NumberLiteral",
+                              "value": "500",
+                              "isFloat": false,
+                              "isHex": false
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "line": 112,
+                  "column": 13
+                }
+              ]
+            },
+            "line": 106,
+            "column": 9
+          }
+        ]
+      },
+      "line": 103,
+      "column": 10
+    },
+    {
+      "type": "FunctionDeclaration",
+      "name": "appOnLoad",
+      "parameters": [
+      ],
+      "returnType": {
+        "type": "PrimitiveType",
+        "kind": "void"
+      },
+      "body": {
+        "type": "Block",
+        "statements": [
+          {
+            "type": "ExpressionStatement",
+            "expression": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "Identifier",
+                  "name": "display"
+                },
+                "property": "render"
+              },
+              "arguments": [
+              ]
+            }
+          },
+          {
+            "type": "ExpressionStatement",
+            "expression": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "os"
+                  },
+                  "property": "encoder"
+                },
+                "property": "onButton"
+              },
+              "arguments": [
+                {
+                  "type": "Identifier",
+                  "name": "handleEncoderButton"
+                }
+              ]
+            }
+          },
+          {
+            "type": "ExpressionStatement",
+            "expression": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "os"
+                  },
+                  "property": "encoder"
+                },
+                "property": "onTurn"
+              },
+              "arguments": [
+                {
+                  "type": "Identifier",
+                  "name": "handleEncoderTurn"
+                }
+              ]
+            }
+          },
+          {
+            "type": "ExpressionStatement",
+            "expression": {
+              "type": "CallExpression",
+              "callee": {
+                "type": "MemberAccess",
+                "object": {
+                  "type": "MemberAccess",
+                  "object": {
+                    "type": "Identifier",
+                    "name": "os"
+                  },
+                  "property": "timer"
+                },
+                "property": "setInterval"
+              },
+              "arguments": [
+                {
+                  "type": "Identifier",
+                  "name": "handleTimerTick"
+                },
+                {
+                  "type": "NumberLiteral",
+                  "value": "100",
+                  "isFloat": false,
+                  "isHex": false
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "line": 119,
+      "column": 10
+    },
+    {
+      "type": "Assignment",
+      "target": {
+        "type": "MemberAccess",
+        "object": {
+          "type": "Identifier",
+          "name": "app"
+        },
+        "property": "onLoad"
+      },
+      "value": {
+        "type": "Identifier",
+        "name": "appOnLoad"
+      },
+      "line": 129,
+      "column": 8
+    }
+  ]
+}
+

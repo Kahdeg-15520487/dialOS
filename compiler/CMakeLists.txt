@@ -19,6 +19,7 @@ set(PARSER_SOURCES
     ast.cpp
     parser.cpp
     ast_printer.cpp
+    ast_json.cpp
 )
 
 # Create a library for the parser (can be linked to other projects)

@@ -199,23 +199,24 @@ std::unique_ptr<ClassDeclaration> Parser::parseClassDeclaration() {
     while (!check(TokenType::RBRACE) && !check(TokenType::END_OF_FILE)) {
         if (match(TokenType::CONSTRUCTOR)) {
             cls->constructor = parseConstructorDeclaration();
-        } else {
-            // Try to determine if it's a field or method
-            Token first = current_;
-            advance();
+        } else if (check(TokenType::IDENTIFIER)) {
+            // Look ahead to determine if it's a field or method
+            Token nameToken = current_;
+            advance(); // Move past identifier
             
-            if (check(TokenType::COLON)) {
-                // It's a field
-                current_ = first;
-                cls->fields.push_back(parseFieldDeclaration());
-            } else if (check(TokenType::LPAREN)) {
-                // It's a method
-                current_ = first;
-                cls->methods.push_back(parseMethodDeclaration());
+            if (check(TokenType::LPAREN)) {
+                // It's a method: name(...) or name(...): type
+                cls->methods.push_back(parseMethodDeclaration(nameToken));
+            } else if (check(TokenType::COLON)) {
+                // It's a field: name: type;
+                cls->fields.push_back(parseFieldDeclaration(nameToken));
             } else {
-                error("Expected field or method declaration");
+                error("Expected '(' or ':' after identifier in class body");
                 synchronize();
             }
+        } else {
+            error("Expected field, method, or constructor declaration");
+            synchronize();
         }
     }
     
@@ -812,13 +813,12 @@ std::unique_ptr<Parameter> Parser::parseParameter() {
 }
 
 // Class member parsing
-std::unique_ptr<FieldDeclaration> Parser::parseFieldDeclaration() {
+std::unique_ptr<FieldDeclaration> Parser::parseFieldDeclaration(const Token& nameToken) {
     auto field = std::make_unique<FieldDeclaration>();
     
-    Token name = consume(TokenType::IDENTIFIER, "Expected field name");
-    field->name = name.value;
-    field->line = name.line;
-    field->column = name.column;
+    field->name = nameToken.value;
+    field->line = nameToken.line;
+    field->column = nameToken.column;
     
     consume(TokenType::COLON, "Expected ':' after field name");
     
@@ -849,13 +849,12 @@ std::unique_ptr<ConstructorDeclaration> Parser::parseConstructorDeclaration() {
     return ctor;
 }
 
-std::unique_ptr<MethodDeclaration> Parser::parseMethodDeclaration() {
+std::unique_ptr<MethodDeclaration> Parser::parseMethodDeclaration(const Token& nameToken) {
     auto method = std::make_unique<MethodDeclaration>();
     
-    Token name = consume(TokenType::IDENTIFIER, "Expected method name");
-    method->name = name.value;
-    method->line = name.line;
-    method->column = name.column;
+    method->name = nameToken.value;
+    method->line = nameToken.line;
+    method->column = nameToken.column;
     
     consume(TokenType::LPAREN, "Expected '(' after method name");
     

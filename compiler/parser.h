@@ -69,9 +69,9 @@ private:
     std::unique_ptr<Parameter> parseParameter();
     
     // Class member parsing
-    std::unique_ptr<FieldDeclaration> parseFieldDeclaration();
+    std::unique_ptr<FieldDeclaration> parseFieldDeclaration(const Token& nameToken);
     std::unique_ptr<ConstructorDeclaration> parseConstructorDeclaration();
-    std::unique_ptr<MethodDeclaration> parseMethodDeclaration();
+    std::unique_ptr<MethodDeclaration> parseMethodDeclaration(const Token& nameToken);
     
     // Helpers for checking statement/expression starts
     bool isStatementStart() const;
