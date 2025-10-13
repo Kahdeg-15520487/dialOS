@@ -14,8 +14,40 @@ BytecodeModule BytecodeCompiler::compile(const Program& program) {
     jumpPatches_.clear();
     labels_.clear();
     
-    // Compile all statements
+    // Two-pass compilation:
+    // Pass 1: Compile all function and class declarations first
+    // Pass 2: Compile main code (non-function statements)
+    
+    std::vector<const FunctionDeclaration*> functions;
+    std::vector<const ClassDeclaration*> classes;
+    std::vector<const Statement*> mainCode;
+    
+    // Separate functions/classes from main code
     for (const auto& stmt : program.statements) {
+        if (auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(stmt.get())) {
+            functions.push_back(funcDecl);
+        } else if (auto* classDecl = dynamic_cast<const ClassDeclaration*>(stmt.get())) {
+            classes.push_back(classDecl);
+        } else {
+            mainCode.push_back(stmt.get());
+        }
+    }
+    
+    // Compile all functions first (they go at the beginning of bytecode)
+    for (const auto* func : functions) {
+        compileFunctionDecl(*func);
+    }
+    
+    // Compile all classes (constructors and methods)
+    for (const auto* cls : classes) {
+        compileClassDecl(*cls);
+    }
+    
+    // Mark the entry point for main code
+    module_.mainEntryPoint = static_cast<uint32_t>(module_.getCurrentPosition());
+    
+    // Now compile main code (starts after all functions)
+    for (const auto* stmt : mainCode) {
         compileStatement(*stmt);
     }
     
@@ -34,9 +66,12 @@ void BytecodeCompiler::compileStatement(const Statement& stmt) {
     } else if (auto* assign = dynamic_cast<const Assignment*>(&stmt)) {
         compileAssignment(*assign);
     } else if (auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(&stmt)) {
-        compileFunctionDecl(*funcDecl);
+        // Functions are compiled in first pass, skip here
+        // (But if somehow encountered, it's an error in the compiler logic)
+        return;
     } else if (auto* classDecl = dynamic_cast<const ClassDeclaration*>(&stmt)) {
-        compileClassDecl(*classDecl);
+        // Classes are compiled in first pass, skip here
+        return;
     } else if (auto* ifStmt = dynamic_cast<const IfStatement*>(&stmt)) {
         compileIfStatement(*ifStmt);
     } else if (auto* whileStmt = dynamic_cast<const WhileStatement*>(&stmt)) {
@@ -109,8 +144,9 @@ void BytecodeCompiler::compileFunctionDecl(const FunctionDeclaration& func) {
     // Add function to function table
     uint16_t funcIdx = module_.addFunction(func.name);
     
-    // Store function start position
+    // Record function start position
     size_t functionStart = module_.getCurrentPosition();
+    module_.setFunctionEntryPoint(funcIdx, static_cast<uint32_t>(functionStart));
     
     // Save current locals state
     auto savedLocals = locals_;
@@ -137,22 +173,20 @@ void BytecodeCompiler::compileFunctionDecl(const FunctionDeclaration& func) {
     // Restore locals state
     locals_ = savedLocals;
     localCount_ = savedLocalCount;
-    
-    // Note: In a full implementation, we'd store function metadata
-    // (start position, parameter count, local count) in a separate table
 }
 
 void BytecodeCompiler::compileClassDecl(const ClassDeclaration& cls) {
     // Add class name to constants
     uint16_t classIdx = module_.addConstant(cls.name);
     
-    // For now, just compile constructor and methods as regular functions
-    // Full class support would require object model in VM
-    
     if (cls.constructor) {
         // Compile constructor as a function
         std::string ctorName = cls.name + "::constructor";
-        module_.addFunction(ctorName);
+        uint16_t funcIdx = module_.addFunction(ctorName);
+        
+        // Record entry point
+        size_t ctorStart = module_.getCurrentPosition();
+        module_.setFunctionEntryPoint(funcIdx, static_cast<uint32_t>(ctorStart));
         
         auto savedLocals = locals_;
         uint8_t savedLocalCount = localCount_;
@@ -182,7 +216,11 @@ void BytecodeCompiler::compileClassDecl(const ClassDeclaration& cls) {
     // Compile methods
     for (const auto& method : cls.methods) {
         std::string methodName = cls.name + "::" + method->name;
-        module_.addFunction(methodName);
+        uint16_t funcIdx = module_.addFunction(methodName);
+        
+        // Record entry point
+        size_t methodStart = module_.getCurrentPosition();
+        module_.setFunctionEntryPoint(funcIdx, static_cast<uint32_t>(methodStart));
         
         auto savedLocals = locals_;
         uint8_t savedLocalCount = localCount_;

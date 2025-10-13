@@ -4,8 +4,14 @@
 #include "kernel/ramfs.h"
 #include "kernel/system.h"
 #include "kernel/task.h"
+#include "vm_applet_data.h"
 #include <Arduino.h>
 #include <M5Dial.h>
+
+// VM includes
+#include "../src/vm/platform.h"
+#include "../src/vm/vm_core.h"
+
 
 using namespace dialOS;
 
@@ -43,7 +49,7 @@ void memoryTestTask(byte taskId, void *param) {
         // Use the allocated memory - fill it with test pattern
         uint8_t *data = (uint8_t *)allocations[currentStep];
         for (int i = 0; i < allocationSizes[currentStep]; i++) {
-          data[i] = (uint8_t)(i % 256);  // Fill with repeating pattern 0-255
+          data[i] = (uint8_t)(i % 256); // Fill with repeating pattern 0-255
         }
         sys->logf(LogLevel::INFO, "Allocated and filled %d bytes at step %d",
                   allocationSizes[currentStep], currentStep);
@@ -71,15 +77,17 @@ void memoryTestTask(byte taskId, void *param) {
             break;
           }
         }
-        
+
         if (dataValid) {
-          sys->logf(LogLevel::INFO, "Verified %d bytes at step %d - data intact",
+          sys->logf(LogLevel::INFO,
+                    "Verified %d bytes at step %d - data intact",
                     allocationSizes[currentStep], currentStep);
         } else {
-          sys->logf(LogLevel::WARNING, "Data corruption detected in %d bytes at step %d",
+          sys->logf(LogLevel::WARNING,
+                    "Data corruption detected in %d bytes at step %d",
                     allocationSizes[currentStep], currentStep);
         }
-        
+
         mem->free(allocations[currentStep], taskId);
         sys->logf(LogLevel::INFO, "Freed %d bytes at step %d",
                   allocationSizes[currentStep], currentStep);
@@ -93,7 +101,7 @@ void memoryTestTask(byte taskId, void *param) {
       sys->log(LogLevel::INFO, "Memory Test: Cycle complete, restarting");
     }
   }
-  
+
   // Sleep for 500ms before next action
   scheduler->sleepTask(taskId, 500);
 }
@@ -152,15 +160,15 @@ void memoryGaugeTask(byte taskId, void *param) {
 
 void displayTask(byte taskId, void *param) {
   static int counter = 0;
-  
+
   TaskScheduler *scheduler = Kernel::instance().getScheduler();
-  
+
   // Update display
   M5Dial.Display.setTextSize(2);
   M5Dial.Display.setTextColor(TFT_GREEN, TFT_BLACK);
   M5Dial.Display.setCursor(40, 80);
   M5Dial.Display.printf("dialOS\n\tTask: %d", counter++);
-  
+
   // Sleep for 1 second before next update
   scheduler->sleepTask(taskId, 1000);
 }
@@ -222,6 +230,116 @@ void ramfsTestTask(byte taskId, void *param) {
   testRun = true;
 }
 
+// VM Platform implementation for ESP32
+class ESP32Platform : public dialos::vm::PlatformInterface {
+public:
+  void display_clear(uint32_t color) override {
+    M5Dial.Display.fillScreen(color);
+  }
+
+  void display_drawText(int x, int y, const std::string &text, uint32_t color,
+                        int size) override {
+    M5Dial.Display.setTextSize(size);
+    M5Dial.Display.setTextColor(color);
+    M5Dial.Display.setCursor(x, y);
+    M5Dial.Display.print(text.c_str());
+  }
+
+  bool encoder_getButton() override { return M5Dial.BtnA.isPressed(); }
+
+  int encoder_getDelta() override { return get_encoder(); }
+
+  uint32_t system_getTime() override { return millis(); }
+
+  void system_sleep(uint32_t ms) override { delay(ms); }
+
+  void console_log(const std::string &message) override {
+    Serial.println(message.c_str());
+    Kernel::instance().getSystemServices()->log(LogLevel::INFO,
+                                                message.c_str());
+  }
+};
+
+void vmCounterTask(byte taskId, void *param) {
+  static dialos::vm::VMState *vmState = nullptr;
+  static dialos::vm::ValuePool *pool = nullptr;
+  static ESP32Platform *platform = nullptr;
+  static dialos::compiler::BytecodeModule *module = nullptr;  // Make module persistent!
+  static int executionCount = 0;
+
+  TaskScheduler *scheduler = Kernel::instance().getScheduler();
+  SystemServices *sys = Kernel::instance().getSystemServices();
+
+  // Initialize platform on first run
+  if (!platform) {
+    platform = new ESP32Platform();
+  }
+
+  // Initialize VM on first run
+  if (!vmState) {
+    sys->log(LogLevel::INFO, "Initializing VM with counter applet");
+
+    // Deserialize bytecode
+    std::vector<uint8_t> bytecode(COUNTER_APPLET,
+                                  COUNTER_APPLET + COUNTER_APPLET_SIZE);
+    module = new dialos::compiler::BytecodeModule();  // Allocate on heap!
+    try {
+      *module = dialos::compiler::BytecodeModule::deserialize(bytecode);
+    } catch (const std::exception &e) {
+      sys->logf(LogLevel::ERROR, "Failed to deserialize bytecode: %s",
+                e.what());
+      delete module;
+      module = nullptr;
+      return;
+    }
+
+    // Create value pool and VM state
+    pool = new dialos::vm::ValuePool(module->metadata.heapSize);
+    vmState = new dialos::vm::VMState(*module, *pool, *platform);
+    // Reset the VM to set running_ = true and initialize globals/stack
+    vmState->reset();
+    sys->logf(LogLevel::INFO, "VM initialized and reset, heap: %d bytes",
+              module->metadata.heapSize);
+  } else {
+    // Reset VM for repeated execution
+    vmState->reset();
+  }
+
+  // Execute VM for up to 1000 instructions
+  dialos::vm::VMResult result = vmState->execute(1000);
+
+  // Log execution state
+  sys->logf(LogLevel::INFO, "VM result: %d, PC: %d, Stack: %d, Running: %d",
+            (int)result, vmState->getPC(), vmState->getStackSize(),
+            vmState->isRunning());
+
+  if (result == dialos::vm::VMResult::FINISHED) {
+    executionCount++;
+    sys->logf(LogLevel::INFO, "VM execution #%d completed", executionCount);
+    
+    // Reset VM and sleep before next execution
+    vmState->reset();
+    scheduler->sleepTask(taskId, 2000);
+  } else if (result == dialos::vm::VMResult::ERROR) {
+    const char *errMsg = vmState->getError().c_str();
+    if (errMsg && *errMsg) {
+      sys->logf(LogLevel::ERROR, "VM error: %s", errMsg);
+    } else {
+      sys->log(LogLevel::ERROR, "VM error: Unknown error (empty message)");
+    }
+    // Don't reset, just sleep and retry
+    scheduler->sleepTask(taskId, 5000);
+  } else if (result == dialos::vm::VMResult::OUT_OF_MEMORY) {
+    sys->log(LogLevel::ERROR, "VM out of memory");
+    vmState->reset();
+    scheduler->sleepTask(taskId, 5000);
+  } else if (result == dialos::vm::VMResult::YIELD) {
+    // VM yielded, continue next time
+    scheduler->sleepTask(taskId, 10);
+  }
+  // OK - continue executing immediately
+}
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -261,14 +379,18 @@ void setup() {
                                       TaskPriority::NORMAL);
   Task *task2 = scheduler->createTask("Encoder", encoderTask, nullptr, 2048,
                                       TaskPriority::HIGH_PRIORITY);
-  Task *task3 = scheduler->createTask("RamFS_Test", ramfsTestTask, nullptr,
-                                      4096, TaskPriority::NORMAL);
-  Task *task4 = scheduler->createTask("MemoryGauge", memoryGaugeTask, nullptr,
-                                      2048, TaskPriority::LOW_PRIORITY);
-  Task *task5 = scheduler->createTask("MemoryTest", memoryTestTask, nullptr,
-                                      2048, TaskPriority::NORMAL);
+  // Task *task3 = scheduler->createTask("RamFS_Test", ramfsTestTask, nullptr,
+  //                                     4096, TaskPriority::NORMAL);
+  // Task *task4 = scheduler->createTask("MemoryGauge", memoryGaugeTask,
+  // nullptr,
+  //                                     2048, TaskPriority::LOW_PRIORITY);
+  // Task *task5 = scheduler->createTask("MemoryTest", memoryTestTask, nullptr,
+  //                                     2048, TaskPriority::NORMAL);
+  Task *task6 = scheduler->createTask(
+      "VMCounter", vmCounterTask, nullptr, 16384,
+      TaskPriority::NORMAL); // Increased from 8192 to 16KB for VM operations
 
-  if (task1 && task2 && task3 && task4 && task5) {
+  if (task1 && task2 && task6) {
     Serial.println("Kernel tasks created");
   }
 

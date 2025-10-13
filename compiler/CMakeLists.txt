@@ -24,8 +24,19 @@ set(PARSER_SOURCES
     bytecode_compiler.cpp
 )
 
+# VM source files
+set(VM_SOURCES
+    ../src/vm/vm_value.cpp
+    ../src/vm/vm_core.cpp
+)
+
 # Create a library for the parser (can be linked to other projects)
 add_library(dialscript_parser STATIC ${PARSER_SOURCES})
+
+# Create a library for the VM
+add_library(dialscript_vm STATIC ${VM_SOURCES})
+target_include_directories(dialscript_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(dialscript_vm dialscript_parser)
 
 # Include directory for the library
 target_include_directories(dialscript_parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -42,8 +53,12 @@ target_link_libraries(parse_file dialscript_parser)
 add_executable(compile compile.cpp)
 target_link_libraries(compile dialscript_parser)
 
+# VM test executable
+add_executable(test_vm ../src/vm/test_vm.cpp)
+target_link_libraries(test_vm dialscript_vm dialscript_parser)
+
 # Installation rules (optional)
-install(TARGETS dialscript_parser test_parser parse_file compile
+install(TARGETS dialscript_parser dialscript_vm test_parser parse_file compile test_vm
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
