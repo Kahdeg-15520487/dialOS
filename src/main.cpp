@@ -19,24 +19,7 @@ using namespace dialOS;
 int encoderValue = 0;
 bool kernelEnabled = false;
 
-// Applet descriptor for VM execution
-struct VMApplet {
-  const char *name;
-  const unsigned char *bytecode;
-  size_t bytecodeSize;
-  uint32_t executeInterval;  // ms between executions (0 = run once)
-  bool repeat;               // true = repeat indefinitely, false = run once
-};
-
-// Applet registry - add new applets here
-static VMApplet appletRegistry[] = {
-    {"counter", COUNTER_APPLET, COUNTER_APPLET_SIZE, 2000, true},
-    // Add more applets here as they're created
-    // {"clock", CLOCK_APPLET, CLOCK_APPLET_SIZE, 1000, true},
-    // {"game", GAME_APPLET, GAME_APPLET_SIZE, 0, false},
-};
-
-static const int appletRegistrySize = sizeof(appletRegistry) / sizeof(VMApplet);
+// Applet registry is now auto-generated in vm_applet_data.h
 
 void memoryTestTask(byte taskId, void *param) {
   static bool initialized = false;
@@ -382,9 +365,9 @@ Task *createVMTask(const char *appletName) {
 
   // Find applet in registry
   VMApplet *applet = nullptr;
-  for (int i = 0; i < appletRegistrySize; i++) {
-    if (strcmp(appletRegistry[i].name, appletName) == 0) {
-      applet = &appletRegistry[i];
+  for (int i = 0; i < APPLET_REGISTRY_SIZE; i++) {
+    if (strcmp(APPLET_REGISTRY[i].name, appletName) == 0) {
+      applet = &APPLET_REGISTRY[i];
       break;
     }
   }
@@ -460,7 +443,7 @@ void setup() {
   //                                     2048, TaskPriority::NORMAL);
   
   // Create VM task(s) for applets
-  Task *vmTask = createVMTask("counter");
+  Task *vmTask = createVMTask("hello_world");
 
   if (task1 && task2 && vmTask) {
     Serial.println("Kernel tasks created");
