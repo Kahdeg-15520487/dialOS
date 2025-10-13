@@ -20,6 +20,8 @@ set(PARSER_SOURCES
     parser.cpp
     ast_printer.cpp
     ast_json.cpp
+    bytecode.cpp
+    bytecode_compiler.cpp
 )
 
 # Create a library for the parser (can be linked to other projects)
@@ -36,8 +38,12 @@ target_link_libraries(test_parser dialscript_parser)
 add_executable(parse_file parse_file.cpp)
 target_link_libraries(parse_file dialscript_parser)
 
+# Bytecode compiler executable
+add_executable(compile compile.cpp)
+target_link_libraries(compile dialscript_parser)
+
 # Installation rules (optional)
-install(TARGETS dialscript_parser test_parser parse_file
+install(TARGETS dialscript_parser test_parser parse_file compile
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
@@ -48,6 +54,9 @@ install(FILES
     ast.h
     parser.h
     ast_printer.h
+    ast_json.h
+    bytecode.h
+    bytecode_compiler.h
     DESTINATION include/dialscript
 )
 

@@ -1,0 +1,14 @@
+// Simple test program
+var x: 10;
+var y: 20;
+var sum: x + y;
+var product: x * y;
+
+if (sum > 25) {
+    var message: "sum is large";
+}
+
+var count: 0;
+while (count < 5) {
+    assign count count + 1;
+}
