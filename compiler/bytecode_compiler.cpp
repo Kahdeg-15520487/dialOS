@@ -551,21 +551,45 @@ void BytecodeCompiler::compileCallExpression(const CallExpression& expr) {
         compileExpression(*arg);
     }
     
-    // Get function name
+    // Get function name and check if it's a native call
     std::string funcName;
+    bool isNativeCall = false;
+    
     if (auto* id = dynamic_cast<const Identifier*>(expr.callee.get())) {
         funcName = id->name;
     } else if (auto* member = dynamic_cast<const MemberAccess*>(expr.callee.get())) {
         // Method call: compile object first
         compileExpression(*member->object);
         funcName = member->property;
+        
+        // Check if this is a call on the reserved 'os.*' namespace
+        // os.* is reserved for native platform functions
+        isNativeCall = isOsNamespaceCall(member->object.get());
     }
     
     uint16_t funcIdx = module_.addFunction(funcName);
-    Instruction instr(Opcode::CALL);
+    
+    // Emit CALL_NATIVE for os.* calls, regular CALL for user functions
+    Instruction instr(isNativeCall ? Opcode::CALL_NATIVE : Opcode::CALL);
     instr.addOperandU16(funcIdx);
     instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
     module_.emit(instr);
+}
+
+bool BytecodeCompiler::isOsNamespaceCall(const Expression* expr) const {
+    // Check if this expression chain starts with 'os'
+    // Examples: os.console.log(), os.display.clear()
+    
+    if (auto* id = dynamic_cast<const Identifier*>(expr)) {
+        return id->name == "os";
+    }
+    
+    if (auto* member = dynamic_cast<const MemberAccess*>(expr)) {
+        // Recursively check the object
+        return isOsNamespaceCall(member->object.get());
+    }
+    
+    return false;
 }
 
 void BytecodeCompiler::compileMemberAccess(const MemberAccess& expr) {

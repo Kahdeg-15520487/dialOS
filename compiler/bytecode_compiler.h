@@ -78,6 +78,7 @@ private:
     void emitJump(Opcode jumpOp, const std::string& label);
     void placeLabel(const std::string& label);
     void patchJumps();
+    bool isOsNamespaceCall(const Expression* expr) const;
 };
 
 } // namespace compiler

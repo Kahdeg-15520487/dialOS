@@ -19,6 +19,25 @@ using namespace dialOS;
 int encoderValue = 0;
 bool kernelEnabled = false;
 
+// Applet descriptor for VM execution
+struct VMApplet {
+  const char *name;
+  const unsigned char *bytecode;
+  size_t bytecodeSize;
+  uint32_t executeInterval;  // ms between executions (0 = run once)
+  bool repeat;               // true = repeat indefinitely, false = run once
+};
+
+// Applet registry - add new applets here
+static VMApplet appletRegistry[] = {
+    {"counter", COUNTER_APPLET, COUNTER_APPLET_SIZE, 2000, true},
+    // Add more applets here as they're created
+    // {"clock", CLOCK_APPLET, CLOCK_APPLET_SIZE, 1000, true},
+    // {"game", GAME_APPLET, GAME_APPLET_SIZE, 0, false},
+};
+
+static const int appletRegistrySize = sizeof(appletRegistry) / sizeof(VMApplet);
+
 void memoryTestTask(byte taskId, void *param) {
   static bool initialized = false;
   static void *allocations[10] = {nullptr};
@@ -260,34 +279,47 @@ public:
   }
 };
 
-void vmCounterTask(byte taskId, void *param) {
+// Generalized VM task for running any applet
+// param should be a pointer to VMApplet from the registry
+void vmAppletTask(byte taskId, void *param) {
   static dialos::vm::VMState *vmState = nullptr;
   static dialos::vm::ValuePool *pool = nullptr;
   static ESP32Platform *platform = nullptr;
-  static dialos::compiler::BytecodeModule *module = nullptr;  // Make module persistent!
+  static dialos::compiler::BytecodeModule *module = nullptr;
   static int executionCount = 0;
+  static bool initialized = false;
 
   TaskScheduler *scheduler = Kernel::instance().getScheduler();
   SystemServices *sys = Kernel::instance().getSystemServices();
 
-  // Initialize platform on first run
+  // Get applet descriptor
+  VMApplet *applet = (VMApplet *)param;
+  if (!applet) {
+    sys->log(LogLevel::ERROR, "VM task started with null applet");
+    return;
+  }
+
+  // Initialize platform (shared across all applets)
   if (!platform) {
     platform = new ESP32Platform();
   }
 
   // Initialize VM on first run
-  if (!vmState) {
-    sys->log(LogLevel::INFO, "Initializing VM with counter applet");
+  if (!initialized) {
+    sys->logf(LogLevel::INFO, "Loading applet: %s (%d bytes)", applet->name,
+              applet->bytecodeSize);
 
     // Deserialize bytecode
-    std::vector<uint8_t> bytecode(COUNTER_APPLET,
-                                  COUNTER_APPLET + COUNTER_APPLET_SIZE);
-    module = new dialos::compiler::BytecodeModule();  // Allocate on heap!
+    std::vector<uint8_t> bytecode(applet->bytecode,
+                                  applet->bytecode + applet->bytecodeSize);
+    module = new dialos::compiler::BytecodeModule();
     try {
       *module = dialos::compiler::BytecodeModule::deserialize(bytecode);
+      sys->logf(LogLevel::INFO, "Applet '%s' loaded successfully",
+                applet->name);
     } catch (const std::exception &e) {
-      sys->logf(LogLevel::ERROR, "Failed to deserialize bytecode: %s",
-                e.what());
+      sys->logf(LogLevel::ERROR, "Failed to load applet '%s': %s",
+                applet->name, e.what());
       delete module;
       module = nullptr;
       return;
@@ -296,48 +328,88 @@ void vmCounterTask(byte taskId, void *param) {
     // Create value pool and VM state
     pool = new dialos::vm::ValuePool(module->metadata.heapSize);
     vmState = new dialos::vm::VMState(*module, *pool, *platform);
-    // Reset the VM to set running_ = true and initialize globals/stack
     vmState->reset();
-    sys->logf(LogLevel::INFO, "VM initialized and reset, heap: %d bytes",
-              module->metadata.heapSize);
+    sys->logf(LogLevel::INFO, "VM initialized for '%s', heap: %d bytes",
+              applet->name, module->metadata.heapSize);
+    initialized = true;
   } else {
     // Reset VM for repeated execution
     vmState->reset();
   }
 
-  // Execute VM for up to 1000 instructions
+  // Execute VM (up to 1000 instructions per task tick)
   dialos::vm::VMResult result = vmState->execute(1000);
 
-  // Log execution state
-  sys->logf(LogLevel::INFO, "VM result: %d, PC: %d, Stack: %d, Running: %d",
-            (int)result, vmState->getPC(), vmState->getStackSize(),
-            vmState->isRunning());
-
+  // Handle execution result
   if (result == dialos::vm::VMResult::FINISHED) {
     executionCount++;
-    sys->logf(LogLevel::INFO, "VM execution #%d completed", executionCount);
-    
-    // Reset VM and sleep before next execution
-    vmState->reset();
-    scheduler->sleepTask(taskId, 2000);
+    sys->logf(LogLevel::INFO, "Applet '%s' execution #%d completed",
+              applet->name, executionCount);
+
+    // Handle repeat or one-shot execution
+    if (applet->repeat && applet->executeInterval > 0) {
+      vmState->reset();
+      scheduler->sleepTask(taskId, applet->executeInterval);
+    } else if (!applet->repeat) {
+      sys->logf(LogLevel::INFO, "Applet '%s' finished (one-shot mode)",
+                applet->name);
+      // Don't schedule again - applet is done
+    } else {
+      // repeat=true but interval=0, run continuously
+      vmState->reset();
+    }
   } else if (result == dialos::vm::VMResult::ERROR) {
     const char *errMsg = vmState->getError().c_str();
-    if (errMsg && *errMsg) {
-      sys->logf(LogLevel::ERROR, "VM error: %s", errMsg);
-    } else {
-      sys->log(LogLevel::ERROR, "VM error: Unknown error (empty message)");
-    }
-    // Don't reset, just sleep and retry
+    sys->logf(LogLevel::ERROR, "VM error in '%s': %s", applet->name,
+              errMsg && *errMsg ? errMsg : "Unknown error");
+    // Sleep and retry
     scheduler->sleepTask(taskId, 5000);
   } else if (result == dialos::vm::VMResult::OUT_OF_MEMORY) {
-    sys->log(LogLevel::ERROR, "VM out of memory");
+    sys->logf(LogLevel::ERROR, "Applet '%s' out of memory", applet->name);
     vmState->reset();
     scheduler->sleepTask(taskId, 5000);
   } else if (result == dialos::vm::VMResult::YIELD) {
-    // VM yielded, continue next time
+    // VM yielded, continue soon
     scheduler->sleepTask(taskId, 10);
   }
-  // OK - continue executing immediately
+  // VMResult::OK - continue executing immediately next tick
+}
+
+// Helper function to create a VM task for an applet by name
+Task *createVMTask(const char *appletName) {
+  TaskScheduler *scheduler = Kernel::instance().getScheduler();
+  SystemServices *sys = Kernel::instance().getSystemServices();
+
+  // Find applet in registry
+  VMApplet *applet = nullptr;
+  for (int i = 0; i < appletRegistrySize; i++) {
+    if (strcmp(appletRegistry[i].name, appletName) == 0) {
+      applet = &appletRegistry[i];
+      break;
+    }
+  }
+
+  if (!applet) {
+    sys->logf(LogLevel::ERROR, "Applet '%s' not found in registry",
+              appletName);
+    return nullptr;
+  }
+
+  // Create task with applet-specific name
+  char taskName[32];
+  snprintf(taskName, sizeof(taskName), "VM_%s", applet->name);
+
+  Task *task = scheduler->createTask(taskName, vmAppletTask, (void *)applet,
+                                     16384, TaskPriority::NORMAL);
+
+  if (task) {
+    sys->logf(LogLevel::INFO, "Created VM task for applet: %s", applet->name);
+  } else {
+    sys->logf(LogLevel::ERROR, "Failed to create task for applet: %s",
+              applet->name);
+  }
+
+  return task;
 }
 
 void setup() {
@@ -386,11 +458,11 @@ void setup() {
   //                                     2048, TaskPriority::LOW_PRIORITY);
   // Task *task5 = scheduler->createTask("MemoryTest", memoryTestTask, nullptr,
   //                                     2048, TaskPriority::NORMAL);
-  Task *task6 = scheduler->createTask(
-      "VMCounter", vmCounterTask, nullptr, 16384,
-      TaskPriority::NORMAL); // Increased from 8192 to 16KB for VM operations
+  
+  // Create VM task(s) for applets
+  Task *vmTask = createVMTask("counter");
 
-  if (task1 && task2 && task6) {
+  if (task1 && task2 && vmTask) {
     Serial.println("Kernel tasks created");
   }
 

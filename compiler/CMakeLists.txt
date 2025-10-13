@@ -35,7 +35,10 @@ add_library(dialscript_parser STATIC ${PARSER_SOURCES})
 
 # Create a library for the VM
 add_library(dialscript_vm STATIC ${VM_SOURCES})
-target_include_directories(dialscript_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(dialscript_vm PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/vm
+)
 target_link_libraries(dialscript_vm dialscript_parser)
 
 # Include directory for the library
@@ -54,7 +57,7 @@ add_executable(compile compile.cpp)
 target_link_libraries(compile dialscript_parser)
 
 # VM test executable
-add_executable(test_vm ../src/vm/test_vm.cpp)
+add_executable(test_vm test_vm.cpp)
 target_link_libraries(test_vm dialscript_vm dialscript_parser)
 
 # Installation rules (optional)
