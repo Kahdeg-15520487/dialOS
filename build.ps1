@@ -5,23 +5,25 @@
 
 .DESCRIPTION
     Compiles dialScript source files using the dialOS compiler.
-    Currently performs parsing and AST generation.
-    Future: Will generate bytecode for dialOS VM.
+    Supports parsing, AST generation, JSON export, and bytecode compilation.
 
 .PARAMETER Source
     Path to the .ds source file to compile
 
 .PARAMETER Output
-    Output file path (optional, defaults to source.dsb for bytecode)
+    Output file path (optional, defaults to output.dsb for bytecode)
 
 .PARAMETER ShowAST
     Display the Abstract Syntax Tree
 
 .PARAMETER ShowDetails
-    Show detailed compilation information
+    Show detailed compilation information (default: true)
 
 .PARAMETER Json
     Output AST as JSON format (for programmatic consumption)
+
+.PARAMETER Bytecode
+    Compile to bytecode (.dsb binary format) for dialOS VM
 
 .EXAMPLE
     .\build.ps1 lsp\timer.ds
@@ -38,6 +40,10 @@
 .EXAMPLE
     .\build.ps1 lsp\timer.ds -Output build\timer.dsb -ShowDetails
     Compile to specific output file with details
+
+.EXAMPLE
+    .\build.ps1 lsp\timer.ds -Bytecode
+    Compile to bytecode (.dsb file)
 #>
 
 param(
@@ -49,7 +55,8 @@ param(
     
     [switch]$ShowAST,
     [switch]$ShowDetails = $true,
-    [switch]$Json
+    [switch]$Json,
+    [switch]$Bytecode
 )
 
 # Script configuration
@@ -57,6 +64,7 @@ $ErrorActionPreference = "Stop"
 $CompilerDir = Join-Path $PSScriptRoot "compiler"
 $BuildDir = Join-Path $CompilerDir "build"
 $ParserExe = Join-Path $BuildDir "Debug\parse_file.exe"
+$BytecodeExe = Join-Path $BuildDir "Debug\compile.exe"
 
 # Banner
 function Write-Banner {
@@ -68,7 +76,9 @@ function Write-Banner {
 
 # Check if compiler exists
 function Test-Compiler {
-    if (-not (Test-Path $ParserExe)) {
+    $exeToCheck = if ($Bytecode) { $BytecodeExe } else { $ParserExe }
+    
+    if (-not (Test-Path $exeToCheck)) {
         Write-Host "❌ Compiler not found!" -ForegroundColor Red
         Write-Host ""
         Write-Host "Building compiler..." -ForegroundColor Yellow
@@ -206,14 +216,28 @@ function New-Bytecode {
         $OutputPath = [System.IO.Path]::ChangeExtension($SourcePath, ".dsb")
     }
     
-    if ($ShowDetails) {
-        Write-Host "Bytecode generation not yet implemented" -ForegroundColor Yellow
-        Write-Host "Future output: $OutputPath" -ForegroundColor Gray
+    if ($ShowDetails -and -not $Json) {
+        Write-Host "Compiling to bytecode..." -ForegroundColor Gray
         Write-Host ""
     }
     
-    # TODO: Implement bytecode compiler
-    # For now, just parsing and validation
+    # Run bytecode compiler
+    $output = & $BytecodeExe $SourcePath 2>&1 | Out-String
+    
+    # Check for errors
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Bytecode compilation failed" -ForegroundColor Red
+        Write-Host ""
+        Write-Host $output
+        exit 1
+    }
+    
+    # Display output
+    if ($ShowDetails -and -not $Json) {
+        Write-Host $output
+    }
+    
+    return $output
 }
 
 # Main execution
@@ -255,6 +279,13 @@ try {
     if ($ShowDetails) {
         Write-Host "Source: $SourcePath" -ForegroundColor Gray
         Write-Host ""
+    }
+    
+    # Bytecode mode: compile to bytecode
+    if ($Bytecode) {
+        $bytecodeOutput = New-Bytecode -SourcePath $SourcePath -OutputPath $Output
+        Write-Host "✓ Done" -ForegroundColor Green
+        exit 0
     }
     
     # Parse source file
