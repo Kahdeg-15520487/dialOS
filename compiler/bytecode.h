@@ -52,6 +52,9 @@ enum class Opcode : uint8_t {
     MOD         = 0x44,  // Modulo
     NEG         = 0x45,  // Negate (unary minus)
     
+    // String operations
+    STR_CONCAT  = 0x46,  // String concatenation
+    
     // Comparison operations
     EQ          = 0x50,  // Equal (=)
     NE          = 0x51,  // Not equal (!=)
@@ -84,6 +87,11 @@ enum class Opcode : uint8_t {
     // Object creation
     NEW_OBJECT  = 0xA0,  // Create new object (class index)
     NEW_ARRAY   = 0xA1,  // Create new array (size on stack)
+    
+    // Exception handling
+    TRY         = 0xB0,  // Set exception handler (catch offset)
+    END_TRY     = 0xB1,  // Remove exception handler
+    THROW       = 0xB2,  // Throw exception (value on stack)
     
     // Special
     PRINT       = 0xF0,  // Debug print (temporary)

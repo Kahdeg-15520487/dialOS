@@ -43,6 +43,8 @@ void BytecodeCompiler::compileStatement(const Statement& stmt) {
         compileWhileStatement(*whileStmt);
     } else if (auto* forStmt = dynamic_cast<const ForStatement*>(&stmt)) {
         compileForStatement(*forStmt);
+    } else if (auto* tryStmt = dynamic_cast<const TryStatement*>(&stmt)) {
+        compileTryStatement(*tryStmt);
     } else if (auto* retStmt = dynamic_cast<const ReturnStatement*>(&stmt)) {
         compileReturnStatement(*retStmt);
     } else if (auto* block = dynamic_cast<const Block*>(&stmt)) {
@@ -107,14 +109,105 @@ void BytecodeCompiler::compileFunctionDecl(const FunctionDeclaration& func) {
     // Add function to function table
     uint16_t funcIdx = module_.addFunction(func.name);
     
-    // TODO: Proper function compilation with separate code blocks
-    // For now, skip function bodies (will be handled in Phase 2)
-    error("Function declarations not yet fully implemented in bytecode compiler");
+    // Store function start position
+    size_t functionStart = module_.getCurrentPosition();
+    
+    // Save current locals state
+    auto savedLocals = locals_;
+    uint8_t savedLocalCount = localCount_;
+    
+    // Reset locals for this function
+    locals_.clear();
+    localCount_ = 0;
+    
+    // Allocate parameters as local variables
+    for (const auto& param : func.parameters) {
+        allocateLocal(param->name);
+    }
+    
+    // Compile function body
+    if (func.body) {
+        compileStatement(*func.body);
+    }
+    
+    // Ensure function returns something
+    module_.emit(Instruction(Opcode::PUSH_NULL));
+    module_.emit(Instruction(Opcode::RETURN));
+    
+    // Restore locals state
+    locals_ = savedLocals;
+    localCount_ = savedLocalCount;
+    
+    // Note: In a full implementation, we'd store function metadata
+    // (start position, parameter count, local count) in a separate table
 }
 
 void BytecodeCompiler::compileClassDecl(const ClassDeclaration& cls) {
-    // TODO: Class compilation
-    error("Class declarations not yet implemented in bytecode compiler");
+    // Add class name to constants
+    uint16_t classIdx = module_.addConstant(cls.name);
+    
+    // For now, just compile constructor and methods as regular functions
+    // Full class support would require object model in VM
+    
+    if (cls.constructor) {
+        // Compile constructor as a function
+        std::string ctorName = cls.name + "::constructor";
+        module_.addFunction(ctorName);
+        
+        auto savedLocals = locals_;
+        uint8_t savedLocalCount = localCount_;
+        locals_.clear();
+        localCount_ = 0;
+        
+        // Allocate 'this' as first local
+        allocateLocal("this");
+        
+        // Allocate constructor parameters
+        for (const auto& param : cls.constructor->parameters) {
+            allocateLocal(param->name);
+        }
+        
+        // Compile constructor body
+        if (cls.constructor->body) {
+            compileStatement(*cls.constructor->body);
+        }
+        
+        module_.emit(Instruction(Opcode::PUSH_NULL));
+        module_.emit(Instruction(Opcode::RETURN));
+        
+        locals_ = savedLocals;
+        localCount_ = savedLocalCount;
+    }
+    
+    // Compile methods
+    for (const auto& method : cls.methods) {
+        std::string methodName = cls.name + "::" + method->name;
+        module_.addFunction(methodName);
+        
+        auto savedLocals = locals_;
+        uint8_t savedLocalCount = localCount_;
+        locals_.clear();
+        localCount_ = 0;
+        
+        // Allocate 'this' as first local
+        allocateLocal("this");
+        
+        // Allocate method parameters
+        for (const auto& param : method->parameters) {
+            allocateLocal(param->name);
+        }
+        
+        // Compile method body
+        if (method->body) {
+            compileStatement(*method->body);
+        }
+        
+        module_.emit(Instruction(Opcode::PUSH_NULL));
+        module_.emit(Instruction(Opcode::RETURN));
+        
+        locals_ = savedLocals;
+        localCount_ = savedLocalCount;
+    }
 }
 
 void BytecodeCompiler::compileIfStatement(const IfStatement& ifStmt) {
@@ -168,8 +261,112 @@ void BytecodeCompiler::compileWhileStatement(const WhileStatement& whileStmt) {
 }
 
 void BytecodeCompiler::compileForStatement(const ForStatement& forStmt) {
-    // TODO: For loop compilation
-    error("For loops not yet implemented in bytecode compiler");
+    // For loop: for (var i: 0; i < 10; assign i i + 1) { body }
+    
+    // Compile initializer (var declaration)
+    if (forStmt.initializer) {
+        compileStatement(*forStmt.initializer);
+    }
+    
+    std::string startLabel = "for_start_" + std::to_string(module_.getCurrentPosition());
+    std::string endLabel = "for_end_" + std::to_string(module_.getCurrentPosition());
+    
+    // Loop start
+    placeLabel(startLabel);
+    
+    // Compile condition
+    if (forStmt.condition) {
+        compileExpression(*forStmt.condition);
+        
+        // Jump to end if false
+        emitJump(Opcode::JUMP_IF_NOT, endLabel);
+    }
+    
+    // Compile body
+    if (forStmt.body) {
+        compileStatement(*forStmt.body);
+    }
+    
+    // Compile increment
+    if (forStmt.increment) {
+        compileStatement(*forStmt.increment);
+    }
+    
+    // Jump back to start
+    emitJump(Opcode::JUMP, startLabel);
+    
+    // End
+    placeLabel(endLabel);
+}
+
+void BytecodeCompiler::compileTryStatement(const TryStatement& tryStmt) {
+    std::string catchLabel = "catch_" + std::to_string(module_.getCurrentPosition());
+    std::string finallyLabel = "finally_" + std::to_string(module_.getCurrentPosition());
+    std::string endLabel = "try_end_" + std::to_string(module_.getCurrentPosition());
+    
+    // Emit TRY instruction with catch handler offset
+    if (tryStmt.catchBlock) {
+        emitJump(Opcode::TRY, catchLabel);
+    }
+    
+    // Compile try block
+    compileBlock(*tryStmt.body);
+    
+    // End try (remove exception handler)
+    if (tryStmt.catchBlock) {
+        module_.emit(Instruction(Opcode::END_TRY));
+    }
+    
+    // Jump to finally/end
+    if (tryStmt.finallyBlock) {
+        emitJump(Opcode::JUMP, finallyLabel);
+    } else {
+        emitJump(Opcode::JUMP, endLabel);
+    }
+    
+    // Catch block
+    if (tryStmt.catchBlock) {
+        placeLabel(catchLabel);
+        
+        // Store exception value to error variable if provided
+        if (!tryStmt.errorVar.empty()) {
+            // Check if it's a local variable
+            auto it = locals_.find(tryStmt.errorVar);
+            if (it != locals_.end()) {
+                Instruction instr(Opcode::STORE_LOCAL);
+                instr.addOperandU8(it->second);
+                module_.emit(instr);
+            } else {
+                // Store to global
+                uint16_t globalIdx = module_.addGlobal(tryStmt.errorVar);
+                Instruction instr(Opcode::STORE_GLOBAL);
+                instr.addOperandU16(globalIdx);
+                module_.emit(instr);
+            }
+        } else {
+            // Pop exception value if not storing
+            module_.emit(Instruction(Opcode::POP));
+        }
+        
+        // Compile catch block
+        compileBlock(*tryStmt.catchBlock);
+        
+        // Jump to finally/end
+        if (tryStmt.finallyBlock) {
+            emitJump(Opcode::JUMP, finallyLabel);
+        } else {
+            emitJump(Opcode::JUMP, endLabel);
+        }
+    }
+    
+    // Finally block
+    if (tryStmt.finallyBlock) {
+        placeLabel(finallyLabel);
+        compileBlock(*tryStmt.finallyBlock);
+    }
+    
+    // End
+    placeLabel(endLabel);
 }
 
 void BytecodeCompiler::compileReturnStatement(const ReturnStatement& ret) {
@@ -444,12 +641,42 @@ void BytecodeCompiler::compileArrayLiteral(const ArrayLiteral& expr) {
 }
 
 void BytecodeCompiler::compileTemplateLiteral(const TemplateLiteral& expr) {
-    // TODO: Template literal compilation
-    // For now, just push empty string
-    uint16_t strIdx = module_.addConstant("");
-    Instruction instr(Opcode::PUSH_STR);
-    instr.addOperandU16(strIdx);
-    module_.emit(instr);
+    if (expr.parts.empty()) {
+        // Empty template literal
+        uint16_t strIdx = module_.addConstant("");
+        Instruction instr(Opcode::PUSH_STR);
+        instr.addOperandU16(strIdx);
+        module_.emit(instr);
+        return;
+    }
+    
+    // Compile first part
+    if (expr.parts[0].type == TemplateLiteral::Part::STRING) {
+        uint16_t strIdx = module_.addConstant(expr.parts[0].stringValue);
+        Instruction instr(Opcode::PUSH_STR);
+        instr.addOperandU16(strIdx);
+        module_.emit(instr);
+    } else {
+        compileExpression(*expr.parts[0].expression);
+        // Convert to string - in a real VM, this would call toString()
+        // For now, assume PUSH_STR handles conversion or we need STR_CONCAT to handle it
+    }
+    
+    // Concatenate remaining parts
+    for (size_t i = 1; i < expr.parts.size(); i++) {
+        if (expr.parts[i].type == TemplateLiteral::Part::STRING) {
+            uint16_t strIdx = module_.addConstant(expr.parts[i].stringValue);
+            Instruction instr(Opcode::PUSH_STR);
+            instr.addOperandU16(strIdx);
+            module_.emit(instr);
+        } else {
+            compileExpression(*expr.parts[i].expression);
+            // Convert to string
+        }
+        
+        // Concatenate with previous result (top two stack values)
+        module_.emit(Instruction(Opcode::STR_CONCAT));
+    }
 }
 
 void BytecodeCompiler::error(const std::string& message) {

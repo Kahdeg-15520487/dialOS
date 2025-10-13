@@ -50,6 +50,7 @@ private:
     void compileIfStatement(const IfStatement& ifStmt);
     void compileWhileStatement(const WhileStatement& whileStmt);
     void compileForStatement(const ForStatement& forStmt);
+    void compileTryStatement(const TryStatement& tryStmt);
     void compileReturnStatement(const ReturnStatement& ret);
     void compileBlock(const Block& block);
     void compileExpressionStatement(const ExpressionStatement& stmt);

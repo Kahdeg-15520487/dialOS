@@ -285,6 +285,10 @@ std::string BytecodeModule::disassemble() const {
             case Opcode::NEG:
                 ss << "NEG\n";
                 break;
+            
+            case Opcode::STR_CONCAT:
+                ss << "STR_CONCAT\n";
+                break;
                 
             case Opcode::EQ:
                 ss << "EQ\n";
@@ -373,6 +377,21 @@ std::string BytecodeModule::disassemble() const {
                 break;
             case Opcode::NEW_ARRAY:
                 ss << "NEW_ARRAY\n";
+                break;
+                
+            case Opcode::TRY:
+                if (pos + 3 < code.size()) {
+                    int32_t offset = 0;
+                    memcpy(&offset, &code[pos], 4);
+                    pos += 4;
+                    ss << "TRY +" << offset << "\n";
+                }
+                break;
+            case Opcode::END_TRY:
+                ss << "END_TRY\n";
+                break;
+            case Opcode::THROW:
+                ss << "THROW\n";
                 break;
                 
             case Opcode::PRINT:
