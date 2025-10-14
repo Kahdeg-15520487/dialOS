@@ -11,7 +11,7 @@
     - Automatic cleanup of temporary files
 
 .PARAMETER Command
-    Main command: registry, compile, run
+    Main command: registry, compile, run, setup
 
 .PARAMETER Action
     Sub-command for registry: add, list, remove
@@ -68,14 +68,14 @@
 #>
 
 param(
-    [Parameter(Mandatory=$false, Position=0)]
-    [ValidateSet("registry", "compile", "run")]
+    [Parameter(Mandatory = $false, Position = 0)]
+    [ValidateSet("registry", "compile", "run", "setup")]
     [string]$Command,
     
-    [Parameter(Mandatory=$false, Position=1)]
+    [Parameter(Mandatory = $false, Position = 1)]
     [string]$Action,
     
-    [Parameter(Mandatory=$false, Position=2)]
+    [Parameter(Mandatory = $false, Position = 2)]
     [string]$Name,
     
     [string]$Source,
@@ -97,11 +97,11 @@ $TempDir = Join-Path $ScriptRoot "temp"
 
 # Colors for output
 $Colors = @{
-    Banner = "Cyan"
-    Success = "Green"
-    Warning = "Yellow"
-    Error = "Red"
-    Info = "Gray"
+    Banner    = "Cyan"
+    Success   = "Green"
+    Warning   = "Yellow"
+    Error     = "Red"
+    Info      = "Gray"
     Highlight = "White"
 }
 
@@ -174,7 +174,8 @@ function Ensure-Compiler {
         try {
             & cmake --build . --config Debug 2>&1 | Out-Null
             if ($LASTEXITCODE -ne 0) {
-                throw "Compiler build failed"
+                Write-Host "❌ Compiler build failed" -ForegroundColor Red
+                exit 1
             }
             Write-Success "Compiler built successfully"
         }
@@ -184,6 +185,28 @@ function Ensure-Compiler {
         finally {
             Pop-Location
         }
+    }
+}
+
+
+# Build compiler
+function Setup-Compiler {
+    Write-Info "Building compiler..."
+        
+    Push-Location $BuildDir
+    try {
+        & cmake --build . --config Debug 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Compiler build failed" -ForegroundColor Red
+            exit 1
+        }
+        Write-Success "Compiler built successfully"
+    }
+    catch {
+        Write-ErrorAndExit "Failed to build compiler: $($_.Exception.Message)"
+    }
+    finally {
+        Pop-Location
     }
 }
 
@@ -212,7 +235,8 @@ function Compile-ToBytecode {
 
     if ($IncludeDebugInfo) {
         Write-Info "Compiling applet $baseName from $SourcePath to bytecode (with debug info)..."
-    } else {
+    }
+    else {
         Write-Info "Compiling applet $baseName from $SourcePath to bytecode..."
     }
 
@@ -232,49 +256,26 @@ function Compile-ToBytecode {
         # Run compiler to generate bytecode
         $compilerOutput = & $CompilerExe @compilerArgs 2>&1
         
-        # Parse compiler output for errors and important information
-        $hasErrors = $false
-        $inErrorSection = $false
-        $errorLines = @()
+        # Check if compilation failed
+        $compilationFailed = ($LASTEXITCODE -ne 0)
         
-        foreach ($line in $compilerOutput) {
-            $lineStr = $line.ToString().Trim()
-            
-            # Check if we're entering the error section
-            if ($lineStr -match "Compilation errors:") {
-                $hasErrors = $true
-                $inErrorSection = $true
-                continue
-            }
-            
-            # If we're in error section, collect error lines
-            if ($inErrorSection -and $lineStr -ne "") {
-                # Stop collecting when we hit another section
-                if ($lineStr -match "Note:|===|Bytecode") {
-                    $inErrorSection = $false
-                } else {
-                    $errorLines += $lineStr
-                }
-            }
-        }
-        
-        # Display compilation errors if any
-        if ($hasErrors -and $errorLines.Count -gt 0) {
+        # If compilation failed, show all compiler output
+        if ($compilationFailed) {
             Write-Host ""
             Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
-            foreach ($errorLine in $errorLines) {
-                Write-Host "  $errorLine" -ForegroundColor $Colors.Error
+            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
+            foreach ($line in $compilerOutput) {
+                Write-Host "$line" -ForegroundColor $Colors.Error
             }
+            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
             Write-Host ""
-            throw "Compilation failed with errors"
-        }
-        
-        if ($LASTEXITCODE -ne 0) {
-            throw "Compilation failed"
+            Write-Host "❌ Compilation failed" -ForegroundColor Red
+            exit 1
         }
         
         if (-not (Test-Path $OutputPath)) {
-            throw "Bytecode file not generated"
+            Write-Host "❌ Bytecode file not generated" -ForegroundColor Red
+            exit 1
         }
         
         # Get file size
@@ -301,7 +302,8 @@ function Compile-Applet {
     
     if ($AddToRegistry) {
         Write-Info "Compiling applet $baseName from $SourcePath and adding to registry$debugText..."
-    } else {
+    }
+    else {
         Write-Info "Compiling applet $baseName from $SourcePath$debugText..."
     }
     
@@ -318,45 +320,21 @@ function Compile-Applet {
         # Run compiler with --c-array flag
         $compilerOutput = & $CompilerExe @compilerArgs 2>&1
         
-        # Parse compiler output for errors and important information
-        $hasErrors = $false
-        $inErrorSection = $false
-        $errorLines = @()
+        # Check if compilation failed
+        $compilationFailed = ($LASTEXITCODE -ne 0)
         
-        foreach ($line in $compilerOutput) {
-            $lineStr = $line.ToString().Trim()
-            
-            # Check if we're entering the error section
-            if ($lineStr -match "Compilation errors:") {
-                $hasErrors = $true
-                $inErrorSection = $true
-                continue
-            }
-            
-            # If we're in error section, collect error lines
-            if ($inErrorSection -and $lineStr -ne "") {
-                # Stop collecting when we hit another section
-                if ($lineStr -match "Note:|===|Bytecode") {
-                    $inErrorSection = $false
-                } else {
-                    $errorLines += $lineStr
-                }
-            }
-        }
-        
-        # Display compilation errors if any
-        if ($hasErrors -and $errorLines.Count -gt 0) {
+        # If compilation failed, show all compiler output
+        if ($compilationFailed) {
             Write-Host ""
             Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
-            foreach ($errorLine in $errorLines) {
-                Write-Host "  $errorLine" -ForegroundColor $Colors.Error
+            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
+            foreach ($line in $compilerOutput) {
+                Write-Host "$line" -ForegroundColor $Colors.Error
             }
+            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
             Write-Host ""
-            throw "Compilation failed with errors"
-        }
-        
-        if ($LASTEXITCODE -ne 0) {
-            throw "Compilation failed"
+            Write-Host "❌ Compilation failed" -ForegroundColor Red
+            exit 1
         }
         
         # Read the generated C array
@@ -404,7 +382,8 @@ $cArrayContent
             Update-AppletRegistry
             
             Write-Success "Compiled $baseName ($size bytes) and added to registry"
-        } else {
+        }
+        else {
             Write-Success "Compiled $baseName ($size bytes)"
         }
         
@@ -441,10 +420,10 @@ function Update-AppletRegistry {
         $arrayName = $match.Groups[3].Value
         
         $applets.Add(@{
-            FileName = $fileName
-            ArrayName = $arrayName
-            Size = $size
-        }) | Out-Null
+                FileName  = $fileName
+                ArrayName = $arrayName
+                Size      = $size
+            }) | Out-Null
     }
     
     # Generate registry code
@@ -469,7 +448,8 @@ static VMApplet APPLET_REGISTRY[] = {};
 
 static const int APPLET_REGISTRY_SIZE = 0;
 "@
-    } else {
+    }
+    else {
         $registryCode += "static VMApplet APPLET_REGISTRY[] = {`n"
         
         foreach ($applet in $applets) {
@@ -577,13 +557,15 @@ function Run-Simulator {
             # Already compiled bytecode file
             $dsbFile = $SourcePath
             Write-Info "Running bytecode file $baseName directly..."
-        } else {
+        }
+        else {
             # Source file - need to compile
             $tempDsb = Join-Path $TempDir "$baseName.dsb"
             
             if ($IncludeDebugInfo) {
                 Write-Info "Compiling applet $baseName from $SourcePath for simulation (with debug info)..."
-            } else {
+            }
+            else {
                 Write-Info "Compiling applet $baseName from $SourcePath for simulation..."
             }
             
@@ -610,7 +592,8 @@ function Run-Simulator {
                 if ($inErrorSection -and $lineStr -ne "") {
                     if ($lineStr -match "Note:|===|Bytecode") {
                         $inErrorSection = $false
-                    } else {
+                    }
+                    else {
                         $errorLines += $lineStr
                     }
                 }
@@ -623,15 +606,18 @@ function Run-Simulator {
                     Write-Host "  $errorLine" -ForegroundColor $Colors.Error
                 }
                 Write-Host ""
-                throw "Compilation failed with errors"
+                Write-Host "❌ Compilation failed with errors" -ForegroundColor Red
+                exit 1
             }
 
             if ($LASTEXITCODE -ne 0) {
-                throw "Compilation failed"
+                Write-Host "❌ Compilation failed" -ForegroundColor Red
+                exit 1
             }
 
             if (-not (Test-Path $tempDsb)) {
-                throw "Bytecode file not generated"
+                Write-Host "❌ Bytecode file not generated" -ForegroundColor Red
+                exit 1
             }
 
             Write-Success "Compiled successfully"
@@ -746,7 +732,8 @@ try {
                 }
                 # Compile to bytecode file
                 Compile-ToBytecode -SourcePath $SourcePath -OutputPath $Out -IncludeDebugInfo $DebugInfo
-            } else {
+            }
+            else {
                 # Compile to C array (with optional registry addition)
                 Compile-Applet -SourcePath $SourcePath -AddToRegistry $Register -IncludeDebugInfo $DebugInfo
             }
@@ -760,6 +747,10 @@ try {
             $SourcePath = Resolve-SourcePath -Path $Action
             Run-Simulator -SourcePath $SourcePath -Debug $ShowDebug -IncludeDebugInfo $DebugInfo
         }
+
+        "setup" {
+            Setup-Compiler
+        }
         
         default {
             Write-ErrorAndExit "Unknown command: $Command"
@@ -767,7 +758,8 @@ try {
         }
     }
     
-} catch {
+}
+catch {
     Write-Host ""
     Write-ErrorAndExit $_.Exception.Message
 }
