@@ -176,7 +176,7 @@ namespace dialos
                 {
                     Instruction instr(Opcode::STORE_LOCAL);
                     instr.addOperandU8(it->second);
-                    module_.emit(instr);
+                    module_.emit(instr, assign.line);
                 }
                 else
                 {
@@ -184,7 +184,7 @@ namespace dialos
                     uint16_t globalIdx = module_.addGlobal(id->name);
                     Instruction instr(Opcode::STORE_GLOBAL);
                     instr.addOperandU16(globalIdx);
-                    module_.emit(instr);
+                    module_.emit(instr, assign.line);
                 }
             }
             else if (auto *member = dynamic_cast<const MemberAccess *>(assign.target.get()))
@@ -195,7 +195,7 @@ namespace dialos
                 uint16_t fieldIdx = module_.addConstant(member->property);
                 Instruction instr(Opcode::SET_FIELD);
                 instr.addOperandU16(fieldIdx);
-                module_.emit(instr);
+                module_.emit(instr, member->line);
             }
             else if (auto *arrayAccess = dynamic_cast<const ArrayAccess *>(assign.target.get()))
             {
@@ -203,7 +203,7 @@ namespace dialos
                 compileExpression(*arrayAccess->array); // Push array
                 compileExpression(*arrayAccess->index); // Push index
                 // Value is already on stack
-                module_.emit(Instruction(Opcode::SET_INDEX));
+                module_.emit(Instruction(Opcode::SET_INDEX), arrayAccess->line);
             }
         }
 
@@ -237,8 +237,8 @@ namespace dialos
             }
 
             // Ensure function returns something
-            module_.emit(Instruction(Opcode::PUSH_NULL));
-            module_.emit(Instruction(Opcode::RETURN));
+            module_.emit(Instruction(Opcode::PUSH_NULL), func.line);
+            module_.emit(Instruction(Opcode::RETURN), func.line);
 
             // Restore locals state
             locals_ = savedLocals;
@@ -280,8 +280,8 @@ namespace dialos
                     compileStatement(*cls.constructor->body);
                 }
 
-                module_.emit(Instruction(Opcode::PUSH_NULL));
-                module_.emit(Instruction(Opcode::RETURN));
+                module_.emit(Instruction(Opcode::PUSH_NULL), cls.constructor->line);
+                module_.emit(Instruction(Opcode::RETURN), cls.constructor->line);
 
                 locals_ = savedLocals;
                 localCount_ = savedLocalCount;
@@ -317,8 +317,8 @@ namespace dialos
                     compileStatement(*method->body);
                 }
 
-                module_.emit(Instruction(Opcode::PUSH_NULL));
-                module_.emit(Instruction(Opcode::RETURN));
+                module_.emit(Instruction(Opcode::PUSH_NULL), method->body->line);
+                module_.emit(Instruction(Opcode::RETURN), method->body->line);
 
                 locals_ = savedLocals;
                 localCount_ = savedLocalCount;
@@ -334,7 +334,7 @@ namespace dialos
             std::string elseLabel = "else_" + std::to_string(module_.getCurrentPosition());
             std::string endLabel = "end_" + std::to_string(module_.getCurrentPosition());
 
-            emitJump(Opcode::JUMP_IF_NOT, elseLabel);
+            emitJump(Opcode::JUMP_IF_NOT, elseLabel, ifStmt.line);
 
             // Compile consequence
             compileStatement(*ifStmt.consequence);
@@ -342,7 +342,7 @@ namespace dialos
             if (ifStmt.alternative)
             {
                 // Jump over else block
-                emitJump(Opcode::JUMP, endLabel);
+                emitJump(Opcode::JUMP, endLabel, ifStmt.alternative->line);
 
                 // Else block
                 placeLabel(elseLabel);
@@ -368,13 +368,13 @@ namespace dialos
             compileExpression(*whileStmt.condition);
 
             // Jump to end if false
-            emitJump(Opcode::JUMP_IF_NOT, endLabel);
+            emitJump(Opcode::JUMP_IF_NOT, endLabel, whileStmt.line);
 
             // Compile body
             compileStatement(*whileStmt.body);
 
             // Jump back to start
-            emitJump(Opcode::JUMP, startLabel);
+            emitJump(Opcode::JUMP, startLabel, whileStmt.line);
 
             // End
             placeLabel(endLabel);
@@ -402,7 +402,7 @@ namespace dialos
                 compileExpression(*forStmt.condition);
 
                 // Jump to end if false
-                emitJump(Opcode::JUMP_IF_NOT, endLabel);
+                emitJump(Opcode::JUMP_IF_NOT, endLabel, forStmt.line);
             }
 
             // Compile body
@@ -418,7 +418,7 @@ namespace dialos
             }
 
             // Jump back to start
-            emitJump(Opcode::JUMP, startLabel);
+            emitJump(Opcode::JUMP, startLabel, forStmt.line);
 
             // End
             placeLabel(endLabel);
@@ -433,7 +433,7 @@ namespace dialos
             // Emit TRY instruction with catch handler offset
             if (tryStmt.catchBlock)
             {
-                emitJump(Opcode::TRY, catchLabel);
+                emitJump(Opcode::TRY, catchLabel, tryStmt.line);
             }
 
             // Compile try block
@@ -442,17 +442,17 @@ namespace dialos
             // End try (remove exception handler)
             if (tryStmt.catchBlock)
             {
-                module_.emit(Instruction(Opcode::END_TRY));
+                module_.emit(Instruction(Opcode::END_TRY), tryStmt.catchBlock->line);
             }
 
             // Jump to finally/end
             if (tryStmt.finallyBlock)
             {
-                emitJump(Opcode::JUMP, finallyLabel);
+                emitJump(Opcode::JUMP, finallyLabel, tryStmt.finallyBlock->line);
             }
             else
             {
-                emitJump(Opcode::JUMP, endLabel);
+                emitJump(Opcode::JUMP, endLabel, tryStmt.line);
             }
 
             // Catch block
@@ -469,7 +469,7 @@ namespace dialos
                     {
                         Instruction instr(Opcode::STORE_LOCAL);
                         instr.addOperandU8(it->second);
-                        module_.emit(instr);
+                        module_.emit(instr, tryStmt.catchBlock->line);
                     }
                     else
                     {
@@ -477,13 +477,13 @@ namespace dialos
                         uint16_t globalIdx = module_.addGlobal(tryStmt.errorVar);
                         Instruction instr(Opcode::STORE_GLOBAL);
                         instr.addOperandU16(globalIdx);
-                        module_.emit(instr);
+                        module_.emit(instr, tryStmt.catchBlock->line);
                     }
                 }
                 else
                 {
                     // Pop exception value if not storing
-                    module_.emit(Instruction(Opcode::POP));
+                    module_.emit(Instruction(Opcode::POP), tryStmt.catchBlock->line);
                 }
 
                 // Compile catch block
@@ -492,11 +492,11 @@ namespace dialos
                 // Jump to finally/end
                 if (tryStmt.finallyBlock)
                 {
-                    emitJump(Opcode::JUMP, finallyLabel);
+                    emitJump(Opcode::JUMP, finallyLabel, tryStmt.finallyBlock->line);
                 }
                 else
                 {
-                    emitJump(Opcode::JUMP, endLabel);
+                    emitJump(Opcode::JUMP, endLabel, tryStmt.line);
                 }
             }
 
@@ -521,7 +521,7 @@ namespace dialos
             {
                 emit(Instruction(Opcode::PUSH_NULL), &ret);
             }
-            module_.emit(Instruction(Opcode::RETURN));
+            module_.emit(Instruction(Opcode::RETURN), ret.line);
         }
 
         void BytecodeCompiler::compileBlock(const Block &block)
@@ -656,10 +656,10 @@ namespace dialos
             switch (expr.op)
             {
             case UnaryExpression::Operator::NOT:
-                module_.emit(Instruction(Opcode::NOT));
+                module_.emit(Instruction(Opcode::NOT), expr.line);
                 break;
             case UnaryExpression::Operator::NEG:
-                module_.emit(Instruction(Opcode::NEG));
+                module_.emit(Instruction(Opcode::NEG), expr.line);
                 break;
             case UnaryExpression::Operator::PLUS:
                 // No-op for unary plus
@@ -676,11 +676,11 @@ namespace dialos
             std::string endLabel = "ternary_end_" + std::to_string(module_.getCurrentPosition());
 
             // Jump to else if false
-            emitJump(Opcode::JUMP_IF_NOT, elseLabel);
+            emitJump(Opcode::JUMP_IF_NOT, elseLabel, expr.line);
 
             // True branch
             compileExpression(*expr.consequence);
-            emitJump(Opcode::JUMP, endLabel);
+            emitJump(Opcode::JUMP, endLabel, expr.line);
 
             // False branch
             placeLabel(elseLabel);
@@ -772,7 +772,7 @@ namespace dialos
             compileExpression(*expr.array);
             compileExpression(*expr.index);
 
-            module_.emit(Instruction(Opcode::GET_INDEX));
+            module_.emit(Instruction(Opcode::GET_INDEX), expr.line);
         }
 
         void BytecodeCompiler::compileConstructorCall(const ConstructorCall &expr)
@@ -787,7 +787,7 @@ namespace dialos
             uint16_t classIdx = module_.addConstant(expr.typeName);
             Instruction instr(Opcode::NEW_OBJECT);
             instr.addOperandU16(classIdx);
-            module_.emit(instr);
+            module_.emit(instr, expr.line);
         }
 
         void BytecodeCompiler::compileIdentifier(const Identifier &expr)
@@ -818,14 +818,14 @@ namespace dialos
                 float value = std::stof(expr.value);
                 Instruction instr(Opcode::PUSH_F32);
                 instr.addOperand<float>(value);
-                module_.emit(instr);
+                module_.emit(instr, expr.line);
             }
             else if (expr.isHex)
             {
                 int32_t value = std::stoi(expr.value, nullptr, 16);
                 Instruction instr(Opcode::PUSH_I32);
                 instr.addOperand<int32_t>(value);
-                module_.emit(instr);
+                module_.emit(instr, expr.line);
             }
             else
             {
@@ -836,19 +836,19 @@ namespace dialos
                 {
                     Instruction instr(Opcode::PUSH_I8);
                     instr.addOperandU8(static_cast<uint8_t>(value));
-                    module_.emit(instr);
+                    module_.emit(instr, expr.line);
                 }
                 else if (value >= -32768 && value <= 32767)
                 {
                     Instruction instr(Opcode::PUSH_I16);
                     instr.addOperandU16(static_cast<uint16_t>(value));
-                    module_.emit(instr);
+                    module_.emit(instr, expr.line);
                 }
                 else
                 {
                     Instruction instr(Opcode::PUSH_I32);
                     instr.addOperand<int32_t>(value);
-                    module_.emit(instr);
+                    module_.emit(instr, expr.line);
                 }
             }
         }
@@ -882,10 +882,10 @@ namespace dialos
             // Push array size
             Instruction sizeInstr(Opcode::PUSH_I32);
             sizeInstr.addOperand<int32_t>(static_cast<int32_t>(expr.elements.size()));
-            module_.emit(sizeInstr);
+            module_.emit(sizeInstr, expr.line);
 
             // Create array
-            module_.emit(Instruction(Opcode::NEW_ARRAY));
+            module_.emit(Instruction(Opcode::NEW_ARRAY), expr.line);
         }
 
         void BytecodeCompiler::compileTemplateLiteral(const TemplateLiteral &expr)
@@ -896,7 +896,7 @@ namespace dialos
                 uint16_t strIdx = module_.addConstant("");
                 Instruction instr(Opcode::PUSH_STR);
                 instr.addOperandU16(strIdx);
-                module_.emit(instr);
+                module_.emit(instr, expr.line);
                 return;
             }
 
@@ -906,7 +906,7 @@ namespace dialos
                 uint16_t strIdx = module_.addConstant(expr.parts[0].stringValue);
                 Instruction instr(Opcode::PUSH_STR);
                 instr.addOperandU16(strIdx);
-                module_.emit(instr);
+                module_.emit(instr, expr.line);
             }
             else
             {
@@ -923,7 +923,7 @@ namespace dialos
                     uint16_t strIdx = module_.addConstant(expr.parts[i].stringValue);
                     Instruction instr(Opcode::PUSH_STR);
                     instr.addOperandU16(strIdx);
-                    module_.emit(instr);
+                    module_.emit(instr, expr.line);
                 }
                 else
                 {
@@ -932,7 +932,7 @@ namespace dialos
                 }
 
                 // Concatenate with previous result (top two stack values)
-                module_.emit(Instruction(Opcode::STR_CONCAT));
+                module_.emit(Instruction(Opcode::STR_CONCAT), expr.line);
             }
         }
 
@@ -948,12 +948,12 @@ namespace dialos
             return index;
         }
 
-        void BytecodeCompiler::emitJump(Opcode jumpOp, const std::string &label)
+        void BytecodeCompiler::emitJump(Opcode jumpOp, const std::string &label, const int nodeLine)
         {
             Instruction instr(jumpOp);
             size_t patchPos = module_.getCurrentPosition() + 1; // Position after opcode
             instr.addOperandU32(0);                             // Placeholder offset
-            module_.emit(instr);
+            module_.emit(instr, nodeLine);
 
             jumpPatches_.push_back({patchPos, label});
         }

@@ -1,0 +1,30 @@
+// Test file to verify line and column tracking in AST nodes
+
+var x: 42;
+var y: x + 10;
+var name: "Test";
+
+function add(a: int, b: int): int {
+    return a + b;
+}
+
+function greet(name: string): void {
+    var message: `Hello, ${name}!`;
+    os.console.log(message);
+}
+
+class Counter {
+    value: int;
+    
+    constructor(initial: int) {
+        assign this.value initial;
+    }
+    
+    increment(): void {
+        assign this.value this.value + 1;
+    }
+}
+
+var counter: Counter(0);
+counter.increment();
+var result: add(5, 10);

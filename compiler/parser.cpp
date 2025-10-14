@@ -5,6 +5,8 @@ namespace compiler {
 
 std::unique_ptr<Program> Parser::parse() {
     auto program = std::make_unique<Program>();
+    program->line = 1;
+    program->column = 1;
     
     while (!check(TokenType::END_OF_FILE)) {
         try {
@@ -122,6 +124,8 @@ std::unique_ptr<Statement> Parser::parseStatement() {
     consume(TokenType::SEMICOLON, "Expected ';' after expression");
     
     auto stmt = std::make_unique<ExpressionStatement>();
+    stmt->line = expr->line;
+    stmt->column = expr->column;
     stmt->expression = std::move(expr);
     return stmt;
 }
@@ -351,6 +355,8 @@ std::unique_ptr<Expression> Parser::parseTernary() {
     
     if (match(TokenType::QUESTION)) {
         auto ternary = std::make_unique<TernaryExpression>();
+        ternary->line = expr->line;
+        ternary->column = expr->column;
         ternary->condition = std::move(expr);
         ternary->consequence = parseExpression();
         consume(TokenType::COLON, "Expected ':' in ternary expression");
@@ -538,22 +544,32 @@ std::unique_ptr<Expression> Parser::parseMultiplicative() {
 }
 
 std::unique_ptr<Expression> Parser::parseUnary() {
+    Token operatorToken = current_; // Capture before match
+    
     if (match(TokenType::NOT)) {
         auto unary = std::make_unique<UnaryExpression>();
+        unary->line = operatorToken.line;
+        unary->column = operatorToken.column;
         unary->op = UnaryExpression::Operator::NOT;
         unary->operand = parseUnary();
         return unary;
     }
     
+    operatorToken = current_; // Capture before match
     if (match(TokenType::MINUS)) {
         auto unary = std::make_unique<UnaryExpression>();
+        unary->line = operatorToken.line;
+        unary->column = operatorToken.column;
         unary->op = UnaryExpression::Operator::NEG;
         unary->operand = parseUnary();
         return unary;
     }
     
+    operatorToken = current_; // Capture before match
     if (match(TokenType::PLUS)) {
         auto unary = std::make_unique<UnaryExpression>();
+        unary->line = operatorToken.line;
+        unary->column = operatorToken.column;
         unary->op = UnaryExpression::Operator::PLUS;
         unary->operand = parseUnary();
         return unary;
@@ -579,6 +595,8 @@ std::unique_ptr<Expression> Parser::parsePostfix() {
             consume(TokenType::RPAREN, "Expected ')' after arguments");
             
             auto call = std::make_unique<CallExpression>();
+            call->line = expr->line;
+            call->column = expr->column;
             call->callee = std::move(expr);
             call->arguments = std::move(args);
             expr = std::move(call);
@@ -601,10 +619,13 @@ std::unique_ptr<Expression> Parser::parsePostfix() {
             
         } else if (match(TokenType::LBRACKET)) {
             // Array access
+            Token bracketToken = current_;
             auto index = parseExpression();
             consume(TokenType::RBRACKET, "Expected ']' after array index");
             
             auto access = std::make_unique<ArrayAccess>();
+            access->line = expr->line;
+            access->column = expr->column;
             access->array = std::move(expr);
             access->index = std::move(index);
             expr = std::move(access);
@@ -666,10 +687,13 @@ std::unique_ptr<Expression> Parser::parsePrimary() {
     
     // Parenthesized expression
     if (match(TokenType::LPAREN)) {
+        Token parenToken = current_;
         auto expr = parseExpression();
         consume(TokenType::RPAREN, "Expected ')' after expression");
         
         auto paren = std::make_unique<ParenthesizedExpression>();
+        paren->line = expr->line;
+        paren->column = expr->column;
         paren->expression = std::move(expr);
         return paren;
     }
@@ -743,7 +767,10 @@ std::unique_ptr<Expression> Parser::parsePrimary() {
     }
     
     error("Expected expression");
-    return std::make_unique<Identifier>(); // Return dummy node
+    auto dummy = std::make_unique<Identifier>();
+    dummy->line = current_.line;
+    dummy->column = current_.column;
+    return dummy; // Return dummy node
 }
 
 std::unique_ptr<Expression> Parser::parseArrayLiteral() {
@@ -805,7 +832,10 @@ std::unique_ptr<TypeNode> Parser::parseType() {
     std::unique_ptr<TypeNode> type;
     
     if (isTypeKeyword()) {
+        Token typeToken = current_;
         auto prim = std::make_unique<PrimitiveType>();
+        prim->line = typeToken.line;
+        prim->column = typeToken.column;
         
         switch (current_.type) {
             case TokenType::INT: prim->kind = PrimitiveType::Kind::INT; break;
@@ -823,19 +853,28 @@ std::unique_ptr<TypeNode> Parser::parseType() {
         advance();
         type = std::move(prim);
     } else if (check(TokenType::IDENTIFIER)) {
+        Token idToken = current_;
         auto named = std::make_unique<NamedType>();
-        named->name = current_.value;
+        named->name = idToken.value;
+        named->line = idToken.line;
+        named->column = idToken.column;
         advance();
         type = std::move(named);
     } else {
         error("Expected type");
-        return std::make_unique<PrimitiveType>();
+        auto errorType = std::make_unique<PrimitiveType>();
+        errorType->line = current_.line;
+        errorType->column = current_.column;
+        return errorType;
     }
     
     // Array type?
     if (match(TokenType::LBRACKET)) {
+        Token bracketToken = current_;
         consume(TokenType::RBRACKET, "Expected ']' for array type");
         auto arrayType = std::make_unique<ArrayType>();
+        arrayType->line = type->line;
+        arrayType->column = type->column;
         arrayType->elementType = std::move(type);
         type = std::move(arrayType);
     }
@@ -843,6 +882,8 @@ std::unique_ptr<TypeNode> Parser::parseType() {
     // Nullable type?
     if (match(TokenType::QUESTION)) {
         auto nullable = std::make_unique<NullableType>();
+        nullable->line = type->line;
+        nullable->column = type->column;
         nullable->baseType = std::move(type);
         type = std::move(nullable);
     }

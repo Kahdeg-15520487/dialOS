@@ -238,7 +238,7 @@ public:
     }
     
     // Emit instruction (with optional line number for debugging)
-    void emit(const Instruction& instr, uint32_t lineNumber = 0) {
+    void emit(const Instruction& instr, uint32_t lineNumber) {
         size_t startPos = code.size();
         
         code.push_back(static_cast<uint8_t>(instr.opcode));

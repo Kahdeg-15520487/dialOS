@@ -92,7 +92,7 @@ private:
     // Helpers
     void error(const std::string& message);
     uint8_t allocateLocal(const std::string& name);
-    void emitJump(Opcode jumpOp, const std::string& label);
+    void emitJump(Opcode jumpOp, const std::string& label, const int nodeLine);
     void placeLabel(const std::string& label);
     void patchJumps();
     bool isOsNamespaceCall(const Expression* expr) const;
