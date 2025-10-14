@@ -6,7 +6,7 @@
 #define DIALOS_COMPILER_BYTECODE_COMPILER_H
 
 #include "ast.h"
-#include "bytecode.h"
+#include "../include/bytecode.h"  // Use canonical bytecode header
 #include <map>
 #include <vector>
 #include <string>
@@ -79,6 +79,7 @@ private:
     void placeLabel(const std::string& label);
     void patchJumps();
     bool isOsNamespaceCall(const Expression* expr) const;
+    NativeFunctionId getNativeFunctionId(const Expression* callee, const std::string& funcName) const;
 };
 
 } // namespace compiler

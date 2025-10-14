@@ -30,3 +30,5 @@ var timer: Timer(120);
 var mins: timer.seconds / 60;
 var secs: timer.seconds % 60;
 var timeStr: `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+
+os.console.log(timeStr);

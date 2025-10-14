@@ -20,12 +20,12 @@ set(PARSER_SOURCES
     parser.cpp
     ast_printer.cpp
     ast_json.cpp
-    bytecode.cpp
     bytecode_compiler.cpp
 )
 
-# VM source files
+# VM source files (includes canonical bytecode.cpp)
 set(VM_SOURCES
+    ../src/vm/bytecode.cpp
     ../src/vm/vm_value.cpp
     ../src/vm/vm_core.cpp
 )
@@ -33,16 +33,19 @@ set(VM_SOURCES
 # Create a library for the parser (can be linked to other projects)
 add_library(dialscript_parser STATIC ${PARSER_SOURCES})
 
+# Include directory for the library (includes shared headers from include/)
+target_include_directories(dialscript_parser PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+
 # Create a library for the VM
 add_library(dialscript_vm STATIC ${VM_SOURCES})
 target_include_directories(dialscript_vm PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/vm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 target_link_libraries(dialscript_vm dialscript_parser)
-
-# Include directory for the library
-target_include_directories(dialscript_parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Test executable
 add_executable(test_parser test_parser.cpp)
@@ -54,7 +57,7 @@ target_link_libraries(parse_file dialscript_parser)
 
 # Bytecode compiler executable
 add_executable(compile compile.cpp)
-target_link_libraries(compile dialscript_parser)
+target_link_libraries(compile dialscript_parser dialscript_vm)
 
 # VM test executable
 add_executable(test_vm test_vm.cpp)

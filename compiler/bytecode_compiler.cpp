@@ -567,13 +567,20 @@ void BytecodeCompiler::compileCallExpression(const CallExpression& expr) {
         isNativeCall = isOsNamespaceCall(member->object.get());
     }
     
-    uint16_t funcIdx = module_.addFunction(funcName);
-    
-    // Emit CALL_NATIVE for os.* calls, regular CALL for user functions
-    Instruction instr(isNativeCall ? Opcode::CALL_NATIVE : Opcode::CALL);
-    instr.addOperandU16(funcIdx);
-    instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
-    module_.emit(instr);
+    // Emit CALL_NATIVE with function ID for os.* calls, regular CALL for user functions
+    if (isNativeCall) {
+        NativeFunctionId funcId = getNativeFunctionId(expr.callee.get(), funcName);
+        Instruction instr(Opcode::CALL_NATIVE);
+        instr.addOperandU16(static_cast<uint16_t>(funcId));
+        instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
+        module_.emit(instr);
+    } else {
+        uint16_t funcIdx = module_.addFunction(funcName);
+        Instruction instr(Opcode::CALL);
+        instr.addOperandU16(funcIdx);
+        instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
+        module_.emit(instr);
+    }
 }
 
 bool BytecodeCompiler::isOsNamespaceCall(const Expression* expr) const {
@@ -774,6 +781,53 @@ void BytecodeCompiler::patchJumps() {
             error("Undefined label: " + patch.label);
         }
     }
+}
+
+NativeFunctionId BytecodeCompiler::getNativeFunctionId(const Expression* callee, const std::string& funcName) const {
+    // Extract the namespace path (e.g., "os.console.log" -> ["console", "log"])
+    std::vector<std::string> path;
+    
+    // Walk up the member access chain
+    const Expression* current = callee;
+    while (auto* member = dynamic_cast<const MemberAccess*>(current)) {
+        path.insert(path.begin(), member->property);
+        current = member->object.get();
+    }
+    
+    // Should have at least 2 parts: namespace.function (e.g., ["console", "log"])
+    if (path.size() < 2) {
+        return NativeFunctionId::UNKNOWN;
+    }
+    
+    const std::string& module = path[0];    // e.g., "console", "display", "system"
+    const std::string& function = path[1];  // e.g., "log", "clear", "getTime"
+    
+    // Map to NativeFunctionId based on module and function name
+    if (module == "console") {
+        if (function == "log") return NativeFunctionId::CONSOLE_LOG;
+    }
+    else if (module == "display") {
+        if (function == "clear") return NativeFunctionId::DISPLAY_CLEAR;
+        if (function == "drawText") return NativeFunctionId::DISPLAY_DRAW_TEXT;
+        if (function == "setBrightness") return NativeFunctionId::DISPLAY_SET_BRIGHTNESS;
+        if (function == "getWidth") return NativeFunctionId::DISPLAY_GET_WIDTH;
+        if (function == "getHeight") return NativeFunctionId::DISPLAY_GET_HEIGHT;
+    }
+    else if (module == "encoder") {
+        if (function == "getButton") return NativeFunctionId::ENCODER_GET_BUTTON;
+        if (function == "getDelta") return NativeFunctionId::ENCODER_GET_DELTA;
+        if (function == "reset") return NativeFunctionId::ENCODER_RESET;
+    }
+    else if (module == "system") {
+        if (function == "getTime") return NativeFunctionId::SYSTEM_GET_TIME;
+        if (function == "sleep") return NativeFunctionId::SYSTEM_SLEEP;
+    }
+    else if (module == "buzzer") {
+        if (function == "beep") return NativeFunctionId::BUZZER_BEEP;
+        if (function == "stop") return NativeFunctionId::BUZZER_STOP;
+    }
+    
+    return NativeFunctionId::UNKNOWN;
 }
 
 } // namespace compiler

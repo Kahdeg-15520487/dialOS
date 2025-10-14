@@ -8,9 +8,9 @@
 #include <Arduino.h>
 #include <M5Dial.h>
 
-// VM includes
-#include "../src/vm/platform.h"
-#include "../src/vm/vm_core.h"
+// VM includes (from shared include directory)
+#include "platform.h"
+#include "vm_core.h"
 
 
 using namespace dialOS;
@@ -443,9 +443,10 @@ void setup() {
   //                                     2048, TaskPriority::NORMAL);
   
   // Create VM task(s) for applets
-  Task *vmTask = createVMTask("hello_world");
+  Task *vmTask1 = createVMTask("counter_applet");
+  Task *vmTask2 = createVMTask("hello_world");
 
-  if (task1 && task2 && vmTask) {
+  if (task1 && task2 && vmTask1 && vmTask2) {
     Serial.println("Kernel tasks created");
   }
 

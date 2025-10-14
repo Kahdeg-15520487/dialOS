@@ -98,6 +98,36 @@ enum class Opcode : uint8_t {
     HALT        = 0xFF,  // Halt execution
 };
 
+// Native function IDs for CALL_NATIVE instruction
+enum class NativeFunctionId : uint16_t {
+    // console.*
+    CONSOLE_LOG = 0,
+    
+    // os.display.*
+    DISPLAY_CLEAR = 100,
+    DISPLAY_DRAW_TEXT = 101,
+    DISPLAY_SET_BRIGHTNESS = 102,
+    DISPLAY_GET_WIDTH = 103,
+    DISPLAY_GET_HEIGHT = 104,
+    
+    // os.encoder.*
+    ENCODER_GET_BUTTON = 200,
+    ENCODER_GET_DELTA = 201,
+    ENCODER_RESET = 202,
+    
+    // os.system.*
+    SYSTEM_GET_TIME = 300,
+    SYSTEM_SLEEP = 301,
+    SYSTEM_GET_BATTERY = 302,
+    
+    // os.buzzer.*
+    BUZZER_BEEP = 400,
+    BUZZER_STOP = 401,
+    
+    // Reserved for future expansion
+    UNKNOWN = 0xFFFF
+};
+
 // Bytecode instruction
 struct Instruction {
     Opcode opcode;

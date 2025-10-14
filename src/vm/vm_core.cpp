@@ -4,7 +4,7 @@
  * Stack-based virtual machine with cooperative multitasking
  */
 
-#include "vm_core.h"
+#include "../../include/vm_core.h"
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -432,149 +432,159 @@ VMResult VMState::executeInstruction() {
         }
         
         case compiler::Opcode::CALL_NATIVE: {
-            uint16_t funcIndex = readU16();
+            uint16_t nativeFuncId = readU16();
             uint8_t argCount = readU8();
-            
-            if (funcIndex >= module_.functions.size()) {
-                setError("Invalid native function index");
-                return VMResult::ERROR;
-            }
             
             // Stack layout: [..., arg1, arg2, ..., argN, receiver]
             // Receiver is on top, arguments below
             
-            const std::string& funcName = module_.functions[funcIndex];
+            compiler::NativeFunctionId funcId = static_cast<compiler::NativeFunctionId>(nativeFuncId);
             
-            // Dispatch to native functions based on name
-            // os.console.log(message)
-            if (funcName == "log") {
-                if (argCount >= 1) {
-                    Value receiver = pop();  // Pop console object
-                    Value arg = pop();       // Pop message argument
-                    std::string message = arg.toString();
-                    platform_.console_log(message);
+            // Efficient enum-based dispatch - much faster than string comparison
+            switch (funcId) {
+                // ===== os.console.* =====
+                case compiler::NativeFunctionId::CONSOLE_LOG: {
+                    if (argCount >= 1) {
+                        Value receiver = pop();  // Pop console object
+                        Value arg = pop();       // Pop message argument
+                        std::string message = arg.toString();
+                        platform_.console_log(message);
+                        
+                        // Pop any remaining arguments
+                        for (uint8_t i = 1; i < argCount; i++) {
+                            pop();
+                        }
+                        
+                        push(Value::Null());
+                    } else {
+                        setError("log() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    break;
+                }
+                
+                // ===== os.display.* =====
+                case compiler::NativeFunctionId::DISPLAY_CLEAR: {
+                    if (argCount >= 1) {
+                        Value receiver = pop();  // Pop display object
+                        Value colorVal = pop();  // Pop color argument
+                        uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0;
+                        platform_.display_clear(color);
+                        
+                        // Pop any remaining arguments
+                        for (uint8_t i = 1; i < argCount; i++) {
+                            pop();
+                        }
+                        
+                        push(Value::Null());
+                    } else {
+                        setError("clear() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    break;
+                }
+                
+                case compiler::NativeFunctionId::DISPLAY_DRAW_TEXT: {
+                    if (argCount >= 5) {
+                        Value receiver = pop();  // Pop display object
+                        Value sizeVal = pop();
+                        Value colorVal = pop();
+                        Value textVal = pop();
+                        Value yVal = pop();
+                        Value xVal = pop();
+                        
+                        int x = xVal.isInt32() ? xVal.int32Val : 0;
+                        int y = yVal.isInt32() ? yVal.int32Val : 0;
+                        std::string text = textVal.toString();
+                        uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF;
+                        int size = sizeVal.isInt32() ? sizeVal.int32Val : 1;
+                        
+                        platform_.display_drawText(x, y, text, color, size);
+                        
+                        // Pop any remaining arguments
+                        for (uint8_t i = 5; i < argCount; i++) {
+                            pop();
+                        }
+                        
+                        push(Value::Null());
+                    } else {
+                        setError("drawText() requires at least 5 arguments");
+                        return VMResult::ERROR;
+                    }
+                    break;
+                }
+                
+                // ===== os.encoder.* =====
+                case compiler::NativeFunctionId::ENCODER_GET_BUTTON: {
+                    Value receiver = pop();  // Pop encoder object
                     
-                    // Pop any remaining arguments
-                    for (uint8_t i = 1; i < argCount; i++) {
+                    // Pop any arguments (shouldn't be any)
+                    for (uint8_t i = 0; i < argCount; i++) {
                         pop();
                     }
                     
-                    push(Value::Null());  // Return value
-                } else {
-                    setError("log() requires at least 1 argument");
-                    return VMResult::ERROR;
+                    bool pressed = platform_.encoder_getButton();
+                    push(Value::Bool(pressed));
+                    break;
                 }
-            }
-            // os.display.clear(color)
-            else if (funcName == "clear") {
-                if (argCount >= 1) {
-                    Value receiver = pop();  // Pop display object
-                    Value colorVal = pop();  // Pop color argument
-                    uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0;
-                    platform_.display_clear(color);
+                
+                case compiler::NativeFunctionId::ENCODER_GET_DELTA: {
+                    Value receiver = pop();  // Pop encoder object
                     
-                    // Pop any remaining arguments
-                    for (uint8_t i = 1; i < argCount; i++) {
+                    // Pop any arguments (shouldn't be any)
+                    for (uint8_t i = 0; i < argCount; i++) {
                         pop();
                     }
                     
-                    push(Value::Null());
-                } else {
-                    setError("clear() requires at least 1 argument");
-                    return VMResult::ERROR;
-                }
-            }
-            // os.display.drawText(x, y, text, color, size)
-            else if (funcName == "drawText") {
-                if (argCount >= 5) {
-                    Value receiver = pop();  // Pop display object
-                    Value sizeVal = pop();
-                    Value colorVal = pop();
-                    Value textVal = pop();
-                    Value yVal = pop();
-                    Value xVal = pop();
-                    
-                    int x = xVal.isInt32() ? xVal.int32Val : 0;
-                    int y = yVal.isInt32() ? yVal.int32Val : 0;
-                    std::string text = textVal.toString();
-                    uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF;
-                    int size = sizeVal.isInt32() ? sizeVal.int32Val : 1;
-                    
-                    platform_.display_drawText(x, y, text, color, size);
-                    
-                    // Pop any remaining arguments
-                    for (uint8_t i = 5; i < argCount; i++) {
-                        pop();
-                    }
-                    
-                    push(Value::Null());
-                } else {
-                    setError("drawText() requires at least 5 arguments");
-                    return VMResult::ERROR;
-                }
-            }
-            // os.encoder.getButton()
-            else if (funcName == "getButton") {
-                Value receiver = pop();  // Pop encoder object
-                
-                // Pop any arguments (shouldn't be any)
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
+                    int delta = platform_.encoder_getDelta();
+                    push(Value::Int32(delta));
+                    break;
                 }
                 
-                bool pressed = platform_.encoder_getButton();
-                push(Value::Bool(pressed));
-            }
-            // os.encoder.getDelta()
-            else if (funcName == "getDelta") {
-                Value receiver = pop();  // Pop encoder object
-                
-                // Pop any arguments (shouldn't be any)
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
-                }
-                
-                int delta = platform_.encoder_getDelta();
-                push(Value::Int32(delta));
-            }
-            // os.system.getTime()
-            else if (funcName == "getTime") {
-                Value receiver = pop();  // Pop system object
-                
-                // Pop any arguments (shouldn't be any)
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
-                }
-                
-                uint32_t time = platform_.system_getTime();
-                push(Value::Int32(static_cast<int32_t>(time)));
-            }
-            // os.system.sleep(ms)
-            else if (funcName == "sleep") {
-                if (argCount >= 1) {
+                // ===== os.system.* =====
+                case compiler::NativeFunctionId::SYSTEM_GET_TIME: {
                     Value receiver = pop();  // Pop system object
-                    Value msVal = pop();     // Pop milliseconds argument
-                    uint32_t ms = msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0;
-                    platform_.system_sleep(ms);
                     
-                    // Pop any remaining arguments
-                    for (uint8_t i = 1; i < argCount; i++) {
+                    // Pop any arguments (shouldn't be any)
+                    for (uint8_t i = 0; i < argCount; i++) {
                         pop();
                     }
                     
+                    uint32_t time = platform_.system_getTime();
+                    push(Value::Int32(static_cast<int32_t>(time)));
+                    break;
+                }
+                
+                case compiler::NativeFunctionId::SYSTEM_SLEEP: {
+                    if (argCount >= 1) {
+                        Value receiver = pop();  // Pop system object
+                        Value msVal = pop();     // Pop milliseconds argument
+                        uint32_t ms = msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0;
+                        platform_.system_sleep(ms);
+                        
+                        // Pop any remaining arguments
+                        for (uint8_t i = 1; i < argCount; i++) {
+                            pop();
+                        }
+                        
+                        push(Value::Null());
+                    } else {
+                        setError("sleep() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    break;
+                }
+                
+                // ===== Unknown/Unimplemented =====
+                default: {
+                    // Unknown native function - pop arguments and return null
+                    pop();  // receiver
+                    for (uint8_t i = 0; i < argCount; i++) {
+                        pop();
+                    }
                     push(Value::Null());
-                } else {
-                    setError("sleep() requires at least 1 argument");
-                    return VMResult::ERROR;
+                    break;
                 }
-            }
-            else {
-                // Unknown native function - pop arguments and return null
-                pop();  // receiver
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
-                }
-                push(Value::Null());
             }
             break;
         }
