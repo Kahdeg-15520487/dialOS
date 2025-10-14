@@ -13,8 +13,71 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include <sstream>
+#include <filesystem>
+#include <iomanip>
 
 using namespace dialos;
+
+// Function to display source code context around an error line
+std::string getSourceContext(const std::string& sourceFile, uint32_t errorLine, int contextLines = 5) {
+    std::ifstream file(sourceFile);
+    if (!file.is_open()) {
+        return "Source file not available: " + sourceFile;
+    }
+    
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(file, line)) {
+        lines.push_back(line);
+    }
+    
+    if (errorLine == 0 || errorLine > lines.size()) {
+        return "Invalid line number: " + std::to_string(errorLine);
+    }
+    
+    std::stringstream context;
+    context << "\nSource context around line " << errorLine << ":\n";
+    context << "----------------------------------------\n";
+    
+    // Calculate range (1-based line numbers)
+    int startLine = std::max(1, static_cast<int>(errorLine) - contextLines);
+    int endLine = std::min(static_cast<int>(lines.size()), static_cast<int>(errorLine) + contextLines);
+    
+    for (int i = startLine; i <= endLine; i++) {
+        bool isErrorLine = (i == static_cast<int>(errorLine));
+        context << std::setw(4) << i << (isErrorLine ? " >>>" : "    ") << lines[i - 1] << "\n";
+    }
+    
+    context << "----------------------------------------\n";
+    return context.str();
+}
+
+// Function to find corresponding source file for a bytecode file
+std::string findSourceFile(const std::string& bytecodeFile) {
+    std::filesystem::path bytePath(bytecodeFile);
+    
+    // Try same directory with .ds extension
+    std::filesystem::path sourcePath = bytePath;
+    sourcePath.replace_extension(".ds");
+    
+    if (std::filesystem::exists(sourcePath)) {
+        return sourcePath.string();
+    }
+    
+    // Try common source directories
+    std::vector<std::string> searchDirs = {"../scripts/", "../../scripts/", "scripts/"};
+    std::string baseName = bytePath.stem().string();
+    
+    for (const auto& dir : searchDirs) {
+        std::filesystem::path candidate = std::filesystem::path(dir) / (baseName + ".ds");
+        if (std::filesystem::exists(candidate)) {
+            return candidate.string();
+        }
+    }
+    
+    return ""; // Not found
+}
 
 int main(int argc, char** argv) {
     std::cout << "=== dialOS SDL Emulator ===" << std::endl;
@@ -61,6 +124,17 @@ int main(int argc, char** argv) {
     } catch (const std::exception& e) {
         std::cerr << "Error: Failed to deserialize bytecode: " << e.what() << std::endl;
         return 1;
+    }
+    
+    // Find corresponding source file for error context (if debug info available)
+    std::string sourceFile = "";
+    if (module.hasDebugInfo()) {
+        sourceFile = findSourceFile(filename);
+        if (!sourceFile.empty()) {
+            std::cout << "Debug info available, source file: " << sourceFile << std::endl;
+        } else {
+            std::cout << "Debug info available, but source file not found" << std::endl;
+        }
     }
     
     // Show app metadata
@@ -126,6 +200,21 @@ int main(int argc, char** argv) {
                     std::cout << std::endl;
                     std::cerr << "Runtime Error: " << vm.getError() << std::endl;
                     std::cerr << "PC: " << vm.getPC() << ", Stack: " << vm.getStackSize() << std::endl;
+                    
+                    // Show source context if debug info and source file are available
+                    if (module.hasDebugInfo() && !sourceFile.empty()) {
+                        uint32_t sourceLine = module.getSourceLine(vm.getPC());
+                        if (sourceLine > 0) {
+                            std::cout << getSourceContext(sourceFile, sourceLine, 5) << std::endl;
+                        } else {
+                            std::cout << "Debug info available but no line mapping for PC " << vm.getPC() << std::endl;
+                        }
+                    } else if (module.hasDebugInfo()) {
+                        std::cout << "Debug info available but source file not found" << std::endl;
+                    } else {
+                        std::cout << "No debug info available (compile with --debug for source context)" << std::endl;
+                    }
+                    
                     std::cout << "Emulator paused. Press ESC or close window to exit." << std::endl;
                     vmPaused = true;
                     break;
@@ -133,6 +222,15 @@ int main(int argc, char** argv) {
                 case vm::VMResult::OUT_OF_MEMORY:
                     std::cout << std::endl;
                     std::cerr << "Out of Memory at PC: " << vm.getPC() << std::endl;
+                    
+                    // Show source context if debug info and source file are available
+                    if (module.hasDebugInfo() && !sourceFile.empty()) {
+                        uint32_t sourceLine = module.getSourceLine(vm.getPC());
+                        if (sourceLine > 0) {
+                            std::cout << getSourceContext(sourceFile, sourceLine, 5) << std::endl;
+                        }
+                    }
+                    
                     std::cout << "Emulator paused. Press ESC or close window to exit." << std::endl;
                     vmPaused = true;
                     break;

@@ -1,0 +1,10 @@
+// Test script to demonstrate runtime error with source context
+var x: 5;
+var y: 10; 
+
+os.console.log("Starting calculation...");
+
+// This will cause an undefined function error
+undefined_function();  // Line that will cause error
+
+os.console.log("This should not print");

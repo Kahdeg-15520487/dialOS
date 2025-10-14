@@ -101,8 +101,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "  " << error << std::endl;
         }
         std::cerr << std::endl;
-        std::cerr << "Note: Some features not yet implemented" << std::endl;
-        // Continue anyway to show what was compiled
+        return 1;
     }
     
     std::cout << "✓ Bytecode generated" << std::endl << std::endl;

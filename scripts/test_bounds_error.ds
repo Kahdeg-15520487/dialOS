@@ -1,0 +1,13 @@
+// Test script to demonstrate runtime error with source context
+var x: 5;
+var y: 10; 
+var z: x + y;
+
+os.console.log("Starting calculation...");
+
+// This will cause an out of bounds access error
+var arr: [1, 2, 3];
+var index: 10;
+var result: arr[index];  // Line that will cause error
+
+os.console.log("This should not print");

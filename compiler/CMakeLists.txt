@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(dialscript_parser VERSION 1.0 LANGUAGES CXX)
 
-# Require C++11
-set(CMAKE_CXX_STANDARD 11)
+# Require C++17 for std::filesystem
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

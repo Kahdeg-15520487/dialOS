@@ -364,12 +364,23 @@ std::unique_ptr<Expression> Parser::parseTernary() {
 std::unique_ptr<Expression> Parser::parseLogicalOr() {
     auto left = parseLogicalAnd();
     
-    while (match(TokenType::OR)) {
-        auto binary = std::make_unique<BinaryExpression>();
-        binary->op = BinaryExpression::Operator::OR;
-        binary->left = std::move(left);
-        binary->right = parseLogicalAnd();
-        left = std::move(binary);
+    while (true) {
+        Token operatorToken = current_; // Capture token before match()
+        
+        if (match(TokenType::OR)) {
+            auto binary = std::make_unique<BinaryExpression>();
+            binary->op = BinaryExpression::Operator::OR;
+            binary->left = std::move(left);
+            binary->right = parseLogicalAnd();
+            
+            // Set line and column from operator token
+            binary->line = operatorToken.line;
+            binary->column = operatorToken.column;
+            
+            left = std::move(binary);
+        } else {
+            break;
+        }
     }
     
     return left;
@@ -378,12 +389,23 @@ std::unique_ptr<Expression> Parser::parseLogicalOr() {
 std::unique_ptr<Expression> Parser::parseLogicalAnd() {
     auto left = parseEquality();
     
-    while (match(TokenType::AND)) {
-        auto binary = std::make_unique<BinaryExpression>();
-        binary->op = BinaryExpression::Operator::AND;
-        binary->left = std::move(left);
-        binary->right = parseEquality();
-        left = std::move(binary);
+    while (true) {
+        Token operatorToken = current_; // Capture token before match()
+        
+        if (match(TokenType::AND)) {
+            auto binary = std::make_unique<BinaryExpression>();
+            binary->op = BinaryExpression::Operator::AND;
+            binary->left = std::move(left);
+            binary->right = parseEquality();
+            
+            // Set line and column from operator token
+            binary->line = operatorToken.line;
+            binary->column = operatorToken.column;
+            
+            left = std::move(binary);
+        } else {
+            break;
+        }
     }
     
     return left;
@@ -394,6 +416,7 @@ std::unique_ptr<Expression> Parser::parseEquality() {
     
     while (true) {
         BinaryExpression::Operator op;
+        Token operatorToken = current_; // Capture token before match()
         
         if (match(TokenType::EQUAL)) {
             op = BinaryExpression::Operator::EQ;
@@ -407,6 +430,11 @@ std::unique_ptr<Expression> Parser::parseEquality() {
         binary->op = op;
         binary->left = std::move(left);
         binary->right = parseComparison();
+        
+        // Set line and column from operator token
+        binary->line = operatorToken.line;
+        binary->column = operatorToken.column;
+        
         left = std::move(binary);
     }
     
@@ -418,6 +446,7 @@ std::unique_ptr<Expression> Parser::parseComparison() {
     
     while (true) {
         BinaryExpression::Operator op;
+        Token operatorToken = current_; // Capture token before match()
         
         if (match(TokenType::LESS)) {
             op = BinaryExpression::Operator::LT;
@@ -435,6 +464,11 @@ std::unique_ptr<Expression> Parser::parseComparison() {
         binary->op = op;
         binary->left = std::move(left);
         binary->right = parseAdditive();
+        
+        // Set line and column from operator token
+        binary->line = operatorToken.line;
+        binary->column = operatorToken.column;
+        
         left = std::move(binary);
     }
     
@@ -446,6 +480,7 @@ std::unique_ptr<Expression> Parser::parseAdditive() {
     
     while (true) {
         BinaryExpression::Operator op;
+        Token operatorToken = current_; // Capture token before match()
         
         if (match(TokenType::PLUS)) {
             op = BinaryExpression::Operator::ADD;
@@ -459,6 +494,11 @@ std::unique_ptr<Expression> Parser::parseAdditive() {
         binary->op = op;
         binary->left = std::move(left);
         binary->right = parseMultiplicative();
+        
+        // Set line and column from operator token
+        binary->line = operatorToken.line;
+        binary->column = operatorToken.column;
+        
         left = std::move(binary);
     }
     
@@ -470,6 +510,7 @@ std::unique_ptr<Expression> Parser::parseMultiplicative() {
     
     while (true) {
         BinaryExpression::Operator op;
+        Token operatorToken = current_; // Capture token before match()
         
         if (match(TokenType::STAR)) {
             op = BinaryExpression::Operator::MUL;
@@ -485,6 +526,11 @@ std::unique_ptr<Expression> Parser::parseMultiplicative() {
         binary->op = op;
         binary->left = std::move(left);
         binary->right = parseUnary();
+        
+        // Set line and column from operator token
+        binary->line = operatorToken.line;
+        binary->column = operatorToken.column;
+        
         left = std::move(binary);
     }
     
@@ -539,11 +585,18 @@ std::unique_ptr<Expression> Parser::parsePostfix() {
             
         } else if (match(TokenType::DOT)) {
             // Member access
+            Token dotToken = current_; // Current token is now after DOT
             Token member = consume(TokenType::IDENTIFIER, "Expected property name after '.'");
             
             auto access = std::make_unique<MemberAccess>();
             access->object = std::move(expr);
             access->property = member.value;
+            
+            // Set line and column from the dot token (need to use the previous token)
+            // Since we already advanced past DOT, we need to get line from the member token
+            access->line = member.line;
+            access->column = member.column;
+            
             expr = std::move(access);
             
         } else if (match(TokenType::LBRACKET)) {

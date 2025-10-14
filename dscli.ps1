@@ -57,6 +57,14 @@
     .\dscli.ps1 run scripts\counter_applet.ds -ShowDebug
     Run with debug overlay enabled
 
+.EXAMPLE
+    .\dscli.ps1 compile scripts\counter_applet.ds -DebugInfo
+    Compile applet with debug line information
+
+.EXAMPLE
+    .\dscli.ps1 run scripts\counter_applet.ds -DebugInfo -ShowDebug
+    Compile with debug info and run with debug overlay
+
 #>
 
 param(
@@ -73,6 +81,7 @@ param(
     [string]$Source,
     [switch]$ShowDebug,
     [switch]$Register,
+    [switch]$DebugInfo,
     [string]$Out
 )
 
@@ -118,8 +127,23 @@ function Write-Banner {
 
 # Error handling
 function Write-ErrorAndExit {
-    param([string]$Message)
+    param(
+        [string]$Message,
+        [System.Management.Automation.ErrorRecord]$ErrorRecord = $null
+    )
+
     Write-Host "❌ Error: $Message" -ForegroundColor $Colors.Error
+
+    if ($ErrorRecord) {
+        # Print a compact, wrapped exception block (type and message only)
+        $ex = $ErrorRecord.Exception
+        $typeName = $ex.GetType().FullName
+        $msg = $ex.Message
+        Write-Host "--- Exception (${typeName}) ---" -ForegroundColor $Colors.Error
+        Write-Host "  $msg" -ForegroundColor $Colors.Error
+        Write-Host "-------------------------------" -ForegroundColor $Colors.Error
+    }
+
     exit 1
 }
 
@@ -182,11 +206,15 @@ function Resolve-SourcePath {
 
 # Compile source to bytecode file
 function Compile-ToBytecode {
-    param([string]$SourcePath, [string]$OutputPath)
+    param([string]$SourcePath, [string]$OutputPath, [bool]$IncludeDebugInfo = $false)
     
     $baseName = [System.IO.Path]::GetFileNameWithoutExtension($SourcePath)
 
-    Write-Info "Compiling applet $baseName from $SourcePath to bytecode..."
+    if ($IncludeDebugInfo) {
+        Write-Info "Compiling applet $baseName from $SourcePath to bytecode (with debug info)..."
+    } else {
+        Write-Info "Compiling applet $baseName from $SourcePath to bytecode..."
+    }
 
     # Ensure output directory exists
     $outputDir = Split-Path $OutputPath -Parent
@@ -195,8 +223,51 @@ function Compile-ToBytecode {
     }
     
     try {
+        # Build compiler arguments
+        $compilerArgs = @($SourcePath, $OutputPath)
+        if ($IncludeDebugInfo) {
+            $compilerArgs += "--debug"
+        }
+        
         # Run compiler to generate bytecode
-        & $CompilerExe $SourcePath $OutputPath 2>&1 | Out-Null
+        $compilerOutput = & $CompilerExe @compilerArgs 2>&1
+        
+        # Parse compiler output for errors and important information
+        $hasErrors = $false
+        $inErrorSection = $false
+        $errorLines = @()
+        
+        foreach ($line in $compilerOutput) {
+            $lineStr = $line.ToString().Trim()
+            
+            # Check if we're entering the error section
+            if ($lineStr -match "Compilation errors:") {
+                $hasErrors = $true
+                $inErrorSection = $true
+                continue
+            }
+            
+            # If we're in error section, collect error lines
+            if ($inErrorSection -and $lineStr -ne "") {
+                # Stop collecting when we hit another section
+                if ($lineStr -match "Note:|===|Bytecode") {
+                    $inErrorSection = $false
+                } else {
+                    $errorLines += $lineStr
+                }
+            }
+        }
+        
+        # Display compilation errors if any
+        if ($hasErrors -and $errorLines.Count -gt 0) {
+            Write-Host ""
+            Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
+            foreach ($errorLine in $errorLines) {
+                Write-Host "  $errorLine" -ForegroundColor $Colors.Error
+            }
+            Write-Host ""
+            throw "Compilation failed with errors"
+        }
         
         if ($LASTEXITCODE -ne 0) {
             throw "Compilation failed"
@@ -215,30 +286,74 @@ function Compile-ToBytecode {
         return $baseName
     }
     catch {
-        Write-ErrorAndExit "Failed to compile $baseName : $($_.Exception.Message)"
+        Write-ErrorAndExit "Failed to compile $baseName : $($_.Exception.Message)" $_
     }
 }
 
 # Compile source to C array and optionally add to registry
 function Compile-Applet {
-    param([string]$SourcePath, [bool]$AddToRegistry = $false)
+    param([string]$SourcePath, [bool]$AddToRegistry = $false, [bool]$IncludeDebugInfo = $false)
     
     $baseName = [System.IO.Path]::GetFileNameWithoutExtension($SourcePath)
     $appletName = $baseName.ToUpper() -replace '[^A-Z0-9_]', '_'
     
+    $debugText = if ($IncludeDebugInfo) { " (with debug info)" } else { "" }
+    
     if ($AddToRegistry) {
-        Write-Info "Compiling applet $baseName from $SourcePath and adding to registry..."
+        Write-Info "Compiling applet $baseName from $SourcePath and adding to registry$debugText..."
     } else {
-        Write-Info "Compiling applet $baseName from $SourcePath..."
+        Write-Info "Compiling applet $baseName from $SourcePath$debugText..."
     }
     
     # Create temporary output file for C array
     $tempHeader = [System.IO.Path]::GetTempFileName()
     
     try {
-        # Run compiler with --c-array flag
+        # Build compiler arguments
         $compilerArgs = @($SourcePath, $tempHeader, "--c-array")
-        & $CompilerExe @compilerArgs 2>&1 | Out-Null
+        if ($IncludeDebugInfo) {
+            $compilerArgs += "--debug"
+        }
+        
+        # Run compiler with --c-array flag
+        $compilerOutput = & $CompilerExe @compilerArgs 2>&1
+        
+        # Parse compiler output for errors and important information
+        $hasErrors = $false
+        $inErrorSection = $false
+        $errorLines = @()
+        
+        foreach ($line in $compilerOutput) {
+            $lineStr = $line.ToString().Trim()
+            
+            # Check if we're entering the error section
+            if ($lineStr -match "Compilation errors:") {
+                $hasErrors = $true
+                $inErrorSection = $true
+                continue
+            }
+            
+            # If we're in error section, collect error lines
+            if ($inErrorSection -and $lineStr -ne "") {
+                # Stop collecting when we hit another section
+                if ($lineStr -match "Note:|===|Bytecode") {
+                    $inErrorSection = $false
+                } else {
+                    $errorLines += $lineStr
+                }
+            }
+        }
+        
+        # Display compilation errors if any
+        if ($hasErrors -and $errorLines.Count -gt 0) {
+            Write-Host ""
+            Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
+            foreach ($errorLine in $errorLines) {
+                Write-Host "  $errorLine" -ForegroundColor $Colors.Error
+            }
+            Write-Host ""
+            throw "Compilation failed with errors"
+        }
         
         if ($LASTEXITCODE -ne 0) {
             throw "Compilation failed"
@@ -296,7 +411,7 @@ $cArrayContent
         return $baseName
     }
     catch {
-        Write-ErrorAndExit "Failed to compile applet $baseName : $($_.Exception.Message)"
+        Write-ErrorAndExit "Failed to compile applet $baseName : $($_.Exception.Message)" $_
     }
     finally {
         Remove-Item $tempHeader -ErrorAction SilentlyContinue
@@ -450,7 +565,7 @@ function Remove-FromRegistry {
 
 # Run simulator with applet
 function Run-Simulator {
-    param([string]$SourcePath, [bool]$Debug = $false)
+    param([string]$SourcePath, [bool]$Debug = $false, [bool]$IncludeDebugInfo = $false)
     
     $baseName = [System.IO.Path]::GetFileNameWithoutExtension($SourcePath)
     $extension = [System.IO.Path]::GetExtension($SourcePath).ToLower()
@@ -466,19 +581,59 @@ function Run-Simulator {
             # Source file - need to compile
             $tempDsb = Join-Path $TempDir "$baseName.dsb"
             
-            Write-Info "Compiling applet $baseName from $SourcePath for simulation..."
+            if ($IncludeDebugInfo) {
+                Write-Info "Compiling applet $baseName from $SourcePath for simulation (with debug info)..."
+            } else {
+                Write-Info "Compiling applet $baseName from $SourcePath for simulation..."
+            }
+            
+            # Build compiler arguments
+            $compilerArgs = @($SourcePath, $tempDsb)
+            if ($IncludeDebugInfo) {
+                $compilerArgs += "--debug"
+            }
             
             # Compile to bytecode
-            & $CompilerExe $SourcePath $tempDsb 2>&1 | Out-Null
-            
+            $compilerOutput = & $CompilerExe @compilerArgs 2>&1
+
+            # Parse compiler output for errors
+            $hasErrors = $false
+            $inErrorSection = $false
+            $errorLines = @()
+            foreach ($line in $compilerOutput) {
+                $lineStr = $line.ToString().Trim()
+                if ($lineStr -match "Compilation errors:") {
+                    $hasErrors = $true
+                    $inErrorSection = $true
+                    continue
+                }
+                if ($inErrorSection -and $lineStr -ne "") {
+                    if ($lineStr -match "Note:|===|Bytecode") {
+                        $inErrorSection = $false
+                    } else {
+                        $errorLines += $lineStr
+                    }
+                }
+            }
+
+            if ($hasErrors -and $errorLines.Count -gt 0) {
+                Write-Host ""
+                Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
+                foreach ($errorLine in $errorLines) {
+                    Write-Host "  $errorLine" -ForegroundColor $Colors.Error
+                }
+                Write-Host ""
+                throw "Compilation failed with errors"
+            }
+
             if ($LASTEXITCODE -ne 0) {
                 throw "Compilation failed"
             }
-            
+
             if (-not (Test-Path $tempDsb)) {
                 throw "Bytecode file not generated"
             }
-            
+
             Write-Success "Compiled successfully"
             $dsbFile = $tempDsb
         }
@@ -503,7 +658,7 @@ function Run-Simulator {
         Write-Success "Simulation completed"
     }
     catch {
-        Write-ErrorAndExit "Failed to run simulation: $($_.Exception.Message)"
+        Write-ErrorAndExit "Failed to run simulation: $($_.Exception.Message)" $_
     }
     finally {
         # Clean up temporary file if we created one
@@ -524,16 +679,20 @@ function Show-Usage {
     Write-Host "  Development:" -ForegroundColor $Colors.Highlight
     Write-Host "    dscli compile <source.ds>             Compile applet only" -ForegroundColor $Colors.Info
     Write-Host "    dscli compile <source.ds> -Register   Compile and add to registry" -ForegroundColor $Colors.Info
+    Write-Host "    dscli compile <source.ds> -DebugInfo   Include debug line information" -ForegroundColor $Colors.Info
     Write-Host "    dscli compile <source.ds> -Out <.dsb> Compile to bytecode file" -ForegroundColor $Colors.Info
     Write-Host "    dscli run <source.ds|.dsb>            Run simulator (compile if needed)" -ForegroundColor $Colors.Info
     Write-Host "    dscli run <source.ds|.dsb> -ShowDebug Run with debug overlay" -ForegroundColor $Colors.Info
+    Write-Host "    dscli run <source.ds> -DebugInfo      Compile with debug info and run" -ForegroundColor $Colors.Info
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor $Colors.Highlight
     Write-Host "  .\dscli.ps1 registry list" -ForegroundColor $Colors.Info
     Write-Host "  .\dscli.ps1 compile scripts\counter_applet.ds" -ForegroundColor $Colors.Info
     Write-Host "  .\dscli.ps1 compile scripts\counter_applet.ds -Register" -ForegroundColor $Colors.Info
     Write-Host "  .\dscli.ps1 compile scripts\test.ds -Out build\test.dsb" -ForegroundColor $Colors.Info
+    Write-Host "  .\dscli.ps1 compile scripts\test.ds -DebugInfo" -ForegroundColor $Colors.Info
     Write-Host "  .\dscli.ps1 run scripts\timer.ds -ShowDebug" -ForegroundColor $Colors.Info
+    Write-Host "  .\dscli.ps1 run scripts\timer.ds -DebugInfo -ShowDebug" -ForegroundColor $Colors.Info
     Write-Host "  .\dscli.ps1 run temp\hello_world.dsb" -ForegroundColor $Colors.Info
 }
 
@@ -586,10 +745,10 @@ try {
                     Write-Warning "Both -Out and -Register specified. Compiling to bytecode file only (ignoring -Register)"
                 }
                 # Compile to bytecode file
-                Compile-ToBytecode -SourcePath $SourcePath -OutputPath $Out
+                Compile-ToBytecode -SourcePath $SourcePath -OutputPath $Out -IncludeDebugInfo $DebugInfo
             } else {
                 # Compile to C array (with optional registry addition)
-                Compile-Applet -SourcePath $SourcePath -AddToRegistry $Register
+                Compile-Applet -SourcePath $SourcePath -AddToRegistry $Register -IncludeDebugInfo $DebugInfo
             }
         }
         
@@ -599,7 +758,7 @@ try {
             }
             
             $SourcePath = Resolve-SourcePath -Path $Action
-            Run-Simulator -SourcePath $SourcePath -Debug $ShowDebug
+            Run-Simulator -SourcePath $SourcePath -Debug $ShowDebug -IncludeDebugInfo $DebugInfo
         }
         
         default {

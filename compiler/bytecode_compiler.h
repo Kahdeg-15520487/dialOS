@@ -8,6 +8,7 @@
 #include "ast.h"
 #include "bytecode.h"
 #include <map>
+#include <set>
 #include <vector>
 #include <string>
 
@@ -36,6 +37,9 @@ private:
     // Symbol tables
     std::map<std::string, uint8_t> locals_;  // Local variable indices
     uint8_t localCount_;
+    
+    // Function tracking for validation
+    std::set<std::string> declaredFunctions_;  // Functions declared in source
     
     // Jump patching
     struct JumpPatch {

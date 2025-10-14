@@ -287,7 +287,12 @@ VMResult VMState::executeInstruction() {
         case compiler::Opcode::DIV: {
             Value b = pop();
             Value a = pop();
-            push(divide(a, b));
+            Value result = divide(a, b);
+            if (!running_) {
+                pc_--; // Set PC back to the instruction that caused the error
+                return VMResult::ERROR; // Check for division by zero error
+            }
+            push(result);
             break;
         }
         
@@ -412,22 +417,43 @@ VMResult VMState::executeInstruction() {
             uint8_t argCount = readU8();
             
             if (funcIndex >= module_.functions.size()) {
-                setError("Invalid function index");
+                setError("Invalid function index: " + std::to_string(funcIndex));
                 return VMResult::ERROR;
             }
             
-            // Stack layout for method calls: [..., arg1, arg2, ..., argN, receiver]
-            // The receiver (e.g., object instance) is on top of stack
-            // Arguments are below it
-            // argCount does NOT include the receiver
-            
-            // For user-defined functions (not yet implemented)
-            // Pop receiver + all arguments
-            pop();  // receiver
-            for (uint8_t i = 0; i < argCount; i++) {
-                pop();
+            // Get function entry point
+            if (funcIndex >= module_.functionEntryPoints.size()) {
+                setError("Function entry point not found for: " + module_.functions[funcIndex]);
+                return VMResult::ERROR;
             }
-            push(Value::Null());  // Return value
+            
+            uint32_t entryPoint = module_.functionEntryPoints[funcIndex];
+            if (entryPoint == 0 && funcIndex != 0) { // Allow PC 0 for first function
+                setError("Function not defined: " + module_.functions[funcIndex]);
+                return VMResult::ERROR;
+            }
+            
+            // Create new call frame
+            CallFrame frame;
+            frame.returnPC = pc_;
+            frame.stackBase = stack_.size() - argCount; // Arguments start here
+            frame.functionName = module_.functions[funcIndex];
+            
+            // Store arguments in local variables (0, 1, 2, ...)
+            // Arguments are on stack in order: arg0, arg1, arg2, ...
+            for (uint8_t i = 0; i < argCount; i++) {
+                if (frame.stackBase + i < stack_.size()) {
+                    frame.locals[i] = stack_[frame.stackBase + i];
+                }
+            }
+            
+            // Remove arguments from stack but keep stack base for locals
+            stack_.resize(frame.stackBase);
+            
+            // Push call frame and jump to function
+            callStack_.push_back(frame);
+            pc_ = entryPoint;
+            
             break;
         }
         
