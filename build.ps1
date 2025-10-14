@@ -531,6 +531,10 @@ function Clear-AppletHeader {
 
 # Main execution
 try {
+    
+    # Check compiler
+    Test-Compiler
+    
     # List mode: show all applets
     if ($List) {
         Show-AppletList
@@ -589,9 +593,6 @@ try {
     
     # Normal mode: full UI
     Write-Banner
-    
-    # Check compiler
-    Test-Compiler
     
     # Resolve source path
     $SourcePath = Resolve-SourcePath -Path $Source
