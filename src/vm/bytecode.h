@@ -141,9 +141,47 @@ public:
         std::string appVersion;     // Application version
         std::string author;         // Author name
         uint32_t timestamp;         // Compilation timestamp
+        uint32_t hashCode;          // Simple hash of metadata content
+        uint16_t checksum;          // Error correcting checksum
         
         Metadata() : version(1), heapSize(8192), appName("untitled"), 
-                     appVersion("1.0.0"), author(""), timestamp(0) {}
+                     appVersion("1.0.0"), author(""), timestamp(0), 
+                     hashCode(0), checksum(0) {}
+        
+        // Calculate hash code for metadata integrity (includes checksum)
+        uint32_t calculateHash() const {
+            uint32_t hash = 0x811C9DC5; // FNV-1a offset basis
+            const uint32_t prime = 0x01000193; // FNV-1a prime
+            
+            // Hash version and heap size
+            hash ^= version;
+            hash *= prime;
+            hash ^= heapSize;
+            hash *= prime;
+            hash ^= timestamp;
+            hash *= prime;
+            
+            // Hash the bytecode checksum (this links metadata to bytecode integrity)
+            hash ^= checksum;
+            hash *= prime;
+            
+            // Hash strings
+            for (char c : appName) {
+                hash ^= static_cast<uint8_t>(c);
+                hash *= prime;
+            }
+            for (char c : appVersion) {
+                hash ^= static_cast<uint8_t>(c);
+                hash *= prime;
+            }
+            for (char c : author) {
+                hash ^= static_cast<uint8_t>(c);
+                hash *= prime;
+            }
+            
+            return hash;
+        }
+
     };
     
     Metadata metadata;
@@ -215,6 +253,42 @@ public:
         code[position + 1] = (offset >> 8) & 0xFF;
         code[position + 2] = (offset >> 16) & 0xFF;
         code[position + 3] = (offset >> 24) & 0xFF;
+    }
+    
+    // Calculate checksum of bytecode content
+    uint16_t calculateBytecodeChecksum() const {
+        uint16_t sum = 0;
+        
+        // Checksum all bytecode bytes
+        for (uint8_t byte : code) {
+            sum += byte;
+        }
+        
+        return sum;
+    }
+    
+    // Update integrity: first calculate bytecode checksum, then metadata hash
+    void updateIntegrity() {
+        // Step 1: Calculate checksum from bytecode content
+        metadata.checksum = calculateBytecodeChecksum();
+        
+        // Step 2: Calculate hash from metadata (including the checksum)
+        metadata.hashCode = metadata.calculateHash();
+    }
+    
+    // Verify integrity of both bytecode and metadata
+    bool verifyIntegrity() const {
+        // Verify bytecode checksum
+        if (metadata.checksum != calculateBytecodeChecksum()) {
+            return false;
+        }
+        
+        // Verify metadata hash (which includes the checksum)
+        if (metadata.hashCode != metadata.calculateHash()) {
+            return false;
+        }
+        
+        return true;
     }
     
     // Serialize to binary format

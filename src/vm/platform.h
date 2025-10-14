@@ -33,6 +33,7 @@ public:
     
     // Debug/Console
     virtual void console_log(const std::string& msg) = 0;
+    virtual void program_output(const std::string& msg) { console_log(msg); } // Default fallback
 };
 
 } // namespace vm

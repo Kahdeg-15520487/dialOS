@@ -7,7 +7,7 @@
 #include "vm_core.h"
 #include "vm_value.h"
 #include "sdl_platform.h"
-#include "../../compiler/bytecode.h"
+#include "bytecode.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     }
     
     // Enable debug overlay by default for emulator
-    platform.debug_showInfo(true);
+    platform.debug_showInfo(false);
     
     // Create VM
     vm::ValuePool pool(module.metadata.heapSize);

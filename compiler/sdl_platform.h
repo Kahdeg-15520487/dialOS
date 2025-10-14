@@ -48,9 +48,12 @@ class SDLPlatform : public PlatformInterface {
 public:
     static const int DISPLAY_WIDTH = 240;
     static const int DISPLAY_HEIGHT = 240;
-    static const int WINDOW_SCALE = 3;  // Scale factor for easier viewing
-    static const int WINDOW_WIDTH = DISPLAY_WIDTH * WINDOW_SCALE;
-    static const int WINDOW_HEIGHT = DISPLAY_HEIGHT * WINDOW_SCALE;
+    static const int WINDOW_SCALE = 2;  // Scale factor for easier viewing
+    static const int DISPLAY_SCALED_WIDTH = DISPLAY_WIDTH * WINDOW_SCALE;
+    static const int DISPLAY_SCALED_HEIGHT = DISPLAY_HEIGHT * WINDOW_SCALE;
+    static const int CONSOLE_WIDTH = 300;  // Width of console area
+    static const int WINDOW_WIDTH = DISPLAY_SCALED_WIDTH + CONSOLE_WIDTH;
+    static const int WINDOW_HEIGHT = DISPLAY_SCALED_HEIGHT;
     static const int CENTER_X = DISPLAY_WIDTH / 2;
     static const int CENTER_Y = DISPLAY_HEIGHT / 2;
     static const int DISPLAY_RADIUS = 120;  // Circular display radius
@@ -106,6 +109,7 @@ public:
     
     // Debug/Console
     void console_log(const std::string& msg) override;
+    void program_output(const std::string& msg) override;
     
     // === Extended Emulator Features ===
     
@@ -131,6 +135,9 @@ public:
     // Debug overlay
     void debug_showInfo(bool show) { showDebugInfo_ = show; }
     void debug_drawOverlay();
+    
+    // Output capture for VM programs
+    void captureOutput(const std::string& output) { outputLog_.addLine(output); }
     
 private:
     // SDL components
@@ -206,6 +213,30 @@ private:
     bool showDebugInfo_;
     std::vector<std::string> debugMessages_;
     
+    // Console logging
+    struct ConsoleLog {
+        std::vector<std::string> lines;
+        size_t maxLines;
+        size_t scrollOffset;
+        
+        ConsoleLog(size_t max = 50) : maxLines(max), scrollOffset(0) {}
+        
+        void addLine(const std::string& line) {
+            lines.push_back(line);
+            if (lines.size() > maxLines) {
+                lines.erase(lines.begin());
+            }
+        }
+        
+        void clear() {
+            lines.clear();
+            scrollOffset = 0;
+        }
+    };
+    
+    ConsoleLog consoleLog_;
+    ConsoleLog outputLog_;
+    
     // Helper methods
     bool isInCircularDisplay(int x, int y) const;
     void scaleCoordinates(int& x, int& y) const;
@@ -213,6 +244,8 @@ private:
     void updateInputs();
     void renderText(int x, int y, const std::string& text, const Color& color, int size);
     void addDebugMessage(const std::string& msg);
+    void renderConsoleArea();
+    void renderLogWindow(int x, int y, int width, int height, const std::string& title, const ConsoleLog& log);
 };
 
 } // namespace vm

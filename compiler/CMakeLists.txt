@@ -20,7 +20,7 @@ set(PARSER_SOURCES
     parser.cpp
     ast_printer.cpp
     ast_json.cpp
-    bytecode.cpp
+    ../src/vm/bytecode.cpp
     bytecode_compiler.cpp
 )
 
@@ -42,7 +42,10 @@ target_include_directories(dialscript_vm PUBLIC
 target_link_libraries(dialscript_vm dialscript_parser)
 
 # Include directory for the library
-target_include_directories(dialscript_parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(dialscript_parser PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/vm
+)
 
 # Test executable
 add_executable(test_parser test_parser.cpp)

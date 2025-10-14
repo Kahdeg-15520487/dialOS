@@ -108,6 +108,9 @@ int main(int argc, char* argv[]) {
     std::cout << "Functions:  " << module.functions.size() << std::endl;
     std::cout << std::endl;
     
+    // Update integrity before displaying
+    module.updateIntegrity();
+    
     // Disassemble
     std::cout << module.disassemble() << std::endl;
     

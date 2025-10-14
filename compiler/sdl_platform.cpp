@@ -86,27 +86,43 @@ bool SDLPlatform::initialize(const std::string& title) {
         return false;
     }
     
-    // Load default font (you might want to embed a font or use system font)
-    font_ = TTF_OpenFont("arial.ttf", 16); // Try to load Arial
-    if (!font_) {
-        // Try to use SDL_ttf's default font or create a simple one
-        font_ = TTF_OpenFont(NULL, 16);
-        if (!font_) {
-            std::cout << "Warning: Could not load font, text rendering may not work properly" << std::endl;
+    // Try to load a font with multiple fallbacks
+    const char* fontPaths[] = {
+        "C:/Windows/Fonts/arial.ttf",      // Windows Arial
+        "C:/Windows/Fonts/calibri.ttf",    // Windows Calibri
+        "C:/Windows/Fonts/consola.ttf",    // Windows Console font
+        "C:/Windows/Fonts/cour.ttf",       // Windows Courier
+        "/System/Library/Fonts/Arial.ttf", // macOS
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", // Linux
+        "arial.ttf",                       // Local file
+        NULL
+    };
+    
+    font_ = nullptr;
+    for (int i = 0; fontPaths[i] != nullptr; i++) {
+        font_ = TTF_OpenFont(fontPaths[i], 14);
+        if (font_) {
+            std::cout << "Loaded font: " << fontPaths[i] << std::endl;
+            break;
         }
     }
     
-    initialized_ = true;
-    console_log("dialOS SDL Emulator initialized");
-    console_log("Hardware simulation active:");
-    console_log("- Display: 240x240 circular TFT (scaled 3x)");
-    console_log("- Encoder: Mouse wheel + left click");
-    console_log("- Touch: Mouse click in display area");
-    console_log("- RFID: Press 'R' to simulate card");
-    console_log("- Buzzer: Audio simulation");
-    console_log("- Debug: Press 'D' to toggle debug overlay");
-    console_log("- Quit: Press ESC or close window");
+    if (!font_) {
+        std::cout << "Warning: Could not load any font, text rendering will not work" << std::endl;
+        std::cout << "Please ensure you have system fonts installed." << std::endl;
+    }
     
+    initialized_ = true;
+    program_output("dialOS SDL Emulator initialized");
+    program_output("Hardware simulation active:");
+    program_output("- Display: 240x240 circular TFT (scaled 2x)");
+    program_output("- Encoder: Mouse wheel + left click");
+    program_output("- Touch: Mouse click in display area");
+    program_output("- RFID: Press 'R' to simulate card");
+    program_output("- Buzzer: Audio simulation");
+    program_output("- Debug: Press 'D' to toggle debug overlay");
+    program_output("- Quit: Press ESC or close window");
+
     return true;
 }
 
@@ -151,7 +167,7 @@ bool SDLPlatform::pollEvents() {
                         
                     case SDLK_d:
                         showDebugInfo_ = !showDebugInfo_;
-                        console_log(showDebugInfo_ ? "Debug overlay ON" : "Debug overlay OFF");
+                        program_output(showDebugInfo_ ? "Debug overlay ON" : "Debug overlay OFF");
                         break;
                         
                     case SDLK_r:
@@ -165,9 +181,9 @@ bool SDLPlatform::pollEvents() {
                                 ss << std::setw(2) << (rand() % 256);
                             }
                             rfid_.cardUID = ss.str();
-                            console_log("RFID card detected: " + rfid_.cardUID);
+                            program_output("RFID card detected: " + rfid_.cardUID);
                         } else {
-                            console_log("RFID card removed");
+                            program_output("RFID card removed");
                         }
                         break;
                         
@@ -232,8 +248,35 @@ bool SDLPlatform::pollEvents() {
 void SDLPlatform::present() {
     if (!initialized_) return;
     
+    // Clear entire window with black at the beginning of each frame
+    SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
+    SDL_RenderClear(renderer_);
+    
+    // Fill circular display area with current background color
+    if (backgroundColor_ != 0) {
+        Color bgColor(backgroundColor_);
+        SDL_SetRenderDrawColor(renderer_, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
+        
+        for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+            for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                if (isInCircularDisplay(x, y)) {
+                    SDL_Rect rect = {
+                        x * WINDOW_SCALE, 
+                        y * WINDOW_SCALE, 
+                        WINDOW_SCALE, 
+                        WINDOW_SCALE
+                    };
+                    SDL_RenderFillRect(renderer_, &rect);
+                }
+            }
+        }
+    }
+    
     // Draw circular mask for display
     drawCircularMask();
+    
+    // Draw console area
+    renderConsoleArea();
     
     // Draw debug overlay if enabled
     if (showDebugInfo_) {
@@ -398,7 +441,7 @@ void SDLPlatform::buzzer_beep(uint32_t frequency, uint32_t duration) {
     
     // Simple audio simulation - just log for now
     // In a full implementation, you'd generate audio waveforms
-    console_log("Buzzer: " + std::to_string(frequency) + "Hz for " + std::to_string(duration) + "ms");
+    program_output("Buzzer: " + std::to_string(frequency) + "Hz for " + std::to_string(duration) + "ms");
 }
 
 void SDLPlatform::buzzer_stop() {
@@ -428,7 +471,13 @@ void SDLPlatform::system_setRTC(uint64_t timestamp) {
 }
 
 void SDLPlatform::console_log(const std::string& msg) {
+    std::cout << msg << std::endl;
+    outputLog_.addLine(msg);
+}
+
+void SDLPlatform::program_output(const std::string& msg) {
     std::cout << "[dialOS] " << msg << std::endl;
+    consoleLog_.addLine("[dialOS] " + msg);
     addDebugMessage(msg);
 }
 
@@ -493,9 +542,6 @@ void SDLPlatform::updateInputs() {
 void SDLPlatform::renderText(int x, int y, const std::string& text, const Color& color, int size) {
     if (!font_) return;
     
-    // Scale font size
-    int scaledSize = size * WINDOW_SCALE / 2;
-    
     SDL_Surface* surface = TTF_RenderText_Solid(font_, text.c_str(), color.toSDL());
     if (!surface) return;
     
@@ -505,9 +551,10 @@ void SDLPlatform::renderText(int x, int y, const std::string& text, const Color&
         return;
     }
     
+    // Use actual coordinates without scaling for console text
     SDL_Rect destRect = {
-        x * WINDOW_SCALE,
-        y * WINDOW_SCALE,
+        x,
+        y,
         surface->w,
         surface->h
     };
@@ -572,13 +619,13 @@ void SDLPlatform::debug_drawOverlay() {
 // Additional GPIO and peripheral simulation methods
 void SDLPlatform::gpio_pinMode(uint8_t pin, uint8_t mode) {
     gpioPins_[pin].mode = mode;
-    console_log("GPIO" + std::to_string(pin) + " mode: " + std::to_string(mode));
+    program_output("GPIO" + std::to_string(pin) + " mode: " + std::to_string(mode));
 }
 
 void SDLPlatform::gpio_digitalWrite(uint8_t pin, bool value) {
     if (gpioPins_[pin].mode == GPIO_OUTPUT) {
         gpioPins_[pin].digitalValue = value;
-        console_log("GPIO" + std::to_string(pin) + " write: " + (value ? "HIGH" : "LOW"));
+        program_output("GPIO" + std::to_string(pin) + " write: " + (value ? "HIGH" : "LOW"));
     }
 }
 
@@ -589,7 +636,7 @@ bool SDLPlatform::gpio_digitalRead(uint8_t pin) {
 void SDLPlatform::gpio_analogWrite(uint8_t pin, uint16_t value) {
     if (gpioPins_[pin].mode == GPIO_OUTPUT) {
         gpioPins_[pin].analogValue = value;
-        console_log("GPIO" + std::to_string(pin) + " PWM: " + std::to_string(value));
+        program_output("GPIO" + std::to_string(pin) + " PWM: " + std::to_string(value));
     }
 }
 
@@ -606,8 +653,89 @@ bool SDLPlatform::power_isCharging() {
 }
 
 void SDLPlatform::power_sleep() {
-    console_log("System entering sleep mode...");
+    program_output("System entering sleep mode...");
     // In a real implementation, this would put the system into low-power mode
+}
+
+void SDLPlatform::renderConsoleArea() {
+    if (!initialized_) return;
+    
+    // Get actual current window size
+    int windowWidth, windowHeight;
+    SDL_GetWindowSize(window_, &windowWidth, &windowHeight);
+    
+    // Console area starts to the right of the display
+    int consoleX = DISPLAY_SCALED_WIDTH;
+    int consoleY = 0;
+    int consoleWidth = windowWidth - DISPLAY_SCALED_WIDTH;
+    int consoleHeight = windowHeight;
+    
+    // Ensure console has minimum width
+    if (consoleWidth < 200) {
+        consoleWidth = 200;
+    }
+    
+    // Fill console background
+    SDL_SetRenderDrawColor(renderer_, 30, 30, 30, 255); // Dark gray
+    SDL_Rect consoleRect = {consoleX, consoleY, consoleWidth, consoleHeight};
+    SDL_RenderFillRect(renderer_, &consoleRect);
+    
+    // Draw border
+    SDL_SetRenderDrawColor(renderer_, 100, 100, 100, 255); // Light gray
+    SDL_RenderDrawRect(renderer_, &consoleRect);
+    
+    // Split console area into two sections
+    int halfHeight = consoleHeight / 2;
+    
+    // Render console log (top half)
+    renderLogWindow(consoleX + 5, consoleY + 5, consoleWidth - 10, halfHeight - 10, 
+                   "Console Log", consoleLog_);
+    
+    // Draw separator line
+    SDL_SetRenderDrawColor(renderer_, 100, 100, 100, 255);
+    SDL_RenderDrawLine(renderer_, consoleX + 5, consoleY + halfHeight, 
+                      consoleX + consoleWidth - 5, consoleY + halfHeight);
+    
+    // Render output log (bottom half)
+    renderLogWindow(consoleX + 5, consoleY + halfHeight + 5, consoleWidth - 10, halfHeight - 10,
+                   "Program Output", outputLog_);
+}
+
+void SDLPlatform::renderLogWindow(int x, int y, int width, int height, 
+                                 const std::string& title, const ConsoleLog& log) {
+    if (!font_) return;
+    
+    // Render title
+    Color titleColor(200, 200, 255); // Light blue
+    renderText(x, y, title, titleColor, 12);
+    
+    // Calculate text area
+    int textY = y + 20;
+    int textHeight = height - 25;
+    int lineHeight = 14;
+    int maxLines = textHeight / lineHeight;
+    
+    // Render log lines (most recent at bottom)
+    Color textColor(220, 220, 220); // Light gray
+    int startLine = std::max(0, (int)log.lines.size() - maxLines);
+    
+    for (size_t i = startLine; i < log.lines.size() && i < startLine + maxLines; i++) {
+        int lineY = textY + (i - startLine) * lineHeight;
+        
+        // Truncate long lines to fit width
+        std::string line = log.lines[i];
+        if (line.length() > 35) { // Rough character limit for console width
+            line = line.substr(0, 32) + "...";
+        }
+        
+        renderText(x + 2, lineY, line, textColor, 10);
+    }
+    
+    // Show scroll indicator if there are more lines
+    if (log.lines.size() > maxLines) {
+        Color scrollColor(150, 150, 150);
+        renderText(x + width - 20, y, "^", scrollColor, 10);
+    }
 }
 
 } // namespace vm

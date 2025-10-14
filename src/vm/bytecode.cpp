@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cstring>
+#include <stdexcept>
 
 namespace dialos {
 namespace compiler {
@@ -44,12 +45,18 @@ std::vector<uint8_t> BytecodeModule::serialize() const {
         data.insert(data.end(), str.begin(), str.end());
     };
     
+    // Create a copy and update integrity before serializing
+    BytecodeModule tempModule = *this;
+    tempModule.updateIntegrity();
+    
     // Metadata section
-    writeU32(metadata.heapSize);
-    writeString(metadata.appName);
-    writeString(metadata.appVersion);
-    writeString(metadata.author);
-    writeU32(metadata.timestamp);
+    writeU32(tempModule.metadata.heapSize);
+    writeString(tempModule.metadata.appName);
+    writeString(tempModule.metadata.appVersion);
+    writeString(tempModule.metadata.author);
+    writeU32(tempModule.metadata.timestamp);
+    writeU32(tempModule.metadata.hashCode);
+    writeU16(tempModule.metadata.checksum);
     
     // Constants section
     writeU32(static_cast<uint32_t>(constants.size()));
@@ -128,6 +135,8 @@ BytecodeModule BytecodeModule::deserialize(const std::vector<uint8_t>& data) {
     module.metadata.appVersion = readString();
     module.metadata.author = readString();
     module.metadata.timestamp = readU32();
+    module.metadata.hashCode = readU32();
+    module.metadata.checksum = readU16();
     
     // Constants section
     uint32_t constantCount = readU32();
@@ -159,6 +168,11 @@ BytecodeModule BytecodeModule::deserialize(const std::vector<uint8_t>& data) {
     uint32_t codeSize = readU32();
     module.code.assign(data.begin() + pos, data.begin() + pos + codeSize);
     
+    // Verify bytecode and metadata integrity
+    if (!module.verifyIntegrity()) {
+        throw std::runtime_error("Bytecode integrity check failed - file may be corrupted");
+    }
+    
     return module;
 }
 // Disassemble bytecode for debugging
@@ -174,6 +188,9 @@ std::string BytecodeModule::disassemble() const {
     ss << "  Author:      " << (metadata.author.empty() ? "(none)" : metadata.author) << "\n";
     ss << "  Heap Size:   " << metadata.heapSize << " bytes\n";
     ss << "  Format Ver:  " << metadata.version << "\n";
+    ss << "  Hash Code:   0x" << std::hex << metadata.hashCode << std::dec << " (metadata)\n";
+    ss << "  Checksum:    0x" << std::hex << metadata.checksum << std::dec << " (bytecode)\n";
+    ss << "  Integrity:   " << (verifyIntegrity() ? "VALID" : "CORRUPTED") << "\n";
     ss << "\n";
     
     // Constants

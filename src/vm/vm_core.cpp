@@ -808,7 +808,7 @@ VMResult VMState::executeInstruction() {
         // ===== Special =====
         case compiler::Opcode::PRINT: {
             Value v = pop();
-            platform_.console_log(v.toString());
+            platform_.program_output(v.toString());
             break;
         }
         
