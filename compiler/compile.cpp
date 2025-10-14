@@ -39,20 +39,23 @@ bool writeFile(const std::string& filename, const std::vector<uint8_t>& data) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <input.ds> [output.dsb] [--c-array]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <input.ds> [output.dsb] [--c-array] [--debug]" << std::endl;
         std::cerr << "  --c-array: Output as C/C++ byte array instead of binary file" << std::endl;
+        std::cerr << "  --debug:   Include debug line information in bytecode" << std::endl;
         return 1;
     }
     
     std::string inputFile = argv[1];
-    std::string outputFile = (argc >= 3 && std::string(argv[2]) != "--c-array") ? argv[2] : "output.dsb";
+    std::string outputFile = (argc >= 3 && std::string(argv[2]) != "--c-array" && std::string(argv[2]) != "--debug") ? argv[2] : "output.dsb";
     bool outputCArray = false;
+    bool debugInfo = false;
     
-    // Check for --c-array flag
+    // Check for flags
     for (int i = 2; i < argc; i++) {
         if (std::string(argv[i]) == "--c-array") {
             outputCArray = true;
-            break;
+        } else if (std::string(argv[i]) == "--debug") {
+            debugInfo = true;
         }
     }
     
@@ -85,7 +88,11 @@ int main(int argc, char* argv[]) {
     
     // Compile to bytecode
     std::cout << "Compiling to bytecode..." << std::endl;
+    if (debugInfo) {
+        std::cout << "Debug info: Enabled" << std::endl;
+    }
     BytecodeCompiler compiler;
+    compiler.setDebugInfo(debugInfo);
     BytecodeModule module = compiler.compile(*program);
     
     if (compiler.hasErrors()) {

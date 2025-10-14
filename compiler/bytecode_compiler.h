@@ -16,7 +16,10 @@ namespace compiler {
 
 class BytecodeCompiler {
 public:
-    BytecodeCompiler() : module_(), localCount_(0) {}
+    BytecodeCompiler() : module_(), localCount_(0), debugInfoEnabled_(false) {}
+    
+    // Enable/disable debug information generation
+    void setDebugInfo(bool enabled) { debugInfoEnabled_ = enabled; }
     
     // Compile AST to bytecode
     BytecodeModule compile(const Program& program);
@@ -28,6 +31,7 @@ public:
 private:
     BytecodeModule module_;
     std::vector<std::string> errors_;
+    bool debugInfoEnabled_;
     
     // Symbol tables
     std::map<std::string, uint8_t> locals_;  // Local variable indices
@@ -40,6 +44,15 @@ private:
     };
     std::vector<JumpPatch> jumpPatches_;
     std::map<std::string, size_t> labels_;
+    
+    // Helper methods
+    void emit(const Instruction& instr, const ASTNode* node = nullptr) {
+        uint32_t lineNumber = 0;
+        if (debugInfoEnabled_ && node) {
+            lineNumber = static_cast<uint32_t>(node->line);
+        }
+        module_.emit(instr, lineNumber);
+    }
     
     // Compile statements
     void compileStatement(const Statement& stmt);

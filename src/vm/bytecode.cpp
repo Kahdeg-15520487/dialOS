@@ -21,9 +21,13 @@ std::vector<uint8_t> BytecodeModule::serialize() const {
     data.push_back((metadata.version >> 8) & 0xFF);
     data.push_back(metadata.version & 0xFF);
     
-    // Flags (reserved)
-    data.push_back(0);
-    data.push_back(0);
+    // Flags
+    uint16_t flags = 0;
+    if (hasDebugInfo()) {
+        flags |= 0x0001; // Bit 0: has debug info
+    }
+    data.push_back(flags & 0xFF);
+    data.push_back((flags >> 8) & 0xFF);
     
     // Helper to write uint32
     auto writeU32 = [&data](uint32_t value) {
@@ -84,6 +88,14 @@ std::vector<uint8_t> BytecodeModule::serialize() const {
     writeU32(static_cast<uint32_t>(code.size()));
     data.insert(data.end(), code.begin(), code.end());
     
+    // Debug section (optional)
+    if (hasDebugInfo()) {
+        writeU32(static_cast<uint32_t>(debugLines.size()));
+        for (uint32_t line : debugLines) {
+            writeU32(line);
+        }
+    }
+    
     return data;
 }
 
@@ -103,8 +115,10 @@ BytecodeModule BytecodeModule::deserialize(const std::vector<uint8_t>& data) {
     module.metadata.version = (data[pos] << 8) | data[pos + 1];
     pos += 2;
     
-    // Skip flags
+    // Read flags
+    uint16_t flags = data[pos] | (data[pos + 1] << 8);
     pos += 2;
+    bool hasDebugInfo = (flags & 0x0001) != 0;
     
     // Helper to read uint32
     auto readU32 = [&data, &pos]() -> uint32_t {
@@ -167,6 +181,16 @@ BytecodeModule BytecodeModule::deserialize(const std::vector<uint8_t>& data) {
     // Code section
     uint32_t codeSize = readU32();
     module.code.assign(data.begin() + pos, data.begin() + pos + codeSize);
+    pos += codeSize;
+    
+    // Debug section (optional)
+    if (hasDebugInfo && pos < data.size()) {
+        uint32_t debugSize = readU32();
+        module.debugLines.reserve(debugSize);
+        for (uint32_t i = 0; i < debugSize; i++) {
+            module.debugLines.push_back(readU32());
+        }
+    }
     
     // Verify bytecode and metadata integrity
     if (!module.verifyIntegrity()) {
@@ -221,11 +245,26 @@ std::string BytecodeModule::disassemble() const {
     ss << "Main Entry Point: PC:" << mainEntryPoint << "\n";
     ss << "\n";
     
+    // Debug info status
+    if (hasDebugInfo()) {
+        ss << "Debug Info: Enabled (" << debugLines.size() << " entries)\n";
+    } else {
+        ss << "Debug Info: Disabled\n";
+    }
+    ss << "\n";
+    
     // Code
     ss << "Code (" << code.size() << " bytes):\n";
     size_t pos = 0;
     while (pos < code.size()) {
         ss << std::setw(6) << std::setfill('0') << pos << "  ";
+        
+        // Show source line if debug info available
+        if (hasDebugInfo() && pos < debugLines.size() && debugLines[pos] > 0) {
+            ss << "[L" << std::setw(3) << debugLines[pos] << "] ";
+        } else {
+            ss << "      ";
+        }
         
         Opcode op = static_cast<Opcode>(code[pos++]);
         

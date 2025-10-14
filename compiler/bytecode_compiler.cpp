@@ -14,6 +14,11 @@ BytecodeModule BytecodeCompiler::compile(const Program& program) {
     jumpPatches_.clear();
     labels_.clear();
     
+    // Enable debug info if requested
+    if (debugInfoEnabled_) {
+        module_.enableDebugInfo();
+    }
+    
     // Two-pass compilation:
     // Pass 1: Compile all function and class declarations first
     // Pass 2: Compile main code (non-function statements)
@@ -52,7 +57,7 @@ BytecodeModule BytecodeCompiler::compile(const Program& program) {
     }
     
     // Add halt at end
-    module_.emit(Instruction(Opcode::HALT));
+    emit(Instruction(Opcode::HALT));
     
     // Patch jumps
     patchJumps();
@@ -94,7 +99,7 @@ void BytecodeCompiler::compileVariableDecl(const VariableDeclaration& decl) {
     if (decl.initializer) {
         compileExpression(*decl.initializer);
     } else {
-        module_.emit(Instruction(Opcode::PUSH_NULL));
+        emit(Instruction(Opcode::PUSH_NULL), &decl);
     }
     
     // Store to global variable
@@ -411,7 +416,7 @@ void BytecodeCompiler::compileReturnStatement(const ReturnStatement& ret) {
     if (ret.value) {
         compileExpression(*ret.value);
     } else {
-        module_.emit(Instruction(Opcode::PUSH_NULL));
+        emit(Instruction(Opcode::PUSH_NULL), &ret);
     }
     module_.emit(Instruction(Opcode::RETURN));
 }
@@ -424,7 +429,7 @@ void BytecodeCompiler::compileBlock(const Block& block) {
 
 void BytecodeCompiler::compileExpressionStatement(const ExpressionStatement& stmt) {
     compileExpression(*stmt.expression);
-    module_.emit(Instruction(Opcode::POP));  // Discard result
+    emit(Instruction(Opcode::POP), &stmt);  // Discard result
 }
 
 void BytecodeCompiler::compileExpression(const Expression& expr) {
@@ -573,7 +578,7 @@ void BytecodeCompiler::compileCallExpression(const CallExpression& expr) {
     Instruction instr(isNativeCall ? Opcode::CALL_NATIVE : Opcode::CALL);
     instr.addOperandU16(funcIdx);
     instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
-    module_.emit(instr);
+    emit(instr, &expr);
 }
 
 bool BytecodeCompiler::isOsNamespaceCall(const Expression* expr) const {
@@ -600,7 +605,7 @@ void BytecodeCompiler::compileMemberAccess(const MemberAccess& expr) {
     uint16_t fieldIdx = module_.addConstant(expr.property);
     Instruction instr(Opcode::GET_FIELD);
     instr.addOperandU16(fieldIdx);
-    module_.emit(instr);
+    emit(instr, &expr);
 }
 
 void BytecodeCompiler::compileArrayAccess(const ArrayAccess& expr) {
@@ -630,13 +635,13 @@ void BytecodeCompiler::compileIdentifier(const Identifier& expr) {
     if (it != locals_.end()) {
         Instruction instr(Opcode::LOAD_LOCAL);
         instr.addOperandU8(it->second);
-        module_.emit(instr);
+        emit(instr, &expr);
     } else {
         // Global variable
         uint16_t globalIdx = module_.addGlobal(expr.name);
         Instruction instr(Opcode::LOAD_GLOBAL);
         instr.addOperandU16(globalIdx);
-        module_.emit(instr);
+        emit(instr, &expr);
     }
 }
 
@@ -676,15 +681,15 @@ void BytecodeCompiler::compileStringLiteral(const StringLiteral& expr) {
     uint16_t strIdx = module_.addConstant(expr.value);
     Instruction instr(Opcode::PUSH_STR);
     instr.addOperandU16(strIdx);
-    module_.emit(instr);
+    emit(instr, &expr);
 }
 
 void BytecodeCompiler::compileBooleanLiteral(const BooleanLiteral& expr) {
-    module_.emit(Instruction(expr.value ? Opcode::PUSH_TRUE : Opcode::PUSH_FALSE));
+    emit(Instruction(expr.value ? Opcode::PUSH_TRUE : Opcode::PUSH_FALSE), &expr);
 }
 
 void BytecodeCompiler::compileNullLiteral(const NullLiteral& expr) {
-    module_.emit(Instruction(Opcode::PUSH_NULL));
+    emit(Instruction(Opcode::PUSH_NULL), &expr);
 }
 
 void BytecodeCompiler::compileArrayLiteral(const ArrayLiteral& expr) {

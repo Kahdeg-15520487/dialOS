@@ -186,6 +186,7 @@ public:
     
     Metadata metadata;
     std::vector<uint8_t> code;           // Bytecode instructions
+    std::vector<uint32_t> debugLines;    // Source line number for each bytecode byte (optional)
     std::vector<std::string> constants;  // String constant pool
     std::vector<std::string> globals;    // Global variable names
     std::vector<std::string> functions;  // Function names
@@ -236,15 +237,92 @@ public:
         }
     }
     
-    // Emit instruction
-    void emit(const Instruction& instr) {
+    // Emit instruction (with optional line number for debugging)
+    void emit(const Instruction& instr, uint32_t lineNumber = 0) {
+        size_t startPos = code.size();
+        
         code.push_back(static_cast<uint8_t>(instr.opcode));
         code.insert(code.end(), instr.operands.begin(), instr.operands.end());
+        
+        // Add line number mapping for each bytecode byte if debug info is enabled
+        if (!debugLines.empty() || lineNumber > 0) {
+            // Ensure debugLines is the same size as code
+            while (debugLines.size() < startPos) {
+                debugLines.push_back(0); // Fill gaps with line 0 (unknown)
+            }
+            
+            // Map all bytes of this instruction to the source line
+            size_t instructionSize = code.size() - startPos;
+            for (size_t i = 0; i < instructionSize; i++) {
+                debugLines.push_back(lineNumber);
+            }
+        }
     }
     
     // Get current code position (for jumps)
     size_t getCurrentPosition() const {
         return code.size();
+    }
+    
+    // Enable debug line tracking
+    void enableDebugInfo() {
+        if (debugLines.empty()) {
+            debugLines.resize(code.size(), 0); // Fill existing code with line 0
+        }
+    }
+    
+    // Disable debug line tracking (to save memory)
+    void disableDebugInfo() {
+        debugLines.clear();
+        debugLines.shrink_to_fit();
+    }
+    
+    // Check if debug info is enabled
+    bool hasDebugInfo() const {
+        return !debugLines.empty();
+    }
+    
+    // Get source line for a specific bytecode position
+    uint32_t getSourceLine(size_t pc) const {
+        if (pc < debugLines.size()) {
+            return debugLines[pc];
+        }
+        return 0; // Unknown line
+    }
+    
+    // Get debug info for current instruction (finds start of instruction)
+    struct DebugInfo {
+        uint32_t lineNumber;
+        size_t instructionStart;
+        Opcode opcode;
+    };
+    
+    DebugInfo getDebugInfo(size_t pc) const {
+        DebugInfo info = {0, pc, Opcode::NOP};
+        
+        if (pc >= code.size()) {
+            return info;
+        }
+        
+        // Find the start of the instruction containing this PC
+        size_t instrStart = pc;
+        while (instrStart > 0) {
+            // Check if this looks like an opcode (simple heuristic)
+            uint8_t byte = code[instrStart];
+            if (byte <= static_cast<uint8_t>(Opcode::HALT)) {
+                break;
+            }
+            instrStart--;
+        }
+        
+        info.instructionStart = instrStart;
+        info.opcode = static_cast<Opcode>(code[instrStart]);
+        
+        if (hasDebugInfo() && instrStart < debugLines.size()) {
+            info.lineNumber = debugLines[instrStart];
+        }
+        
+        return info;
     }
     
     // Patch jump offset at position
@@ -262,6 +340,16 @@ public:
         // Checksum all bytecode bytes
         for (uint8_t byte : code) {
             sum += byte;
+        }
+        
+        // Optionally include debug info in checksum for integrity
+        if (hasDebugInfo()) {
+            for (uint32_t line : debugLines) {
+                sum += (line & 0xFF);
+                sum += ((line >> 8) & 0xFF);
+                sum += ((line >> 16) & 0xFF);
+                sum += ((line >> 24) & 0xFF);
+            }
         }
         
         return sum;
@@ -304,11 +392,12 @@ public:
 // Bytecode file format (.dsb)
 // Header: "DSBC" (4 bytes magic)
 //         Version (2 bytes)
-//         Flags (2 bytes)
+//         Flags (2 bytes) - bit 0: has debug info
 // Constants section: count (4 bytes), [length (2 bytes), string data]...
 // Globals section: count (4 bytes), [length (2 bytes), name]...
 // Functions section: count (4 bytes), [length (2 bytes), name]...
 // Code section: length (4 bytes), bytecode...
+// Debug section (optional): length (4 bytes), [line number (4 bytes)]... (one per bytecode byte)
 
 } // namespace compiler
 } // namespace dialos
