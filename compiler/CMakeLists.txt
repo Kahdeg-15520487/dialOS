@@ -28,6 +28,7 @@ set(PARSER_SOURCES
 set(VM_SOURCES
     ../src/vm/vm_value.cpp
     ../src/vm/vm_core.cpp
+    ../src/vm/platform.cpp
 )
 
 # Create a library for the parser (can be linked to other projects)

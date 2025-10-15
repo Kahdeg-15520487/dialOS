@@ -1,0 +1,19 @@
+/*
+ * Test Callback System
+ * Verifies callback registration and invocation
+ */
+
+// Define a simple callback function
+function onEvent(message: string): void {
+    os.console.print(`Callback invoked: ${message}`);
+}
+
+// Register the callback (this would normally be done via encoder.onTurn, etc.)
+// For now, we'll just store it and test that it can be called
+var callback: onEvent;
+
+// Call it directly to verify it works
+callback("Hello from callback!");
+callback("Second call!");
+
+os.console.print("Callback test complete");

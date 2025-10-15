@@ -62,9 +62,17 @@ public:
     const std::map<std::string, Value>& getGlobals() const { return globals_; }
     std::string getError() const { return error_; }
     bool isRunning() const { return running_; }
+    bool hasError() const { return !error_.empty(); }
     
     // Reset VM
     void reset();
+    
+    // Callback invocation
+    // Invoke a function value with given arguments (for immediate callback execution)
+    bool invokeFunction(const Value& callback, const std::vector<Value>& args);
+    
+    // Single-step execution (for callback invocation)
+    VMResult step() { return executeInstruction(); }
     
 private:
     // Bytecode module

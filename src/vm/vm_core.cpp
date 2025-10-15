@@ -53,7 +53,71 @@ void VMState::reset() {
             pair.second = Value::Null();
         }
     }
-}Value VMState::pop() {
+}
+
+bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& args) {
+    // Validate callback is a function
+    if (!callback.isFunction()) {
+        return false;
+    }
+    
+    const Function* func = callback.asFunction();
+    if (func == nullptr) {
+        return false;
+    }
+    
+    // Validate argument count
+    if (args.size() != func->paramCount) {
+        return false;
+    }
+    
+    // Get function entry point
+    uint32_t functionIndex = func->functionIndex;
+    if (functionIndex >= module_.functionEntryPoints.size()) {
+        return false;
+    }
+    
+    uint32_t entryPC = module_.functionEntryPoints[functionIndex];
+    
+    // Save current PC
+    uint32_t savedPC = pc_;
+    
+    // Create call frame
+    CallFrame frame;
+    frame.returnPC = savedPC;
+    frame.stackBase = stack_.size();
+    frame.functionName = (functionIndex < module_.functions.size()) ? 
+                         module_.functions[functionIndex] : "<callback>";
+    
+    // Copy arguments to call frame locals (indexed by parameter number)
+    for (uint8_t i = 0; i < args.size(); i++) {
+        frame.locals[i] = args[i];
+    }
+    
+    // Push call frame
+    callStack_.push_back(frame);
+    
+    // Jump to function
+    pc_ = entryPC;
+    
+    // Execute the function until it returns
+    // Track call stack depth to know when callback completes
+    size_t callDepthBefore = callStack_.size();
+    
+    while (callStack_.size() >= callDepthBefore && !hasError() && running_) {
+        VMResult result = step();
+        if (result == VMResult::ERROR) {
+            return false;
+        }
+        if (result == VMResult::FINISHED) {
+            break;
+        }
+    }
+    
+    return !hasError();
+}
+
+Value VMState::pop() {
     if (stack_.empty()) {
         setError("Stack underflow");
         return Value::Null();
@@ -466,8 +530,8 @@ VMResult VMState::executeInstruction() {
                 return VMResult::ERROR;
             }
             
-            // Stack layout: [..., arg1, arg2, ..., argN, receiver]
-            // Receiver is on top, arguments below
+            // Stack layout: [..., receiver, arg1, arg2, ..., argN]
+            // Arguments are on top, receiver is below them
             
             const std::string& funcName = module_.functions[funcIndex];
             
@@ -482,11 +546,12 @@ VMResult VMState::executeInstruction() {
                         setError("log() requires at least 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
+                    // Pop arguments in reverse order (last arg is on top)
                     Value arg = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop(); // Pop remaining args
+                    Value receiver = pop(); // Pop receiver
                     platform_.console_log(arg.toString());
                     
-                    for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
                 }
@@ -496,11 +561,11 @@ VMResult VMState::executeInstruction() {
                         setError("warn() requires at least 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value arg = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
                     platform_.console_warn(arg.toString());
                     
-                    for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
                 }
@@ -510,11 +575,11 @@ VMResult VMState::executeInstruction() {
                         setError("error() requires at least 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value arg = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
                     platform_.console_error(arg.toString());
                     
-                    for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
                 }
@@ -1219,11 +1284,11 @@ VMResult VMState::executeInstruction() {
                         setError("print() requires at least 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value arg = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
                     platform_.console_print(arg.toString());
                     
-                    for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
                 }

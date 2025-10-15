@@ -10,11 +10,15 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace dialos
 {
     namespace vm
     {
+        // Forward declarations to avoid circular dependencies
+        class VMState;
+        struct Value;
 
         // Native function IDs
         // Organization: High byte = namespace, Low byte = function within namespace
@@ -547,7 +551,8 @@ namespace dialos
         class PlatformInterface
         {
         public:
-            virtual ~PlatformInterface() = default;
+            PlatformInterface();
+            virtual ~PlatformInterface();
 
             // ===== Console Operations =====
             virtual void console_print(const std::string &msg) = 0;
@@ -663,6 +668,45 @@ namespace dialos
             // ===== IPC Operations =====
             virtual bool ipc_send(const std::string &appId, const std::string &message) { return false; }
             virtual void ipc_broadcast(const std::string &message) {}
+
+            // ===== Callback System =====
+            /**
+             * Set the VM instance for callback invocation
+             * Must be called during VM initialization before callbacks can be invoked
+             */
+            void setVM(VMState* vm) { vm_ = vm; }
+
+            /**
+             * Register a callback function for an event
+             * @param eventName The name of the event (e.g., "encoder.onTurn", "touch.onPress")
+             * @param callback The function value to call when event occurs
+             */
+            void registerCallback(const std::string& eventName, const Value& callback);
+
+            /**
+             * Get a registered callback
+             * @param eventName The name of the event
+             * @return Pointer to the callback Value, or nullptr if not registered
+             */
+            const Value* getCallback(const std::string& eventName) const;
+
+            /**
+             * Invoke a callback immediately with given arguments
+             * Uses immediate invocation (no event queue) as per minimal design
+             * @param eventName The name of the event
+             * @param args Vector of argument values to pass to callback
+             * @return true if callback was invoked, false if not registered or invocation failed
+             */
+            bool invokeCallback(const std::string& eventName, const std::vector<Value>& args);
+
+        protected:
+            // VM reference for callback invocation
+            VMState* vm_ = nullptr;
+
+            // Callback registry: eventName -> callback function
+            // Using unique_ptr to avoid needing complete Value type in header
+            struct CallbackRegistry;
+            std::unique_ptr<CallbackRegistry> callbacks_;
         };
 
     } // namespace vm
