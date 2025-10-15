@@ -1,0 +1,27 @@
+// Graphics test - draw various shapes
+
+// Clear screen to black
+os.display.clear(0x0000);
+
+// Draw a diagonal line (cyan)
+os.display.drawLine(50, 50, 190, 190, 0x07FF);
+
+// Draw a horizontal line (red)
+os.display.drawLine(20, 120, 220, 120, 0xF800);
+
+// Draw a vertical line (green)
+os.display.drawLine(120, 20, 120, 220, 0x07E0);
+
+// Draw some circles
+os.display.drawCircle(60, 60, 30, 0xFFE0, false);  // Yellow outline
+os.display.drawCircle(180, 60, 25, 0xF81F, true);  // Magenta filled
+
+// Draw some rectangles
+os.display.drawRect(40, 160, 60, 40, 0x001F, false);  // Blue outline
+os.display.drawRect(140, 160, 60, 40, 0xFFF0, true);  // White filled
+
+// Draw some text
+os.display.drawText(60, 10, "Graphics Test", 0xFFFF, 2);
+os.display.drawText(70, 225, "dialOS", 0x07FF, 1);
+
+os.console.log("Graphics test complete!");

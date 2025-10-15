@@ -116,10 +116,10 @@ bool SDLPlatform::initialize(const std::string& title) {
     program_output("dialOS SDL Emulator initialized");
     program_output("Hardware simulation active:");
     program_output("- Display: 240x240 circular TFT (scaled 2x)");
-    program_output("- Encoder: Mouse wheel + left click");
-    program_output("- Touch: Mouse click in display area");
+    program_output("- Encoder: Mouse wheel rotation + right click button");
+    program_output("- Touch: Left click in circular display area");
     program_output("- RFID: Press 'R' to simulate card");
-    program_output("- Buzzer: Audio simulation");
+    program_output("- Buzzer: Press 'B' for test beep");
     program_output("- Debug: Press 'D' to toggle debug overlay");
     program_output("- Quit: Press ESC or close window");
 
@@ -202,26 +202,27 @@ bool SDLPlatform::pollEvents() {
                 
             case SDL_MOUSEBUTTONDOWN:
                 if (event.button.button == SDL_BUTTON_LEFT) {
+                    // Left mouse button - touch screen in display area
                     int mouseX = event.button.x / WINDOW_SCALE;
                     int mouseY = event.button.y / WINDOW_SCALE;
                     
                     if (isInCircularDisplay(mouseX, mouseY)) {
-                        // Touch in display area
                         touch_.pressed = true;
                         touch_.x = mouseX;
                         touch_.y = mouseY;
                         touch_.lastUpdate = std::chrono::steady_clock::now();
-                    } else {
-                        // Encoder button (outside display area)
-                        encoder_.pressed = true;
-                        encoder_.lastUpdate = std::chrono::steady_clock::now();
                     }
+                } else if (event.button.button == SDL_BUTTON_RIGHT) {
+                    // Right mouse button - encoder button
+                    encoder_.pressed = true;
+                    encoder_.lastUpdate = std::chrono::steady_clock::now();
                 }
                 break;
                 
             case SDL_MOUSEBUTTONUP:
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     touch_.pressed = false;
+                } else if (event.button.button == SDL_BUTTON_RIGHT) {
                     encoder_.pressed = false;
                 }
                 break;
@@ -248,32 +249,14 @@ bool SDLPlatform::pollEvents() {
 void SDLPlatform::present() {
     if (!initialized_) return;
     
-    // Clear entire window with black at the beginning of each frame
-    SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
-    SDL_RenderClear(renderer_);
-    
-    // Fill circular display area with current background color
-    if (backgroundColor_ != 0) {
-        Color bgColor(backgroundColor_);
-        SDL_SetRenderDrawColor(renderer_, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
-        
-        for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-            for (int x = 0; x < DISPLAY_WIDTH; x++) {
-                if (isInCircularDisplay(x, y)) {
-                    SDL_Rect rect = {
-                        x * WINDOW_SCALE, 
-                        y * WINDOW_SCALE, 
-                        WINDOW_SCALE, 
-                        WINDOW_SCALE
-                    };
-                    SDL_RenderFillRect(renderer_, &rect);
-                }
-            }
-        }
-    }
+    // Note: We don't clear here - display_clear() does that explicitly
+    // This allows drawing commands to accumulate in the render buffer
     
     // Draw circular mask for display
     drawCircularMask();
+    
+    // Draw encoder position indicator
+    drawEncoderIndicator();
     
     // Draw console area
     renderConsoleArea();
@@ -337,7 +320,13 @@ void SDLPlatform::display_drawPixel(int x, int y, uint32_t color) {
 }
 
 void SDLPlatform::display_drawLine(int x1, int y1, int x2, int y2, uint32_t color) {
-    if (!initialized_) return;
+    if (!initialized_) {
+        program_output("Error: display_drawLine called before initialization");
+        return;
+    }
+    else{
+        program_output("Should draw line from " + std::to_string(x1) + "," + std::to_string(y1) + " to " + std::to_string(x2) + "," + std::to_string(y2));
+    }
     
     Color lineColor(color);
     SDL_SetRenderDrawColor(renderer_, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
@@ -392,11 +381,21 @@ void SDLPlatform::display_drawCircle(int x, int y, int radius, uint32_t color, b
     }
 }
 
-void SDLPlatform::display_setBrightness(uint8_t brightness) {
-    brightness_ = brightness;
+void SDLPlatform::display_setBrightness(int brightness) {
+    brightness_ = static_cast<uint8_t>(std::max(0, std::min(255, brightness)));
     // In a real implementation, this would affect the backlight
     // Here we could modify the alpha channel of all rendering
 }
+
+int SDLPlatform::display_getWidth() {
+    return DISPLAY_WIDTH;
+}
+
+int SDLPlatform::display_getHeight() {
+    return DISPLAY_HEIGHT;
+}
+
+// === Encoder Operations ===
 
 bool SDLPlatform::encoder_getButton() {
     return encoder_.pressed;
@@ -408,9 +407,23 @@ int SDLPlatform::encoder_getDelta() {
     return delta;
 }
 
+int SDLPlatform::encoder_getPosition() {
+    return encoder_.position;
+}
+
 void SDLPlatform::encoder_reset() {
     encoder_.position = 0;
     encoder_.lastPosition = 0;
+}
+
+// === Touch Operations ===
+
+int SDLPlatform::touch_getX() {
+    return touch_.x;
+}
+
+int SDLPlatform::touch_getY() {
+    return touch_.y;
 }
 
 bool SDLPlatform::touch_isPressed() {
@@ -426,17 +439,99 @@ bool SDLPlatform::touch_isInDisplay(int x, int y) {
     return isInCircularDisplay(x, y);
 }
 
-bool SDLPlatform::rfid_isCardPresent() {
+// === RFID Operations ===
+
+std::string SDLPlatform::rfid_read() {
+    return rfid_.cardPresent ? rfid_.cardUID : "";
+}
+
+bool SDLPlatform::rfid_isPresent() {
     return rfid_.cardPresent;
 }
 
-std::string SDLPlatform::rfid_getCardUID() {
-    return rfid_.cardUID;
+// === File Operations (Stubs) ===
+
+int SDLPlatform::file_open(const std::string& path, const std::string& mode) {
+    // TODO: Implement file system simulation
+    program_output("File open: " + path + " mode: " + mode);
+    return -1; // Not implemented
 }
 
-void SDLPlatform::buzzer_beep(uint32_t frequency, uint32_t duration) {
+std::string SDLPlatform::file_read(int handle, int size) {
+    return ""; // Not implemented
+}
+
+int SDLPlatform::file_write(int handle, const std::string& data) {
+    return -1; // Not implemented
+}
+
+void SDLPlatform::file_close(int handle) {
+    // Not implemented
+}
+
+bool SDLPlatform::file_exists(const std::string& path) {
+    return false; // Not implemented
+}
+
+bool SDLPlatform::file_delete(const std::string& path) {
+    return false; // Not implemented
+}
+
+int SDLPlatform::file_size(const std::string& path) {
+    return -1; // Not implemented
+}
+
+// === GPIO Operations ===
+
+void SDLPlatform::gpio_pinMode(int pin, int mode) {
+    gpioPins_[pin].mode = static_cast<uint8_t>(mode);
+    program_output("GPIO" + std::to_string(pin) + " mode: " + std::to_string(mode));
+}
+
+void SDLPlatform::gpio_digitalWrite(int pin, int value) {
+    if (gpioPins_[pin].mode == GPIO_OUTPUT) {
+        gpioPins_[pin].digitalValue = (value != 0);
+        program_output("GPIO" + std::to_string(pin) + " write: " + (value ? "HIGH" : "LOW"));
+    }
+}
+
+int SDLPlatform::gpio_digitalRead(int pin) {
+    return gpioPins_[pin].digitalValue ? 1 : 0;
+}
+
+void SDLPlatform::gpio_analogWrite(int pin, int value) {
+    if (gpioPins_[pin].mode == GPIO_OUTPUT) {
+        gpioPins_[pin].analogValue = static_cast<uint16_t>(value);
+        program_output("GPIO" + std::to_string(pin) + " PWM: " + std::to_string(value));
+    }
+}
+
+int SDLPlatform::gpio_analogRead(int pin) {
+    return static_cast<int>(gpioPins_[pin].analogValue);
+}
+
+// === I2C Operations (Stubs) ===
+
+std::vector<int> SDLPlatform::i2c_scan() {
+    program_output("I2C scan");
+    return {}; // Not implemented
+}
+
+bool SDLPlatform::i2c_write(int address, const std::vector<uint8_t>& data) {
+    program_output("I2C write to 0x" + std::to_string(address));
+    return false; // Not implemented
+}
+
+std::vector<uint8_t> SDLPlatform::i2c_read(int address, int length) {
+    program_output("I2C read from 0x" + std::to_string(address));
+    return {}; // Not implemented
+}
+
+// === Buzzer Operations ===
+
+void SDLPlatform::buzzer_beep(int frequency, int duration) {
     buzzer_.isPlaying = true;
-    buzzer_.frequency = frequency;
+    buzzer_.frequency = static_cast<uint32_t>(frequency);
     buzzer_.endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(duration);
     
     // Simple audio simulation - just log for now
@@ -448,6 +543,36 @@ void SDLPlatform::buzzer_stop() {
     buzzer_.isPlaying = false;
 }
 
+// === Timer Operations (Stubs) ===
+
+int SDLPlatform::timer_setTimeout(int ms) {
+    // TODO: Implement timer system
+    program_output("setTimeout: " + std::to_string(ms) + "ms");
+    return -1; // Not implemented
+}
+
+int SDLPlatform::timer_setInterval(int ms) {
+    program_output("setInterval: " + std::to_string(ms) + "ms");
+    return -1; // Not implemented
+}
+
+void SDLPlatform::timer_clear(int id) {
+    program_output("clearTimer: " + std::to_string(id));
+    // Not implemented
+}
+
+// === Memory Operations (Stubs) ===
+
+int SDLPlatform::memory_getAvailable() {
+    return 0; // Not implemented - would need to track VM heap
+}
+
+int SDLPlatform::memory_getUsage() {
+    return 0; // Not implemented - would need to track VM allocations
+}
+
+// === System Operations ===
+
 uint32_t SDLPlatform::system_getTime() {
     auto now = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime_);
@@ -458,21 +583,33 @@ void SDLPlatform::system_sleep(uint32_t ms) {
     SDL_Delay(ms);
 }
 
-uint64_t SDLPlatform::system_getRTC() {
+uint32_t SDLPlatform::system_getRTC() {
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch());
-    return static_cast<uint64_t>(timestamp.count()) + rtcOffset_;
+    return static_cast<uint32_t>(timestamp.count()) + static_cast<uint32_t>(rtcOffset_);
 }
 
-void SDLPlatform::system_setRTC(uint64_t timestamp) {
+void SDLPlatform::system_setRTC(uint32_t timestamp) {
     auto now = std::chrono::system_clock::now();
     auto current = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch());
-    rtcOffset_ = timestamp - static_cast<uint64_t>(current.count());
+    rtcOffset_ = static_cast<int64_t>(timestamp) - static_cast<int64_t>(current.count());
 }
+
+// === Console Operations ===
 
 void SDLPlatform::console_log(const std::string& msg) {
     std::cout << msg << std::endl;
     outputLog_.addLine(msg);
+}
+
+void SDLPlatform::console_warn(const std::string& msg) {
+    std::cout << "[WARN] " << msg << std::endl;
+    outputLog_.addLine("[WARN] " + msg);
+}
+
+void SDLPlatform::console_error(const std::string& msg) {
+    std::cerr << "[ERROR] " << msg << std::endl;
+    outputLog_.addLine("[ERROR] " + msg);
 }
 
 void SDLPlatform::program_output(const std::string& msg) {
@@ -492,30 +629,83 @@ bool SDLPlatform::isInCircularDisplay(int x, int y) const {
 void SDLPlatform::drawCircularMask() {
     if (!initialized_) return;
     
-    // Draw border around circular display
+    // Draw border around circular display (gray ring at the edge)
     SDL_SetRenderDrawColor(renderer_, 64, 64, 64, 255);
     
-    // Draw outer border circle
-    int borderRadius = DISPLAY_RADIUS + 2;
-    for (int w = 0; w < borderRadius * 2; w++) {
-        for (int h = 0; h < borderRadius * 2; h++) {
-            int dx = borderRadius - w;
-            int dy = borderRadius - h;
+    // Border: 2-pixel ring just inside the display radius
+    // This keeps it fully visible within the display bounds
+    int outerRadius = DISPLAY_RADIUS;      // 120 - edge of circle
+    int innerRadius = DISPLAY_RADIUS - 2;  // 118 - 2 pixels inward
+    
+    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+        for (int x = 0; x < DISPLAY_WIDTH; x++) {
+            int dx = x - CENTER_X;
+            int dy = y - CENTER_Y;
             int distSq = dx*dx + dy*dy;
             
-            if (distSq >= (DISPLAY_RADIUS * DISPLAY_RADIUS) && 
-                distSq <= (borderRadius * borderRadius)) {
-                
-                int px = CENTER_X + dx;
-                int py = CENTER_Y + dy;
+            // Draw pixels in the border ring (between inner and outer radius)
+            if (distSq >= (innerRadius * innerRadius) && 
+                distSq <= (outerRadius * outerRadius)) {
                 
                 SDL_Rect rect = {
-                    px * WINDOW_SCALE, 
-                    py * WINDOW_SCALE, 
+                    x * WINDOW_SCALE, 
+                    y * WINDOW_SCALE, 
                     WINDOW_SCALE, 
                     WINDOW_SCALE
                 };
                 SDL_RenderFillRect(renderer_, &rect);
+            }
+        }
+    }
+}
+
+void SDLPlatform::drawEncoderIndicator() {
+    if (!initialized_) return;
+    
+    // Calculate angle from encoder position
+    // M5 Dial has 64 pulses per revolution, so normalize to 0-360 degrees
+    const int PULSES_PER_REV = 64;
+    float angle = (encoder_.position % PULSES_PER_REV) * (2.0f * 3.14159f / PULSES_PER_REV);
+    
+    // Draw a small arc section of the border in orange to indicate position
+    // Orange color (RGB565: 0xFD20 -> RGB888: 255, 165, 0)
+    SDL_SetRenderDrawColor(renderer_, 255, 165, 0, 255);
+    
+    // Use same radius range as the border
+    int outerRadius = DISPLAY_RADIUS;      // 120 - edge of circle
+    int innerRadius = DISPLAY_RADIUS - 2;  // 118 - 2 pixels inward
+    
+    // Draw a small arc (about 5 degrees on each side of the position)
+    const float arcSpan = 0.08f;  // radians (~5 degrees)
+    
+    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+        for (int x = 0; x < DISPLAY_WIDTH; x++) {
+            int dx = x - CENTER_X;
+            int dy = y - CENTER_Y;
+            int distSq = dx*dx + dy*dy;
+            
+            // Check if pixel is in the border ring
+            if (distSq >= (innerRadius * innerRadius) && 
+                distSq <= (outerRadius * outerRadius)) {
+                
+                // Calculate angle of this pixel
+                float pixelAngle = atan2((float)dy, (float)dx);
+                
+                // Normalize angle difference to -PI to PI range
+                float angleDiff = pixelAngle - angle;
+                while (angleDiff > 3.14159f) angleDiff -= 2.0f * 3.14159f;
+                while (angleDiff < -3.14159f) angleDiff += 2.0f * 3.14159f;
+                
+                // Draw if within arc span
+                if (fabs(angleDiff) <= arcSpan) {
+                    SDL_Rect rect = {
+                        x * WINDOW_SCALE, 
+                        y * WINDOW_SCALE, 
+                        WINDOW_SCALE, 
+                        WINDOW_SCALE
+                    };
+                    SDL_RenderFillRect(renderer_, &rect);
+                }
             }
         }
     }
@@ -616,33 +806,7 @@ void SDLPlatform::debug_drawOverlay() {
     SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_NONE);
 }
 
-// Additional GPIO and peripheral simulation methods
-void SDLPlatform::gpio_pinMode(uint8_t pin, uint8_t mode) {
-    gpioPins_[pin].mode = mode;
-    program_output("GPIO" + std::to_string(pin) + " mode: " + std::to_string(mode));
-}
-
-void SDLPlatform::gpio_digitalWrite(uint8_t pin, bool value) {
-    if (gpioPins_[pin].mode == GPIO_OUTPUT) {
-        gpioPins_[pin].digitalValue = value;
-        program_output("GPIO" + std::to_string(pin) + " write: " + (value ? "HIGH" : "LOW"));
-    }
-}
-
-bool SDLPlatform::gpio_digitalRead(uint8_t pin) {
-    return gpioPins_[pin].digitalValue;
-}
-
-void SDLPlatform::gpio_analogWrite(uint8_t pin, uint16_t value) {
-    if (gpioPins_[pin].mode == GPIO_OUTPUT) {
-        gpioPins_[pin].analogValue = value;
-        program_output("GPIO" + std::to_string(pin) + " PWM: " + std::to_string(value));
-    }
-}
-
-uint16_t SDLPlatform::gpio_analogRead(uint8_t pin) {
-    return gpioPins_[pin].analogValue;
-}
+// Additional peripheral simulation methods (not part of PlatformInterface)
 
 uint8_t SDLPlatform::power_getBatteryLevel() {
     return power_.batteryLevel;

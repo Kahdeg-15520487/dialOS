@@ -1,5 +1,33 @@
 # dialOS Kernel API Specification
 
+## Table of Contents
+
+| # | Namespace | Description | Implemented | Planned | Blocked |
+|---|-----------|-------------|-------------|---------|---------|
+| [1](#1-console-apis-osconsole) | `os.console.*` | Console logging and output | 1 | 3 | 0 |
+| [2](#2-display-apis-osdisplay) | `os.display.*` | Display and graphics rendering | 2 | 7 | 0 |
+| [3](#3-encoder-apis-osencoder) | `os.encoder.*` | Rotary encoder input | 2 | 2 | 2 |
+| [4](#4-touch-apis-ostouch) | `os.touch.*` | Touchscreen input | 0 | 1 | 3 |
+| [5](#5-system-apis-ossystem) | `os.system.*` | System time and control | 2 | 3 | 0 |
+| [6](#6-memory-apis-osmemory) | `os.memory.*` | Memory management | 0 | 4 | 0 |
+| [7](#7-file-apis-osfile) | `os.file.*` | File operations | 0 | 7 | 0 |
+| [8](#8-directory-apis-osdir) | `os.dir.*` | Directory operations | 0 | 4 | 0 |
+| [9](#9-gpio-apis-osgpio) | `os.gpio.*` | GPIO pin control | 0 | 5 | 0 |
+| [10](#10-i2c-apis-osi2c) | `os.i2c.*` | I2C communication | 0 | 3 | 0 |
+| [11](#11-buzzer-apis-osbuzzer) | `os.buzzer.*` | Buzzer/audio output | 0 | 3 | 0 |
+| [12](#12-timer-apis-ostimer) | `os.timer.*` | Timers and intervals | 0 | 0 | 4 |
+| [13](#13-rfid-apis-osrfid) | `os.rfid.*` | RFID card reader | 0 | 2 | 2 |
+| [14](#14-power-apis-ospower) | `os.power.*` | Power management | 0 | 3 | 0 |
+| [15](#15-app-apis-osapp) | `os.app.*` | Application lifecycle | 0 | 2 | 0 |
+| **Total** | **15 namespaces** | **95 functions** | **7** | **73** | **15** |
+
+**Legend:**
+- ✅ **Implemented** - Function is working and tested
+- 🔜 **Planned** - Needs implementation
+- 🔒 **Blocked** - Requires function/callback support in VM
+
+---
+
 ## Data Types
 All parameters use the VM Value system:
 - `int` - Int32 value
@@ -16,6 +44,13 @@ All APIs under `os.*` namespace are **CALL_NATIVE** opcodes.
 ---
 
 ## 1. Console APIs (`os.console.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.console.log()` | `message: string` | `null` | ✅ Implemented |
+| `os.console.warn()` | `message: string` | `null` | 🔜 Planned |
+| `os.console.error()` | `message: string` | `null` | 🔜 Planned |
+| `os.console.clear()` | none | `null` | 🔜 Planned |
 
 ### `os.console.log(message: string) -> null`
 Log informational message to console
@@ -44,6 +79,18 @@ Clear console buffer
 ---
 
 ## 2. Display APIs (`os.display.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.display.clear()` | `color: int` | `null` | ✅ Implemented |
+| `os.display.drawText()` | `x: int, y: int, text: string, color: int, size: int` | `null` | ✅ Implemented |
+| `os.display.drawPixel()` | `x: int, y: int, color: int` | `null` | 🔜 Planned |
+| `os.display.drawLine()` | `x1: int, y1: int, x2: int, y2: int, color: int` | `null` | 🔜 Planned |
+| `os.display.drawRect()` | `x: int, y: int, w: int, h: int, color: int, filled: bool` | `null` | 🔜 Planned |
+| `os.display.drawCircle()` | `x: int, y: int, r: int, color: int, filled: bool` | `null` | 🔜 Planned |
+| `os.display.setBrightness()` | `level: int` | `null` | 🔜 Planned |
+| `os.display.getSize()` | none | `object` | 🔜 Planned |
+| `os.display.setTitle()` | `text: string` | `null` | 🔜 Planned |
 
 ### `os.display.clear(color: int) -> null`
 Clear screen with specified color
@@ -122,6 +169,15 @@ Set app title bar text
 
 ## 3. Encoder APIs (`os.encoder.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.encoder.getButton()` | none | `bool` | ✅ Implemented |
+| `os.encoder.getDelta()` | none | `int` | ✅ Implemented |
+| `os.encoder.getPosition()` | none | `int` | 🔜 Planned |
+| `os.encoder.reset()` | none | `null` | 🔜 Planned |
+| `os.encoder.onTurn()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.encoder.onButton()` | `callback: function` | `null` | 🔒 Blocked |
+
 ### `os.encoder.getButton() -> bool`
 Get current button state
 - **Parameters**: none
@@ -162,6 +218,13 @@ Register button press callback
 
 ## 4. Touch APIs (`os.touch.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.touch.getPosition()` | none | `object` | 🔜 Planned |
+| `os.touch.onPress()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.touch.onRelease()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.touch.onDrag()` | `callback: function` | `null` | 🔒 Blocked |
+
 ### `os.touch.getPosition() -> object`
 Get current touch coordinates
 - **Parameters**: none
@@ -189,6 +252,14 @@ Register touch drag callback
 ---
 
 ## 5. System APIs (`os.system.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.system.getTime()` | none | `int` | ✅ Implemented |
+| `os.system.sleep()` | `ms: int` | `null` | ✅ Implemented |
+| `os.system.yield()` | none | `null` | 🔜 Planned |
+| `os.system.getRTC()` | none | `object` | 🔜 Planned |
+| `os.system.setRTC()` | `datetime: object` | `null` | 🔜 Planned |
 
 ### `os.system.getTime() -> int`
 Get system uptime in milliseconds
@@ -224,6 +295,13 @@ Set RTC
 
 ## 6. Memory APIs (`os.memory.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.memory.getAvailable()` | none | `int` | 🔜 Planned |
+| `os.memory.getUsage()` | none | `int` | 🔜 Planned |
+| `os.memory.allocate()` | `size: int` | `int` | 🔜 Planned |
+| `os.memory.free()` | `handle: int` | `null` | 🔜 Planned |
+
 ### `os.memory.getAvailable() -> int`
 Query available heap
 - **Parameters**: none
@@ -251,6 +329,16 @@ Release memory
 ---
 
 ## 7. File APIs (`os.file.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.file.open()` | `path: string, mode: string` | `int` | 🔜 Planned |
+| `os.file.read()` | `handle: int, size: int` | `string` | 🔜 Planned |
+| `os.file.write()` | `handle: int, data: string` | `int` | 🔜 Planned |
+| `os.file.close()` | `handle: int` | `null` | 🔜 Planned |
+| `os.file.exists()` | `path: string` | `bool` | 🔜 Planned |
+| `os.file.delete()` | `path: string` | `bool` | 🔜 Planned |
+| `os.file.size()` | `path: string` | `int` | 🔜 Planned |
 
 ### `os.file.open(path: string, mode: string) -> int`
 Open file
@@ -304,6 +392,13 @@ Get file size
 
 ## 8. Directory APIs (`os.dir.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.dir.list()` | `path: string` | `array` | 🔜 Planned |
+| `os.dir.create()` | `path: string` | `bool` | 🔜 Planned |
+| `os.dir.delete()` | `path: string` | `bool` | 🔜 Planned |
+| `os.dir.exists()` | `path: string` | `bool` | 🔜 Planned |
+
 ### `os.dir.list(path: string) -> array`
 List directory contents
 - **Parameters**: `path` (string) - Directory path
@@ -331,6 +426,14 @@ Check if directory exists
 ---
 
 ## 9. GPIO APIs (`os.gpio.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.gpio.pinMode()` | `pin: int, mode: string` | `null` | 🔜 Planned |
+| `os.gpio.digitalWrite()` | `pin: int, value: int` | `null` | 🔜 Planned |
+| `os.gpio.digitalRead()` | `pin: int` | `int` | 🔜 Planned |
+| `os.gpio.analogWrite()` | `pin: int, value: int` | `null` | 🔜 Planned |
+| `os.gpio.analogRead()` | `pin: int` | `int` | 🔜 Planned |
 
 ### `os.gpio.pinMode(pin: int, mode: string) -> null`
 Set pin mode
@@ -372,6 +475,12 @@ ADC read
 
 ## 10. I2C APIs (`os.i2c.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.i2c.scan()` | none | `array` | 🔜 Planned |
+| `os.i2c.write()` | `address: int, data: string` | `bool` | 🔜 Planned |
+| `os.i2c.read()` | `address: int, length: int` | `string` | 🔜 Planned |
+
 ### `os.i2c.scan() -> array`
 Scan for I2C devices
 - **Parameters**: none
@@ -398,6 +507,12 @@ Read from I2C device
 
 ## 11. Buzzer APIs (`os.buzzer.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.buzzer.beep()` | `frequency: int, duration: int` | `null` | 🔜 Planned |
+| `os.buzzer.playMelody()` | `notes: array` | `null` | 🔜 Planned |
+| `os.buzzer.stop()` | none | `null` | 🔜 Planned |
+
 ### `os.buzzer.beep(frequency: int, duration: int) -> null`
 Play tone
 - **Parameters**:
@@ -421,6 +536,13 @@ Stop buzzing
 ---
 
 ## 12. Timer APIs (`os.timer.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.timer.setTimeout()` | `callback: function, ms: int` | `int` | 🔒 Blocked |
+| `os.timer.setInterval()` | `callback: function, ms: int` | `int` | 🔒 Blocked |
+| `os.timer.clearTimeout()` | `id: int` | `null` | 🔒 Blocked |
+| `os.timer.clearInterval()` | `id: int` | `null` | 🔒 Blocked |
 
 ### `os.timer.setTimeout(callback: function, ms: int) -> int`
 One-shot timer
@@ -454,6 +576,13 @@ Cancel interval
 
 ## 13. RFID APIs (`os.rfid.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.rfid.read()` | none | `string` | 🔜 Planned |
+| `os.rfid.isPresent()` | none | `bool` | 🔜 Planned |
+| `os.rfid.onCardDetected()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.rfid.onCardRemoved()` | `callback: function` | `null` | 🔒 Blocked |
+
 ### `os.rfid.read() -> string`
 Read card UID
 - **Parameters**: none
@@ -482,6 +611,12 @@ Card removed event
 
 ## 14. Power APIs (`os.power.*`)
 
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.power.sleep()` | none | `null` | 🔜 Planned |
+| `os.power.getBatteryLevel()` | none | `int` | 🔜 Planned |
+| `os.power.isCharging()` | none | `bool` | 🔜 Planned |
+
 ### `os.power.sleep() -> null`
 Enter sleep mode (wake on button/RTC)
 - **Parameters**: none
@@ -503,6 +638,11 @@ Check if charging
 ---
 
 ## 15. App APIs (`os.app.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.app.exit()` | none | `null` | 🔜 Planned |
+| `os.app.getInfo()` | none | `object` | 🔜 Planned |
 
 ### `os.app.exit() -> null`
 Terminate current app

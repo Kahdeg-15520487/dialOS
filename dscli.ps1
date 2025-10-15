@@ -203,7 +203,8 @@ function Setup-Compiler {
         
     Push-Location $BuildDir
     try {
-        & cmake --build . --config Debug 2>&1 | Out-Null
+        # Show build output to see compilation progress and any warnings/errors
+        & cmake --build . --config Debug
         if ($LASTEXITCODE -ne 0) {
             Write-Host "❌ Compiler build failed" -ForegroundColor Red
             exit 1

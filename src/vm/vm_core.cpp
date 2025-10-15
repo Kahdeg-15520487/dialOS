@@ -471,136 +471,716 @@ VMResult VMState::executeInstruction() {
             
             const std::string& funcName = module_.functions[funcIndex];
             
-            // Dispatch to native functions based on name
-            // os.console.log(message)
-            if (funcName == "log") {
-                if (argCount >= 1) {
-                    Value receiver = pop();  // Pop console object
-                    Value arg = pop();       // Pop message argument
-                    std::string message = arg.toString();
-                    platform_.console_log(message);
-                    
-                    // Pop any remaining arguments
-                    for (uint8_t i = 1; i < argCount; i++) {
-                        pop();
+            // Get native function ID from name
+            NativeFunctionID funcID = getNativeFunctionID(funcName);
+            
+            // Dispatch to native functions using switch (compiler can optimize to jump table)
+            switch (funcID) {
+                // ===== Console Functions =====
+                case NativeFunctionID::CONSOLE_LOG: {
+                    if (argCount < 1) {
+                        setError("log() requires at least 1 argument");
+                        return VMResult::ERROR;
                     }
+                    Value receiver = pop();
+                    Value arg = pop();
+                    platform_.console_log(arg.toString());
                     
-                    push(Value::Null());  // Return value
-                } else {
-                    setError("log() requires at least 1 argument");
-                    return VMResult::ERROR;
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
                 }
-            }
-            // os.display.clear(color)
-            else if (funcName == "clear") {
-                if (argCount >= 1) {
-                    Value receiver = pop();  // Pop display object
-                    Value colorVal = pop();  // Pop color argument
+                
+                case NativeFunctionID::CONSOLE_WARN: {
+                    if (argCount < 1) {
+                        setError("warn() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value arg = pop();
+                    platform_.console_warn(arg.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::CONSOLE_ERROR: {
+                    if (argCount < 1) {
+                        setError("error() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value arg = pop();
+                    platform_.console_error(arg.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Display Functions =====
+                case NativeFunctionID::DISPLAY_CLEAR: {
+                    if (argCount < 1) {
+                        setError("clear() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value colorVal = pop();
                     uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0;
                     platform_.display_clear(color);
                     
-                    // Pop any remaining arguments
-                    for (uint8_t i = 1; i < argCount; i++) {
-                        pop();
-                    }
-                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
-                } else {
-                    setError("clear() requires at least 1 argument");
-                    return VMResult::ERROR;
+                    break;
                 }
-            }
-            // os.display.drawText(x, y, text, color, size)
-            else if (funcName == "drawText") {
-                if (argCount >= 5) {
-                    Value receiver = pop();  // Pop display object
+                
+                case NativeFunctionID::DISPLAY_DRAW_TEXT: {
+                    if (argCount < 5) {
+                        setError("drawText() requires 5 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
                     Value sizeVal = pop();
                     Value colorVal = pop();
                     Value textVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
                     
-                    int x = xVal.isInt32() ? xVal.int32Val : 0;
-                    int y = yVal.isInt32() ? yVal.int32Val : 0;
-                    std::string text = textVal.toString();
-                    uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF;
-                    int size = sizeVal.isInt32() ? sizeVal.int32Val : 1;
+                    platform_.display_drawText(
+                        xVal.isInt32() ? xVal.int32Val : 0,
+                        yVal.isInt32() ? yVal.int32Val : 0,
+                        textVal.toString(),
+                        colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF,
+                        sizeVal.isInt32() ? sizeVal.int32Val : 1
+                    );
                     
-                    platform_.display_drawText(x, y, text, color, size);
+                    for (uint8_t i = 5; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_DRAW_RECT: {
+                    if (argCount < 6) {
+                        setError("drawRect() requires 6 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value filledVal = pop();
+                    Value colorVal = pop();
+                    Value hVal = pop();
+                    Value wVal = pop();
+                    Value yVal = pop();
+                    Value xVal = pop();
                     
-                    // Pop any remaining arguments
-                    for (uint8_t i = 5; i < argCount; i++) {
+                    platform_.display_drawRect(
+                        xVal.isInt32() ? xVal.int32Val : 0,
+                        yVal.isInt32() ? yVal.int32Val : 0,
+                        wVal.isInt32() ? wVal.int32Val : 0,
+                        hVal.isInt32() ? hVal.int32Val : 0,
+                        colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF,
+                        filledVal.isTruthy()
+                    );
+                    
+                    for (uint8_t i = 6; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_DRAW_CIRCLE: {
+                    if (argCount < 5) {
+                        setError("drawCircle() requires 5 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value filledVal = pop();
+                    Value colorVal = pop();
+                    Value rVal = pop();
+                    Value yVal = pop();
+                    Value xVal = pop();
+                    
+                    platform_.display_drawCircle(
+                        xVal.isInt32() ? xVal.int32Val : 0,
+                        yVal.isInt32() ? yVal.int32Val : 0,
+                        rVal.isInt32() ? rVal.int32Val : 0,
+                        colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF,
+                        filledVal.isTruthy()
+                    );
+                    
+                    for (uint8_t i = 5; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_DRAW_LINE: {
+                    platform_.program_output("DISPLAY_DRAW_LINE called");
+                    if (argCount < 5) {
+                        setError("drawLine() requires 5 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value colorVal = pop();
+                    Value y2Val = pop();
+                    Value x2Val = pop();
+                    Value y1Val = pop();
+                    Value x1Val = pop();
+                    
+                    platform_.display_drawLine(
+                        x1Val.isInt32() ? x1Val.int32Val : 0,
+                        y1Val.isInt32() ? y1Val.int32Val : 0,
+                        x2Val.isInt32() ? x2Val.int32Val : 0,
+                        y2Val.isInt32() ? y2Val.int32Val : 0,
+                        colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF
+                    );
+                    
+                    for (uint8_t i = 5; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_DRAW_PIXEL: {
+                    if (argCount < 3) {
+                        setError("drawPixel() requires 3 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value colorVal = pop();
+                    Value yVal = pop();
+                    Value xVal = pop();
+                    
+                    platform_.display_drawPixel(
+                        xVal.isInt32() ? xVal.int32Val : 0,
+                        yVal.isInt32() ? yVal.int32Val : 0,
+                        colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF
+                    );
+                    
+                    for (uint8_t i = 3; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_SET_BRIGHTNESS: {
+                    if (argCount < 1) {
+                        setError("setBrightness() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value levelVal = pop();
+                    
+                    platform_.display_setBrightness(levelVal.isInt32() ? levelVal.int32Val : 128);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_GET_WIDTH: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.display_getWidth()));
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_GET_HEIGHT: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.display_getHeight()));
+                    break;
+                }
+                
+                // ===== Encoder Functions =====
+                case NativeFunctionID::ENCODER_GET_BUTTON: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Bool(platform_.encoder_getButton()));
+                    break;
+                }
+                
+                case NativeFunctionID::ENCODER_GET_DELTA: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.encoder_getDelta()));
+                    break;
+                }
+                
+                case NativeFunctionID::ENCODER_GET_POSITION: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.encoder_getPosition()));
+                    break;
+                }
+                
+                case NativeFunctionID::ENCODER_RESET: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    platform_.encoder_reset();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== System Functions =====
+                case NativeFunctionID::SYSTEM_GET_TIME: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(static_cast<int32_t>(platform_.system_getTime())));
+                    break;
+                }
+                
+                case NativeFunctionID::SYSTEM_SLEEP: {
+                    if (argCount < 1) {
+                        setError("sleep() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value msVal = pop();
+                    
+                    platform_.system_sleep(msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::SYSTEM_GET_RTC: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(static_cast<int32_t>(platform_.system_getRTC())));
+                    break;
+                }
+                
+                case NativeFunctionID::SYSTEM_SET_RTC: {
+                    if (argCount < 1) {
+                        setError("setRTC() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value timestampVal = pop();
+                    
+                    platform_.system_setRTC(timestampVal.isInt32() ? static_cast<uint32_t>(timestampVal.int32Val) : 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Touch Functions =====
+                case NativeFunctionID::TOUCH_GET_X: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.touch_getX()));
+                    break;
+                }
+                
+                case NativeFunctionID::TOUCH_GET_Y: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.touch_getY()));
+                    break;
+                }
+                
+                case NativeFunctionID::TOUCH_IS_PRESSED: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Bool(platform_.touch_isPressed()));
+                    break;
+                }
+                
+                // ===== RFID Functions =====
+                case NativeFunctionID::RFID_READ: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::String(platform_.rfid_read()));
+                    break;
+                }
+                
+                case NativeFunctionID::RFID_IS_PRESENT: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Bool(platform_.rfid_isPresent()));
+                    break;
+                }
+                
+                // ===== File Functions =====
+                case NativeFunctionID::FILE_OPEN: {
+                    if (argCount < 2) {
+                        setError("open() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value modeVal = pop();
+                    Value pathVal = pop();
+                    
+                    int handle = platform_.file_open(pathVal.toString(), modeVal.toString());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Int32(handle));
+                    break;
+                }
+                
+                case NativeFunctionID::FILE_READ: {
+                    if (argCount < 2) {
+                        setError("read() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value sizeVal = pop();
+                    Value handleVal = pop();
+                    
+                    std::string data = platform_.file_read(
+                        handleVal.isInt32() ? handleVal.int32Val : -1,
+                        sizeVal.isInt32() ? sizeVal.int32Val : 0
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::String(data));
+                    break;
+                }
+                
+                case NativeFunctionID::FILE_WRITE: {
+                    if (argCount < 2) {
+                        setError("write() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value dataVal = pop();
+                    Value handleVal = pop();
+                    
+                    int written = platform_.file_write(
+                        handleVal.isInt32() ? handleVal.int32Val : -1,
+                        dataVal.toString()
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Int32(written));
+                    break;
+                }
+                
+                case NativeFunctionID::FILE_CLOSE: {
+                    if (argCount < 1) {
+                        setError("close() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value handleVal = pop();
+                    
+                    platform_.file_close(handleVal.isInt32() ? handleVal.int32Val : -1);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::FILE_EXISTS: {
+                    if (argCount < 1) {
+                        setError("exists() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value pathVal = pop();
+                    
+                    bool exists = platform_.file_exists(pathVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Bool(exists));
+                    break;
+                }
+                
+                case NativeFunctionID::FILE_DELETE: {
+                    if (argCount < 1) {
+                        setError("delete() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value pathVal = pop();
+                    
+                    bool deleted = platform_.file_delete(pathVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Bool(deleted));
+                    break;
+                }
+                
+                case NativeFunctionID::FILE_SIZE: {
+                    if (argCount < 1) {
+                        setError("size() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value pathVal = pop();
+                    
+                    int size = platform_.file_size(pathVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(size));
+                    break;
+                }
+                
+                // ===== GPIO Functions =====
+                case NativeFunctionID::GPIO_PIN_MODE: {
+                    if (argCount < 2) {
+                        setError("pinMode() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value modeVal = pop();
+                    Value pinVal = pop();
+                    
+                    platform_.gpio_pinMode(
+                        pinVal.isInt32() ? pinVal.int32Val : 0,
+                        modeVal.isInt32() ? modeVal.int32Val : 0
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::GPIO_DIGITAL_WRITE: {
+                    if (argCount < 2) {
+                        setError("digitalWrite() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value valueVal = pop();
+                    Value pinVal = pop();
+                    
+                    platform_.gpio_digitalWrite(
+                        pinVal.isInt32() ? pinVal.int32Val : 0,
+                        valueVal.isInt32() ? valueVal.int32Val : 0
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::GPIO_DIGITAL_READ: {
+                    if (argCount < 1) {
+                        setError("digitalRead() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value pinVal = pop();
+                    
+                    int value = platform_.gpio_digitalRead(pinVal.isInt32() ? pinVal.int32Val : 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(value));
+                    break;
+                }
+                
+                case NativeFunctionID::GPIO_ANALOG_WRITE: {
+                    if (argCount < 2) {
+                        setError("analogWrite() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value valueVal = pop();
+                    Value pinVal = pop();
+                    
+                    platform_.gpio_analogWrite(
+                        pinVal.isInt32() ? pinVal.int32Val : 0,
+                        valueVal.isInt32() ? valueVal.int32Val : 0
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::GPIO_ANALOG_READ: {
+                    if (argCount < 1) {
+                        setError("analogRead() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value pinVal = pop();
+                    
+                    int value = platform_.gpio_analogRead(pinVal.isInt32() ? pinVal.int32Val : 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(value));
+                    break;
+                }
+                
+                // ===== I2C Functions =====
+                case NativeFunctionID::I2C_SCAN: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    std::vector<int> addresses = platform_.i2c_scan();
+                    // Convert to JSON-like string: "[0x20, 0x21, ...]"
+                    std::string result = "[";
+                    for (size_t i = 0; i < addresses.size(); i++) {
+                        if (i > 0) result += ", ";
+                        result += "0x" + std::to_string(addresses[i]);
+                    }
+                    result += "]";
+                    
+                    push(Value::String(result));
+                    break;
+                }
+                
+                case NativeFunctionID::I2C_WRITE: {
+                    if (argCount < 2) {
+                        setError("write() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value dataVal = pop();
+                    Value addressVal = pop();
+                    
+                    // Convert string to vector<uint8_t>
+                    std::string dataStr = dataVal.toString();
+                    std::vector<uint8_t> data(dataStr.begin(), dataStr.end());
+                    
+                    bool success = platform_.i2c_write(
+                        addressVal.isInt32() ? addressVal.int32Val : 0,
+                        data
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Bool(success));
+                    break;
+                }
+                
+                case NativeFunctionID::I2C_READ: {
+                    if (argCount < 2) {
+                        setError("read() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value lengthVal = pop();
+                    Value addressVal = pop();
+                    
+                    std::vector<uint8_t> data = platform_.i2c_read(
+                        addressVal.isInt32() ? addressVal.int32Val : 0,
+                        lengthVal.isInt32() ? lengthVal.int32Val : 0
+                    );
+                    
+                    // Convert vector<uint8_t> to string
+                    std::string result(data.begin(), data.end());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::String(result));
+                    break;
+                }
+                
+                // ===== Buzzer Functions =====
+                case NativeFunctionID::BUZZER_BEEP: {
+                    if (argCount < 2) {
+                        setError("beep() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value durationVal = pop();
+                    Value frequencyVal = pop();
+                    
+                    platform_.buzzer_beep(
+                        frequencyVal.isInt32() ? frequencyVal.int32Val : 1000,
+                        durationVal.isInt32() ? durationVal.int32Val : 100
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::BUZZER_STOP: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    platform_.buzzer_stop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Timer Functions =====
+                case NativeFunctionID::TIMER_SET_TIMEOUT: {
+                    if (argCount < 1) {
+                        setError("setTimeout() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value msVal = pop();
+                    
+                    int timerId = platform_.timer_setTimeout(msVal.isInt32() ? msVal.int32Val : 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(timerId));
+                    break;
+                }
+                
+                case NativeFunctionID::TIMER_SET_INTERVAL: {
+                    if (argCount < 1) {
+                        setError("setInterval() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value msVal = pop();
+                    
+                    int timerId = platform_.timer_setInterval(msVal.isInt32() ? msVal.int32Val : 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(timerId));
+                    break;
+                }
+                
+                case NativeFunctionID::TIMER_CLEAR: {
+                    if (argCount < 1) {
+                        setError("clearTimer() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value idVal = pop();
+                    
+                    platform_.timer_clear(idVal.isInt32() ? idVal.int32Val : -1);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Memory Functions =====
+                case NativeFunctionID::MEMORY_GET_AVAILABLE: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.memory_getAvailable()));
+                    break;
+                }
+                
+                case NativeFunctionID::MEMORY_GET_USAGE: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.memory_getUsage()));
+                    break;
+                }
+                
+                // ===== Unknown/Unimplemented Functions =====
+                default: {
+                    // Unknown native function - pop receiver and arguments, return null
+                    pop();  // receiver
+                    for (uint8_t i = 0; i < argCount; i++) {
                         pop();
                     }
-                    
                     push(Value::Null());
-                } else {
-                    setError("drawText() requires at least 5 arguments");
-                    return VMResult::ERROR;
+                    break;
                 }
-            }
-            // os.encoder.getButton()
-            else if (funcName == "getButton") {
-                Value receiver = pop();  // Pop encoder object
-                
-                // Pop any arguments (shouldn't be any)
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
-                }
-                
-                bool pressed = platform_.encoder_getButton();
-                push(Value::Bool(pressed));
-            }
-            // os.encoder.getDelta()
-            else if (funcName == "getDelta") {
-                Value receiver = pop();  // Pop encoder object
-                
-                // Pop any arguments (shouldn't be any)
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
-                }
-                
-                int delta = platform_.encoder_getDelta();
-                push(Value::Int32(delta));
-            }
-            // os.system.getTime()
-            else if (funcName == "getTime") {
-                Value receiver = pop();  // Pop system object
-                
-                // Pop any arguments (shouldn't be any)
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
-                }
-                
-                uint32_t time = platform_.system_getTime();
-                push(Value::Int32(static_cast<int32_t>(time)));
-            }
-            // os.system.sleep(ms)
-            else if (funcName == "sleep") {
-                if (argCount >= 1) {
-                    Value receiver = pop();  // Pop system object
-                    Value msVal = pop();     // Pop milliseconds argument
-                    uint32_t ms = msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0;
-                    platform_.system_sleep(ms);
-                    
-                    // Pop any remaining arguments
-                    for (uint8_t i = 1; i < argCount; i++) {
-                        pop();
-                    }
-                    
-                    push(Value::Null());
-                } else {
-                    setError("sleep() requires at least 1 argument");
-                    return VMResult::ERROR;
-                }
-            }
-            else {
-                // Unknown native function - pop arguments and return null
-                pop();  // receiver
-                for (uint8_t i = 0; i < argCount; i++) {
-                    pop();
-                }
-                push(Value::Null());
             }
             break;
         }
