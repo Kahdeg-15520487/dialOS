@@ -84,4 +84,4 @@ os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _c
 assign col col + 1;
 os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.teal, true);
 
-os.console.print("Color palette demonstration complete!");
+os.console.println("Color palette demonstration complete!");

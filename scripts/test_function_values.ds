@@ -8,7 +8,7 @@
 
 // Define a simple function
 function greet(name: string): void {
-    os.console.print(`Hello, ${name}!`);
+    os.console.println(`Hello, ${name}!`);
 }
 
 // Define a function with return value
@@ -20,25 +20,25 @@ function add(a: int, b: int): int {
 var callback: greet;
 
 // Call through variable
-os.console.print("Test 1: Call function through variable");
+os.console.println("Test 1: Call function through variable");
 callback("World");
 
 // Store different function
 var mathOp: add;
 
 // Call math function through variable
-os.console.print("Test 2: Call function with return value");
+os.console.println("Test 2: Call function with return value");
 var result: mathOp(5, 3);
-os.console.print(`5 + 3 = ${result}`);
+os.console.println(`5 + 3 = ${result}`);
 
 // Test parameter count validation
-os.console.print("Test 3: Parameter count validation");
+os.console.println("Test 3: Parameter count validation");
 function multiply(x: int, y: int): int {
     return x * y;
 }
 
 var calc: multiply;
 var product: calc(4, 7);
-os.console.print(`4 * 7 = ${product}`);
+os.console.println(`4 * 7 = ${product}`);
 
-os.console.print("All function value tests passed!");
+os.console.println("All function value tests passed!");

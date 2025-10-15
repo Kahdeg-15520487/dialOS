@@ -3,11 +3,11 @@ var x: 5;
 var y: 10; 
 var z: x + y;
 
-os.console.print("Starting calculation...");
+os.console.println("Starting calculation...");
 
 // This will cause an out of bounds access error
 var arr: [1, 2, 3];
 var index: 10;
 var result: arr[index];  // Line that will cause error
 
-os.console.print("This should not print");
+os.console.println("This should not print");

@@ -1,0 +1,4 @@
+os.console.printlnln("Hello world with println!");
+os.console.printlnln("This should print on a new line");
+os.console.println("This should be on the same line");
+os.console.printlnln(" - and this continues");

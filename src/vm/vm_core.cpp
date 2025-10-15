@@ -1459,6 +1459,20 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
+                case NativeFunctionID::CONSOLE_PRINTLN: {
+                    if (argCount < 1) {
+                        setError("println() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value arg = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    platform_.console_println(arg.toString());
+                    
+                    push(Value::Null());
+                    break;
+                }
+                
                 case NativeFunctionID::CONSOLE_CLEAR: {
                     Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();

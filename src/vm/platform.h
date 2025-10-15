@@ -26,10 +26,11 @@ namespace dialos
         {
             // Console namespace (0x00xx)
             CONSOLE_PRINT = 0x0000,
-            CONSOLE_LOG = 0x0001,
-            CONSOLE_WARN = 0x0002,
-            CONSOLE_ERROR = 0x0003,
-            CONSOLE_CLEAR = 0x0004,
+            CONSOLE_PRINTLN = 0x0001,
+            CONSOLE_LOG = 0x0002,
+            CONSOLE_WARN = 0x0003,
+            CONSOLE_ERROR = 0x0004,
+            CONSOLE_CLEAR = 0x0005,
 
             // Display namespace (0x01xx)
             DISPLAY_CLEAR = 0x0100,
@@ -158,6 +159,8 @@ namespace dialos
             // Console functions
             if (name == "print")
                 return NativeFunctionID::CONSOLE_PRINT;
+            if (name == "println")
+                return NativeFunctionID::CONSOLE_PRINTLN;
             if (name == "log")
                 return NativeFunctionID::CONSOLE_LOG;
             if (name == "warn")
@@ -378,6 +381,8 @@ namespace dialos
             // Console
             case NativeFunctionID::CONSOLE_PRINT:
                 return "print";
+            case NativeFunctionID::CONSOLE_PRINTLN:
+                return "println";
             case NativeFunctionID::CONSOLE_LOG:
                 return "log";
             case NativeFunctionID::CONSOLE_WARN:
@@ -583,6 +588,7 @@ namespace dialos
 
             // ===== Console Operations =====
             virtual void console_print(const std::string &msg) = 0;
+            virtual void console_println(const std::string &msg) { console_print(msg + "\n"); }
             virtual void console_log(const std::string &msg) { console_print("[INFO] " + msg); }
             virtual void console_warn(const std::string &msg) { console_log("[WARN] " + msg); }
             virtual void console_error(const std::string &msg) { console_log("[ERROR] " + msg); }

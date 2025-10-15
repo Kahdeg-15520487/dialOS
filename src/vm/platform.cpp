@@ -28,7 +28,7 @@ namespace dialos
         {
             // Lazy initialization of callback registry
             if (!callbacks_) {
-                callbacks_ = std::make_unique<CallbackRegistry>();
+                callbacks_ = std::unique_ptr<CallbackRegistry>(new CallbackRegistry());
             }
             
             // Store the callback in the registry

@@ -164,6 +164,7 @@ public:
     
     // === Console Operations ===
     void console_print(const std::string& msg) override;
+    void console_println(const std::string& msg) override;
     void console_clear() override;
     
     // === Display Operations ===
@@ -215,7 +216,7 @@ public:
     bool touch_isInDisplay(int x, int y); // Check if touch is within circular display
     
     // Output capture for VM programs
-    void captureOutput(const std::string& output) { outputLog_.addLine(output); }
+    void captureOutput(const std::string& output) { outputLog_.addText(output); }
     
 private:
     // SDL components
@@ -290,22 +291,47 @@ private:
     
     // Console logging
     struct ConsoleLog {
-        std::vector<std::string> lines;
+        std::string buffer;
         size_t maxLines;
-        size_t scrollOffset;
         
-        ConsoleLog(size_t max = 50) : maxLines(max), scrollOffset(0) {}
+        ConsoleLog(size_t max = 50) : maxLines(max) {}
         
-        void addLine(const std::string& line) {
-            lines.push_back(line);
-            if (lines.size() > maxLines) {
-                lines.erase(lines.begin());
+        void addText(const std::string& text) {
+            buffer += text;
+            // Keep only last maxLines lines
+            size_t lines = 0;
+            size_t pos = 0;
+            while ((pos = buffer.find('\n', pos)) != std::string::npos) {
+                lines++;
+                pos++;
+            }
+            if (lines > maxLines) {
+                // Find the position after maxLines newlines
+                size_t cutPos = 0;
+                for (size_t i = 0; i < lines - maxLines + 1; i++) {
+                    cutPos = buffer.find('\n', cutPos) + 1;
+                }
+                buffer = buffer.substr(cutPos);
             }
         }
         
+        std::vector<std::string> getLines() const {
+            std::vector<std::string> lines;
+            size_t start = 0;
+            size_t end = buffer.find('\n');
+            while (end != std::string::npos) {
+                lines.push_back(buffer.substr(start, end - start));
+                start = end + 1;
+                end = buffer.find('\n', start);
+            }
+            if (start < buffer.size()) {
+                lines.push_back(buffer.substr(start));
+            }
+            return lines;
+        }
+        
         void clear() {
-            lines.clear();
-            scrollOffset = 0;
+            buffer.clear();
         }
     };
     

@@ -1,4 +1,4 @@
 // Simple counter applet for dialOS
 var count: 0;
 assign count count + 1;
-os.console.print(count);
+os.console.println(count);

@@ -8,4 +8,4 @@ function add(a: int, b: int): int {
 }
 
 var result: add(5, 10);
-os.console.print(result);
+os.console.println(result);

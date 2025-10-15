@@ -10,7 +10,7 @@ function add(a: int, b: int): int {
 
 function greet(name: string): void {
     var message: `Hello, ${name}!`;
-    os.console.print(message);
+    os.console.println(message);
 }
 
 class Counter {

@@ -2,9 +2,9 @@
 var x: 5;
 var y: 10; 
 
-os.console.print("Starting calculation...");
+os.console.println("Starting calculation...");
 
 // This will cause an undefined function error
 undefined_function();  // Line that will cause error
 
-os.console.print("This should not print");
+os.console.println("This should not print");

@@ -10,4 +10,4 @@ var x: validFunc();
 // This should fail at compile time
 var y: invalidFunc();
 
-os.console.print("This shouldn't execute");
+os.console.println("This shouldn't execute");

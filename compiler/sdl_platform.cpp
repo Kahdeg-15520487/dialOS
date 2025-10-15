@@ -665,27 +665,29 @@ void SDLPlatform::system_setRTC(uint32_t timestamp) {
 // === Console Operations ===
 
 void SDLPlatform::console_print(const std::string &msg) {
-  consoleLog_.addLine("[dialOS] " + msg);
-  addDebugMessage(msg);
-
   std::cout << msg << std::flush;
-  outputLog_.addLine(msg);
+  outputLog_.addText(msg);
+}
+
+void SDLPlatform::console_println(const std::string &msg) {
+  std::cout << msg << std::endl;
+  outputLog_.addText(msg + "\n");
 }
 
 void SDLPlatform::console_log(const std::string &msg) {
-  std::cout << "[dialOS] " << msg << std::endl;
-  consoleLog_.addLine("[dialOS] " + msg);
+  std::cout << "[INFO] " << msg << std::endl;
+  consoleLog_.addText("[INFO] " + msg + "\n");
   addDebugMessage(msg);
 }
 
 void SDLPlatform::console_warn(const std::string &msg) {
   std::cout << "[WARN] " << msg << std::endl;
-  outputLog_.addLine("[WARN] " + msg);
+  outputLog_.addText("[WARN] " + msg + "\n");
 }
 
 void SDLPlatform::console_error(const std::string &msg) {
   std::cerr << "[ERROR] " << msg << std::endl;
-  outputLog_.addLine("[ERROR] " + msg);
+  outputLog_.addText("[ERROR] " + msg + "\n");
 }
 
 void SDLPlatform::console_clear() { outputLog_.clear(); }
@@ -1275,18 +1277,21 @@ void SDLPlatform::renderLogWindow(int x, int y, int width, int height,
   int lineHeight = 14;
   int maxLines = textHeight / lineHeight;
 
+  // Get lines from log
+  auto lines = log.getLines();
+
   // Render log lines (most recent at bottom)
   Color textColor(220, 220, 220); // Light gray
-  int startLine = std::max(0, static_cast<int>(log.lines.size()) - maxLines);
+  int startLine = std::max(0, static_cast<int>(lines.size()) - maxLines);
 
   for (size_t i = static_cast<size_t>(startLine);
-       i < log.lines.size() && i < static_cast<size_t>(startLine + maxLines);
+       i < lines.size() && i < static_cast<size_t>(startLine + maxLines);
        i++) {
     int lineY = textY + static_cast<int>(i - static_cast<size_t>(startLine)) *
                             lineHeight;
 
     // Truncate long lines to fit width
-    std::string line = log.lines[i];
+    std::string line = lines[i];
     if (line.length() > 35) { // Rough character limit for console width
       line = line.substr(0, 32) + "...";
     }
@@ -1295,7 +1300,7 @@ void SDLPlatform::renderLogWindow(int x, int y, int width, int height,
   }
 
   // Show scroll indicator if there are more lines
-  if (log.lines.size() > maxLines) {
+  if (lines.size() > maxLines) {
     Color scrollColor(150, 150, 150);
     renderText(x + width - 20, y, "^", scrollColor, 10);
   }

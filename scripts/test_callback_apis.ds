@@ -10,39 +10,39 @@ var touchCount: 0;
 // Encoder callbacks
 function onEncoderTurn(delta: int): void {
     assign turnCount turnCount + 1;
-    os.console.print(`Encoder turned: ${delta}, count: ${turnCount}`);
+    os.console.println(`Encoder turned: ${delta}, count: ${turnCount}`);
 }
 
 function onEncoderButton(): void {
     assign buttonPresses buttonPresses + 1;
-    os.console.print(`Button pressed! Total: ${buttonPresses}`);
+    os.console.println(`Button pressed! Total: ${buttonPresses}`);
 }
 
 // Touch callbacks
 function onTouchPress(x: int, y: int): void {
     assign touchCount touchCount + 1;
-    os.console.print(`Touch at (${x}, ${y}), count: ${touchCount}`);
+    os.console.println(`Touch at (${x}, ${y}), count: ${touchCount}`);
 }
 
 function onTouchRelease(): void {
-    os.console.print("Touch released");
+    os.console.println("Touch released");
 }
 
 // App lifecycle callbacks
 function onAppLoad(): void {
-    os.console.print("App loaded!");
+    os.console.println("App loaded!");
 }
 
 function onAppSuspend(): void {
-    os.console.print("App suspended");
+    os.console.println("App suspended");
 }
 
 function onAppResume(): void {
-    os.console.print("App resumed");
+    os.console.println("App resumed");
 }
 
 function onAppUnload(): void {
-    os.console.print("App unloading...");
+    os.console.println("App unloading...");
 }
 
 // Register all callbacks
@@ -55,8 +55,8 @@ os.app.onSuspend(onAppSuspend);
 os.app.onResume(onAppResume);
 os.app.onUnload(onAppUnload);
 
-os.console.print("All callbacks registered!");
-os.console.print("Turn encoder, press button, or touch screen to test");
+os.console.println("All callbacks registered!");
+os.console.println("Turn encoder, press button, or touch screen to test");
 
 // Event loop - keeps the app alive to process callbacks
 while (true) {

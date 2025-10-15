@@ -4,4 +4,4 @@ os.display.clear(_color.black);
 // Draw one filled circle in the center
 os.display.drawCircle(120, 120, 50, _color.blue, true);  // Blue filled circle
 
-os.console.print("Simple circle test");
+os.console.println("Simple circle test");

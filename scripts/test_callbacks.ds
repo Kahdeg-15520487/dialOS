@@ -5,7 +5,7 @@
 
 // Define a simple callback function
 function onEvent(message: string): void {
-    os.console.print(`Callback invoked: ${message}`);
+    os.console.println(`Callback invoked: ${message}`);
 }
 
 // Register the callback (this would normally be done via encoder.onTurn, etc.)
@@ -16,4 +16,4 @@ var callback: onEvent;
 callback("Hello from callback!");
 callback("Second call!");
 
-os.console.print("Callback test complete");
+os.console.println("Callback test complete");
