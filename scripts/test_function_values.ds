@@ -1,0 +1,44 @@
+/*
+ * Test Function Values
+ * 
+ * Tests the new function value feature:
+ * - Storing functions in variables
+ * - Calling functions through variables
+ */
+
+// Define a simple function
+function greet(name: string): void {
+    os.console.print(`Hello, ${name}!`);
+}
+
+// Define a function with return value
+function add(a: int, b: int): int {
+    return a + b;
+}
+
+// Store function in variable
+var callback: greet;
+
+// Call through variable
+os.console.print("Test 1: Call function through variable");
+callback("World");
+
+// Store different function
+var mathOp: add;
+
+// Call math function through variable
+os.console.print("Test 2: Call function with return value");
+var result: mathOp(5, 3);
+os.console.print(`5 + 3 = ${result}`);
+
+// Test parameter count validation
+os.console.print("Test 3: Parameter count validation");
+function multiply(x: int, y: int): int {
+    return x * y;
+}
+
+var calc: multiply;
+var product: calc(4, 7);
+os.console.print(`4 * 7 = ${product}`);
+
+os.console.print("All function value tests passed!");

@@ -209,8 +209,12 @@ namespace dialos
 
         void BytecodeCompiler::compileFunctionDecl(const FunctionDeclaration &func)
         {
-            // Add function to function table
-            uint16_t funcIdx = module_.addFunction(func.name);
+            // Track that this function is declared
+            declaredFunctions_.insert(func.name);
+            
+            // Add function to function table with parameter count
+            uint8_t paramCount = static_cast<uint8_t>(func.parameters.size());
+            uint16_t funcIdx = module_.addFunction(func.name, paramCount);
 
             // Record function start position
             size_t functionStart = module_.getCurrentPosition();
@@ -691,49 +695,60 @@ namespace dialos
 
         void BytecodeCompiler::compileCallExpression(const CallExpression &expr)
         {
-            // Push arguments
+            // Check what kind of call this is
+            bool isDirectFunctionCall = false;
+            bool isNativeCall = false;
+            std::string funcName;
+            
+            if (auto *id = dynamic_cast<const Identifier *>(expr.callee.get()))
+            {
+                funcName = id->name;
+                // Direct call to a function name: foo()
+                // Check if it's a declared function
+                if (declaredFunctions_.find(funcName) != declaredFunctions_.end())
+                {
+                    isDirectFunctionCall = true;
+                }
+            }
+            else if (auto *member = dynamic_cast<const MemberAccess *>(expr.callee.get()))
+            {
+                funcName = member->property;
+                isNativeCall = isOsNamespaceCall(member->object.get());
+                
+                if (isNativeCall)
+                {
+                    // Native call: compile object (os.console, etc.)
+                    compileExpression(*member->object);
+                    isDirectFunctionCall = true; // Will use CALL_NATIVE, not indirect
+                }
+            }
+            
+            // Push arguments onto stack
             for (const auto &arg : expr.arguments)
             {
                 compileExpression(*arg);
             }
-
-            // Get function name and check if it's a native call
-            std::string funcName;
-            bool isNativeCall = false;
-
-            if (auto *id = dynamic_cast<const Identifier *>(expr.callee.get()))
+            
+            if (isDirectFunctionCall)
             {
-                funcName = id->name;
-                
-                // // Check if this is a user-defined function call
-                // // Only validate plain identifier calls (not os.* calls)
-                // if (declaredFunctions_.find(funcName) == declaredFunctions_.end()) {
-                //     // Not found in declared functions - emit error
-                //     error("Undefined function '" + funcName + "' at line " + std::to_string(id->line));
-                // }
+                // Direct call: CALL or CALL_NATIVE
+                uint16_t funcIdx = module_.addFunction(funcName);
+                Instruction instr(isNativeCall ? Opcode::CALL_NATIVE : Opcode::CALL);
+                instr.addOperandU16(funcIdx);
+                instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
+                emit(instr, &expr);
             }
-            else if (auto *member = dynamic_cast<const MemberAccess *>(expr.callee.get()))
+            else
             {
-                // Method call: compile object first
-                compileExpression(*member->object);
-                funcName = member->property;
-
-                // Check if this is a call on the reserved 'os.*' namespace
-                // os.* is reserved for native platform functions
-                isNativeCall = isOsNamespaceCall(member->object.get());
+                // Indirect call: calling through a variable
+                // Compile the callee expression (will push function value onto stack)
+                compileExpression(*expr.callee);
                 
-                // For method calls, we don't validate against declaredFunctions_ as they might be:
-                // 1. Native OS functions (os.console.print, etc.)  
-                // 2. Methods on objects that are dynamically resolved
+                // Emit CALL_INDIRECT
+                Instruction instr(Opcode::CALL_INDIRECT);
+                instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
+                emit(instr, &expr);
             }
-
-            uint16_t funcIdx = module_.addFunction(funcName);
-
-            // Emit CALL_NATIVE for os.* calls, regular CALL for user functions
-            Instruction instr(isNativeCall ? Opcode::CALL_NATIVE : Opcode::CALL);
-            instr.addOperandU16(funcIdx);
-            instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
-            emit(instr, &expr);
         }
 
         bool BytecodeCompiler::isOsNamespaceCall(const Expression *expr) const
@@ -799,6 +814,15 @@ namespace dialos
             {
                 Instruction instr(Opcode::LOAD_LOCAL);
                 instr.addOperandU8(it->second);
+                emit(instr, &expr);
+            }
+            // Check if it's a declared function (used as value)
+            else if (declaredFunctions_.find(expr.name) != declaredFunctions_.end())
+            {
+                // This is a function being used as a value
+                uint16_t funcIdx = module_.addFunction(expr.name, 0); // param count already set
+                Instruction instr(Opcode::LOAD_FUNCTION);
+                instr.addOperandU16(funcIdx);
                 emit(instr, &expr);
             }
             else
