@@ -214,7 +214,7 @@ bool SDLPlatform::pollEvents() {
             case SDL_MOUSEBUTTONDOWN:
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     // Left mouse button - touch screen in display area
-                    int mouseX = event.button.x / WINDOW_SCALE;
+                    int mouseX = (event.button.x - DEBUG_PANEL_WIDTH) / WINDOW_SCALE;
                     int mouseY = event.button.y / WINDOW_SCALE;
                     
                     if (isInCircularDisplay(mouseX, mouseY)) {
@@ -240,7 +240,7 @@ bool SDLPlatform::pollEvents() {
                 
             case SDL_MOUSEBUTTONUP:
                 if (event.button.button == SDL_BUTTON_LEFT) {
-                    int mouseX = event.button.x / WINDOW_SCALE;
+                    int mouseX = (event.button.x - DEBUG_PANEL_WIDTH) / WINDOW_SCALE;
                     int mouseY = event.button.y / WINDOW_SCALE;
                     
                     touch_.pressed = false;
@@ -261,7 +261,7 @@ bool SDLPlatform::pollEvents() {
                 
             case SDL_MOUSEMOTION:
                 if (touch_.pressed) {
-                    int mouseX = event.motion.x / WINDOW_SCALE;
+                    int mouseX = (event.motion.x - DEBUG_PANEL_WIDTH) / WINDOW_SCALE;
                     int mouseY = event.motion.y / WINDOW_SCALE;
                     
                     if (isInCircularDisplay(mouseX, mouseY)) {
@@ -288,6 +288,9 @@ void SDLPlatform::present() {
     // Note: We don't clear here - display_clear() does that explicitly
     // This allows drawing commands to accumulate in the render buffer
     
+    // Draw debug panel
+    renderDebugPanel();
+    
     // Draw circular mask for display
     drawCircularMask();
     
@@ -296,11 +299,6 @@ void SDLPlatform::present() {
     
     // Draw console area
     renderConsoleArea();
-    
-    // Draw debug overlay if enabled
-    if (showDebugInfo_) {
-        debug_drawOverlay();
-    }
     
     SDL_RenderPresent(renderer_);
 }
@@ -322,7 +320,7 @@ void SDLPlatform::display_clear(uint32_t color) {
         for (int x = 0; x < DISPLAY_WIDTH; x++) {
             if (isInCircularDisplay(x, y)) {
                 SDL_Rect rect = {
-                    x * WINDOW_SCALE, 
+                    DEBUG_PANEL_WIDTH + x * WINDOW_SCALE, 
                     y * WINDOW_SCALE, 
                     WINDOW_SCALE, 
                     WINDOW_SCALE
@@ -337,7 +335,7 @@ void SDLPlatform::display_drawText(int x, int y, const std::string& text,
                                    uint32_t color, int size) {
     if (!initialized_ || !font_) return;
     
-    renderText(x, y, text, Color(color), size);
+    renderText(DEBUG_PANEL_WIDTH + x, y, text, Color(color), size);
 }
 
 void SDLPlatform::display_drawPixel(int x, int y, uint32_t color) {
@@ -347,7 +345,7 @@ void SDLPlatform::display_drawPixel(int x, int y, uint32_t color) {
     SDL_SetRenderDrawColor(renderer_, pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a);
     
     SDL_Rect rect = {
-        x * WINDOW_SCALE, 
+        DEBUG_PANEL_WIDTH + x * WINDOW_SCALE, 
         y * WINDOW_SCALE, 
         WINDOW_SCALE, 
         WINDOW_SCALE
@@ -367,9 +365,11 @@ void SDLPlatform::display_drawLine(int x1, int y1, int x2, int y2, uint32_t colo
     Color lineColor(color);
     SDL_SetRenderDrawColor(renderer_, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
     
-    // Scale coordinates
-    x1 *= WINDOW_SCALE; y1 *= WINDOW_SCALE;
-    x2 *= WINDOW_SCALE; y2 *= WINDOW_SCALE;
+    // Scale coordinates and offset
+    x1 = DEBUG_PANEL_WIDTH + x1 * WINDOW_SCALE; 
+    y1 = y1 * WINDOW_SCALE;
+    x2 = DEBUG_PANEL_WIDTH + x2 * WINDOW_SCALE; 
+    y2 = y2 * WINDOW_SCALE;
     
     SDL_RenderDrawLine(renderer_, x1, y1, x2, y2);
 }
@@ -381,7 +381,7 @@ void SDLPlatform::display_drawRect(int x, int y, int w, int h, uint32_t color, b
     SDL_SetRenderDrawColor(renderer_, rectColor.r, rectColor.g, rectColor.b, rectColor.a);
     
     SDL_Rect rect = {
-        x * WINDOW_SCALE, 
+        DEBUG_PANEL_WIDTH + x * WINDOW_SCALE, 
         y * WINDOW_SCALE, 
         w * WINDOW_SCALE, 
         h * WINDOW_SCALE
@@ -696,7 +696,7 @@ void SDLPlatform::drawCircularMask() {
                 distSq <= (outerRadius * outerRadius)) {
                 
                 SDL_Rect rect = {
-                    x * WINDOW_SCALE, 
+                    DEBUG_PANEL_WIDTH + x * WINDOW_SCALE, 
                     y * WINDOW_SCALE, 
                     WINDOW_SCALE, 
                     WINDOW_SCALE
@@ -747,7 +747,7 @@ void SDLPlatform::drawEncoderIndicator() {
                 // Draw if within arc span
                 if (fabs(angleDiff) <= arcSpan) {
                     SDL_Rect rect = {
-                        x * WINDOW_SCALE, 
+                        DEBUG_PANEL_WIDTH + x * WINDOW_SCALE, 
                         y * WINDOW_SCALE, 
                         WINDOW_SCALE, 
                         WINDOW_SCALE
@@ -1011,6 +1011,95 @@ void SDLPlatform::buzzer_playMelody(const std::vector<int>& notes) {
     console_log("buzzer_playMelody: " + std::to_string(notes.size()) + " notes");
 }
 
+void SDLPlatform::renderDebugPanel() {
+    if (!initialized_ || !vm_) return;
+    
+    // Debug panel background
+    SDL_SetRenderDrawColor(renderer_, 20, 20, 20, 255); // Dark background
+    SDL_Rect panelRect = {0, 0, DEBUG_PANEL_WIDTH, WINDOW_HEIGHT};
+    SDL_RenderFillRect(renderer_, &panelRect);
+    
+    // Border
+    SDL_SetRenderDrawColor(renderer_, 100, 100, 100, 255);
+    SDL_RenderDrawRect(renderer_, &panelRect);
+    
+    // Title
+    int yPos = 10;
+    renderText(10, yPos, "VM State", Color(0xFF00FFFF), 1);
+    yPos += 25;
+    
+    // Separator line
+    SDL_SetRenderDrawColor(renderer_, 100, 100, 100, 255);
+    SDL_RenderDrawLine(renderer_, 10, yPos, DEBUG_PANEL_WIDTH - 10, yPos);
+    yPos += 10;
+    
+    // VM state info
+    std::stringstream ss;
+    
+    // Running state
+    yPos += 15;
+    ss.str("");
+    ss << "Running: " << (vm_->isRunning() ? "Yes" : "No");
+    renderText(10, yPos, ss.str(), Color(vm_->isRunning() ? 0x00FF00FF : 0xFF0000FF), 1);
+    
+    // Program counter
+    yPos += 20;
+    ss.str("");
+    ss << "PC: " << vm_->getPC();
+    renderText(10, yPos, ss.str(), Color(0xFFFFFFFF), 1);
+    
+    // Stack size
+    yPos += 20;
+    ss.str("");
+    ss << "Stack: " << vm_->getStackSize();
+    renderText(10, yPos, ss.str(), Color(0xFFFFFFFF), 1);
+    
+    // Call stack depth
+    yPos += 20;
+    ss.str("");
+    ss << "Calls: " << vm_->getCallStackDepth();
+    renderText(10, yPos, ss.str(), Color(0xFFFFFFFF), 1);
+    
+    // Heap usage
+    yPos += 20;
+    ss.str("");
+    ss << "Heap: " << vm_->getHeapUsage() << " bytes";
+    renderText(10, yPos, ss.str(), Color(0xFFFFFFFF), 1);
+    
+    // Error state
+    if (vm_->hasError()) {
+        yPos += 25;
+        renderText(10, yPos, "ERROR:", Color(0xFF0000FF), 1);
+        yPos += 20;
+        
+        std::string error = vm_->getError();
+        // Wrap error text if too long
+        size_t maxLen = 25;
+        size_t pos = 0;
+        while (pos < error.length()) {
+            std::string line = error.substr(pos, maxLen);
+            renderText(10, yPos, line, Color(0xFF8800FF), 1);
+            yPos += 15;
+            pos += maxLen;
+            if (yPos > WINDOW_HEIGHT - 20) break;
+        }
+    }
+    
+    // Separator
+    yPos = WINDOW_HEIGHT - 100;
+    SDL_SetRenderDrawColor(renderer_, 100, 100, 100, 255);
+    SDL_RenderDrawLine(renderer_, 10, yPos, DEBUG_PANEL_WIDTH - 10, yPos);
+    yPos += 10;
+    
+    // Controls info
+    yPos += 15;
+    renderText(10, yPos, "Controls:", Color(0x88FF88FF), 1);
+    yPos += 20;
+    renderText(10, yPos, "Space: Step", Color(0xCCCCCCFF), 1);
+    yPos += 15;
+    renderText(10, yPos, "P: Pause/Run", Color(0xCCCCCCFF), 1);
+}
+
 void SDLPlatform::renderConsoleArea() {
     if (!initialized_) return;
     
@@ -1018,16 +1107,11 @@ void SDLPlatform::renderConsoleArea() {
     int windowWidth, windowHeight;
     SDL_GetWindowSize(window_, &windowWidth, &windowHeight);
     
-    // Console area starts to the right of the display
-    int consoleX = DISPLAY_SCALED_WIDTH;
+    // Console area starts to the right of the debug panel and display
+    int consoleX = DEBUG_PANEL_WIDTH + DISPLAY_SCALED_WIDTH;
     int consoleY = 0;
-    int consoleWidth = windowWidth - DISPLAY_SCALED_WIDTH;
+    int consoleWidth = CONSOLE_WIDTH;
     int consoleHeight = windowHeight;
-    
-    // Ensure console has minimum width
-    if (consoleWidth < 200) {
-        consoleWidth = 200;
-    }
     
     // Fill console background
     SDL_SetRenderDrawColor(renderer_, 30, 30, 30, 255); // Dark gray

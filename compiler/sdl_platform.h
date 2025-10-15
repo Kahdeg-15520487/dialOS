@@ -60,8 +60,9 @@ public:
     static const int WINDOW_SCALE = 2;  // Scale factor for easier viewing
     static const int DISPLAY_SCALED_WIDTH = DISPLAY_WIDTH * WINDOW_SCALE;
     static const int DISPLAY_SCALED_HEIGHT = DISPLAY_HEIGHT * WINDOW_SCALE;
-    static const int CONSOLE_WIDTH = 300;  // Width of console area
-    static const int WINDOW_WIDTH = DISPLAY_SCALED_WIDTH + CONSOLE_WIDTH;
+    static const int DEBUG_PANEL_WIDTH = 250;  // Width of debug panel on left
+    static const int CONSOLE_WIDTH = 300;  // Width of console area on right
+    static const int WINDOW_WIDTH = DEBUG_PANEL_WIDTH + DISPLAY_SCALED_WIDTH + CONSOLE_WIDTH;
     static const int WINDOW_HEIGHT = DISPLAY_SCALED_HEIGHT;
     static const int CENTER_X = DISPLAY_WIDTH / 2;
     static const int CENTER_Y = DISPLAY_HEIGHT / 2;
@@ -324,6 +325,7 @@ private:
     void addDebugMessage(const std::string& msg);
     void renderConsoleArea();
     void renderLogWindow(int x, int y, int width, int height, const std::string& title, const ConsoleLog& log);
+    void renderDebugPanel();
 };
 
 } // namespace vm
