@@ -4,6 +4,7 @@
 
 #include "sdl_platform.h"
 #include "../src/vm/vm_value.h"
+#include "../src/vm/vm_core.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
