@@ -126,4 +126,4 @@ function appOnLoad(): void {
 }
 
 // Set app lifecycle handler
-assign app.onLoad appOnLoad;
+os.app.onLoad(appOnLoad);

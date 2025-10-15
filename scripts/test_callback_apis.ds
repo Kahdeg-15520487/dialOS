@@ -1,0 +1,64 @@
+/*
+ * Test Callback APIs
+ * Demonstrates encoder, touch, and app lifecycle callbacks
+ */
+
+var turnCount: 0;
+var buttonPresses: 0;
+var touchCount: 0;
+
+// Encoder callbacks
+function onEncoderTurn(delta: int): void {
+    assign turnCount turnCount + 1;
+    os.console.print(`Encoder turned: ${delta}, count: ${turnCount}`);
+}
+
+function onEncoderButton(): void {
+    assign buttonPresses buttonPresses + 1;
+    os.console.print(`Button pressed! Total: ${buttonPresses}`);
+}
+
+// Touch callbacks
+function onTouchPress(x: int, y: int): void {
+    assign touchCount touchCount + 1;
+    os.console.print(`Touch at (${x}, ${y}), count: ${touchCount}`);
+}
+
+function onTouchRelease(): void {
+    os.console.print("Touch released");
+}
+
+// App lifecycle callbacks
+function onAppLoad(): void {
+    os.console.print("App loaded!");
+}
+
+function onAppSuspend(): void {
+    os.console.print("App suspended");
+}
+
+function onAppResume(): void {
+    os.console.print("App resumed");
+}
+
+function onAppUnload(): void {
+    os.console.print("App unloading...");
+}
+
+// Register all callbacks
+os.encoder.onTurn(onEncoderTurn);
+os.encoder.onButton(onEncoderButton);
+os.touch.onPress(onTouchPress);
+os.touch.onRelease(onTouchRelease);
+os.app.onLoad(onAppLoad);
+os.app.onSuspend(onAppSuspend);
+os.app.onResume(onAppResume);
+os.app.onUnload(onAppUnload);
+
+os.console.print("All callbacks registered!");
+os.console.print("Turn encoder, press button, or touch screen to test");
+
+// Event loop - keeps the app alive to process callbacks
+while (true) {
+    os.system.yield();  // Yield CPU, let platform process events and invoke callbacks
+}

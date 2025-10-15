@@ -660,11 +660,12 @@ std::unique_ptr<Expression> Parser::parsePrimary() {
         return lit;
     }
     
-    if (match(TokenType::TRUE) || match(TokenType::FALSE)) {
+    if (check(TokenType::TRUE) || check(TokenType::FALSE)) {
         auto lit = std::make_unique<BooleanLiteral>();
         lit->value = (current_.type == TokenType::TRUE);
         lit->line = current_.line;
         lit->column = current_.column;
+        advance(); // consume the boolean token
         return lit;
     }
     

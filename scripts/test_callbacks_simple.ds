@@ -1,0 +1,27 @@
+/*
+ * Simple Callback Test
+ * Minimal memory usage to test callback stability
+ */
+
+var count: 0;
+
+// Simple callback with minimal string usage
+function onTurn(delta: int): void {
+    assign count count + 1;
+    os.console.print("Turn");  // Fixed string, no allocation
+}
+
+function onPress(x: int, y: int): void {
+    os.console.print("Touch");  // Fixed string, no allocation
+}
+
+// Register callbacks
+os.encoder.onTurn(onTurn);
+os.touch.onPress(onPress);
+
+os.console.print("Ready! Turn encoder or touch screen");
+
+// Event loop
+while (true) {
+    os.system.yield();
+}

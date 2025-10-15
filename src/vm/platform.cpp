@@ -52,8 +52,8 @@ namespace dialos
 
         bool PlatformInterface::invokeCallback(const std::string& eventName, const std::vector<Value>& args)
         {
-            // Check if VM is initialized
-            if (vm_ == nullptr)
+            // Check if VM is initialized and still running
+            if (vm_ == nullptr || !vm_->isRunning())
             {
                 return false;
             }
@@ -65,8 +65,16 @@ namespace dialos
                 return false;
             }
 
+            console_log("[VM] Invoking callback for event: " + eventName);
+
             // Use VM's invokeFunction method for immediate callback execution
-            return vm_->invokeFunction(*callback, args);
+            bool success = vm_->invokeFunction(*callback, args);
+            
+            if (!success) {
+                console_log("[VM] Callback invocation failed for event: " + eventName);
+            }
+            
+            return success;
         }
 
     } // namespace vm

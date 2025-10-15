@@ -50,6 +50,8 @@ namespace dialos
             ENCODER_GET_DELTA = 0x0201,
             ENCODER_GET_POSITION = 0x0202,
             ENCODER_RESET = 0x0203,
+            ENCODER_ON_TURN = 0x0204,
+            ENCODER_ON_BUTTON = 0x0205,
 
             // System namespace (0x03xx)
             SYSTEM_GET_TIME = 0x0300,
@@ -63,6 +65,9 @@ namespace dialos
             TOUCH_GET_Y = 0x0401,
             TOUCH_IS_PRESSED = 0x0402,
             TOUCH_GET_POSITION = 0x0403,
+            TOUCH_ON_PRESS = 0x0404,
+            TOUCH_ON_RELEASE = 0x0405,
+            TOUCH_ON_DRAG = 0x0406,
 
             // RFID namespace (0x05xx)
             RFID_READ = 0x0500,
@@ -120,6 +125,10 @@ namespace dialos
             // App namespace (0x0Exx)
             APP_EXIT = 0x0E00,
             APP_GET_INFO = 0x0E01,
+            APP_ON_LOAD = 0x0E02,
+            APP_ON_SUSPEND = 0x0E03,
+            APP_ON_RESUME = 0x0E04,
+            APP_ON_UNLOAD = 0x0E05,
 
             // Storage namespace (0x0Fxx)
             STORAGE_GET_MOUNTED = 0x0F00,
@@ -193,6 +202,10 @@ namespace dialos
                 return NativeFunctionID::ENCODER_GET_POSITION;
             if (name == "reset")
                 return NativeFunctionID::ENCODER_RESET;
+            if (name == "onTurn")
+                return NativeFunctionID::ENCODER_ON_TURN;
+            if (name == "onButton")
+                return NativeFunctionID::ENCODER_ON_BUTTON;
 
             // System functions
             if (name == "getTime")
@@ -215,6 +228,12 @@ namespace dialos
                 return NativeFunctionID::TOUCH_IS_PRESSED;
             if (name == "getPosition")
                 return NativeFunctionID::TOUCH_GET_POSITION;
+            if (name == "onPress")
+                return NativeFunctionID::TOUCH_ON_PRESS;
+            if (name == "onRelease")
+                return NativeFunctionID::TOUCH_ON_RELEASE;
+            if (name == "onDrag")
+                return NativeFunctionID::TOUCH_ON_DRAG;
 
             // RFID functions
             if (name == "read")
@@ -309,6 +328,14 @@ namespace dialos
                 return NativeFunctionID::APP_EXIT;
             if (name == "getInfo")
                 return NativeFunctionID::APP_GET_INFO;
+            if (name == "onLoad")
+                return NativeFunctionID::APP_ON_LOAD;
+            if (name == "onSuspend")
+                return NativeFunctionID::APP_ON_SUSPEND;
+            if (name == "onResume")
+                return NativeFunctionID::APP_ON_RESUME;
+            if (name == "onUnload")
+                return NativeFunctionID::APP_ON_UNLOAD;
 
             // Storage functions
             if (name == "getMounted")

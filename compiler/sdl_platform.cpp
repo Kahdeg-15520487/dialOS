@@ -3,6 +3,7 @@
  */
 
 #include "sdl_platform.h"
+#include "../src/vm/vm_value.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -196,8 +197,18 @@ bool SDLPlatform::pollEvents() {
                 
             case SDL_MOUSEWHEEL:
                 // Simulate rotary encoder
-                encoder_.position += event.wheel.y;
-                encoder_.lastUpdate = std::chrono::steady_clock::now();
+                {
+                    int oldPosition = encoder_.position;
+                    encoder_.position += event.wheel.y;
+                    encoder_.lastUpdate = std::chrono::steady_clock::now();
+                    
+                    // Invoke encoder.onTurn callback if registered
+                    int delta = encoder_.position - oldPosition;
+                    if (delta != 0) {
+                        std::vector<Value> args = { Value::Int32(delta) };
+                        invokeCallback("encoder.onTurn", args);
+                    }
+                }
                 break;
                 
             case SDL_MOUSEBUTTONDOWN:
@@ -211,19 +222,40 @@ bool SDLPlatform::pollEvents() {
                         touch_.x = mouseX;
                         touch_.y = mouseY;
                         touch_.lastUpdate = std::chrono::steady_clock::now();
+                        
+                        // Invoke touch.onPress callback
+                        std::vector<Value> args = { Value::Int32(mouseX), Value::Int32(mouseY) };
+                        invokeCallback("touch.onPress", args);
                     }
                 } else if (event.button.button == SDL_BUTTON_RIGHT) {
                     // Right mouse button - encoder button
                     encoder_.pressed = true;
                     encoder_.lastUpdate = std::chrono::steady_clock::now();
+                    
+                    // Invoke encoder.onButton callback
+                    std::vector<Value> args = { Value::Bool(true) };
+                    invokeCallback("encoder.onButton", args);
                 }
                 break;
                 
             case SDL_MOUSEBUTTONUP:
                 if (event.button.button == SDL_BUTTON_LEFT) {
+                    int mouseX = event.button.x / WINDOW_SCALE;
+                    int mouseY = event.button.y / WINDOW_SCALE;
+                    
                     touch_.pressed = false;
+                    
+                    // Invoke touch.onRelease callback if in display
+                    if (isInCircularDisplay(mouseX, mouseY)) {
+                        std::vector<Value> args = { Value::Int32(mouseX), Value::Int32(mouseY) };
+                        invokeCallback("touch.onRelease", args);
+                    }
                 } else if (event.button.button == SDL_BUTTON_RIGHT) {
                     encoder_.pressed = false;
+                    
+                    // Invoke encoder.onButton callback for release
+                    std::vector<Value> args = { Value::Bool(false) };
+                    invokeCallback("encoder.onButton", args);
                 }
                 break;
                 
@@ -236,6 +268,10 @@ bool SDLPlatform::pollEvents() {
                         touch_.x = mouseX;
                         touch_.y = mouseY;
                         touch_.lastUpdate = std::chrono::steady_clock::now();
+                        
+                        // Invoke touch.onDrag callback
+                        std::vector<Value> args = { Value::Int32(mouseX), Value::Int32(mouseY) };
+                        invokeCallback("touch.onDrag", args);
                     }
                 }
                 break;
@@ -603,7 +639,10 @@ void SDLPlatform::system_setRTC(uint32_t timestamp) {
 // === Console Operations ===
 
 void SDLPlatform::console_print(const std::string& msg) {
-    std::cout << msg;
+    consoleLog_.addLine("[dialOS] " + msg);
+    addDebugMessage(msg);
+    
+    std::cout << msg << std::flush;
     outputLog_.addLine(msg);
 }
 

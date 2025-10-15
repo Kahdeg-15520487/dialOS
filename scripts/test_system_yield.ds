@@ -1,0 +1,8 @@
+/*
+ * Simple test of os.system.yield()
+ */
+
+os.console.print("Before yield");
+os.system.yield();
+os.console.print("After yield");
+os.console.print("Done!");

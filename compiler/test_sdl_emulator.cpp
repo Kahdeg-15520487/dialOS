@@ -184,6 +184,30 @@ int main(int argc, char** argv) {
             break;
         }
         
+        // Check if a callback caused a fatal error during event polling
+        if (vm.hasError() && !vmPaused) {
+            std::cout << std::endl;
+            std::cerr << "Runtime Error in callback: " << vm.getError() << std::endl;
+            std::cerr << "PC: " << vm.getPC() << ", Stack: " << vm.getStackSize() << std::endl;
+            
+            // Show source context if debug info and source file are available
+            if (module.hasDebugInfo() && !sourceFile.empty()) {
+                uint32_t sourceLine = module.getSourceLine(vm.getPC());
+                if (sourceLine > 0) {
+                    std::cout << getSourceContext(sourceFile, sourceLine, 5) << std::endl;
+                } else {
+                    std::cout << "Debug info available but no line mapping for PC " << vm.getPC() << std::endl;
+                }
+            } else if (module.hasDebugInfo()) {
+                std::cout << "Debug info available but source file not found" << std::endl;
+            } else {
+                std::cout << "No debug info available (compile with -DebugInfo for source context)" << std::endl;
+            }
+            
+            std::cout << "Emulator paused. Press ESC or close window to exit." << std::endl;
+            vmPaused = true;
+        }
+        
         // Execute VM if still running and not paused
         if (vm.isRunning() && !vmPaused) {
             vm::VMResult result = vm.execute(VM_CYCLES_PER_FRAME);
@@ -191,8 +215,9 @@ int main(int argc, char** argv) {
             switch (result) {
                 case vm::VMResult::FINISHED:
                     std::cout << std::endl;
-                    std::cout << "Program finished normally" << std::endl;
-                    std::cout << "Emulator paused. Press ESC or close window to exit." << std::endl;
+                    std::cout << "Main script finished. Event loop active (callbacks still work)." << std::endl;
+                    std::cout << "Press ESC or close window to exit." << std::endl;
+                    // Don't pause - keep event loop running for callbacks
                     vmPaused = true;
                     break;
                     

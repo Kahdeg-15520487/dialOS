@@ -16,6 +16,9 @@ namespace vm {
 VMState::VMState(const compiler::BytecodeModule& module, ValuePool& pool, PlatformInterface& platform)
     : module_(module), pool_(pool), platform_(platform), pc_(module.mainEntryPoint), running_(false) {
     
+    // Set VM reference in platform for callback invocation
+    platform_.setVM(this);
+    
     // Copy code from module
     code_ = module_.code;
     
@@ -34,6 +37,67 @@ VMState::VMState(const compiler::BytecodeModule& module, ValuePool& pool, Platfo
             if (consoleObj) {
                 osObj->fields["console"] = Value::Object(consoleObj);
             }
+            
+            // Add system object
+            vm::Object* systemObj = pool_.allocateObject("System");
+            if (systemObj) {
+                osObj->fields["system"] = Value::Object(systemObj);
+            }
+            
+            // Add display object
+            vm::Object* displayObj = pool_.allocateObject("Display");
+            if (displayObj) {
+                osObj->fields["display"] = Value::Object(displayObj);
+            }
+            
+            // Add encoder object
+            vm::Object* encoderObj = pool_.allocateObject("Encoder");
+            if (encoderObj) {
+                osObj->fields["encoder"] = Value::Object(encoderObj);
+            }
+            
+            // Add touch object
+            vm::Object* touchObj = pool_.allocateObject("Touch");
+            if (touchObj) {
+                osObj->fields["touch"] = Value::Object(touchObj);
+            }
+            
+            // Add app object
+            vm::Object* appObj = pool_.allocateObject("App");
+            if (appObj) {
+                osObj->fields["app"] = Value::Object(appObj);
+            }
+            
+            // Add rfid object
+            vm::Object* rfidObj = pool_.allocateObject("RFID");
+            if (rfidObj) {
+                osObj->fields["rfid"] = Value::Object(rfidObj);
+            }
+            
+            // Add file object
+            vm::Object* fileObj = pool_.allocateObject("File");
+            if (fileObj) {
+                osObj->fields["file"] = Value::Object(fileObj);
+            }
+            
+            // Add gpio object
+            vm::Object* gpioObj = pool_.allocateObject("GPIO");
+            if (gpioObj) {
+                osObj->fields["gpio"] = Value::Object(gpioObj);
+            }
+            
+            // Add i2c object
+            vm::Object* i2cObj = pool_.allocateObject("I2C");
+            if (i2cObj) {
+                osObj->fields["i2c"] = Value::Object(i2cObj);
+            }
+            
+            // Add buzzer object
+            vm::Object* buzzerObj = pool_.allocateObject("Buzzer");
+            if (buzzerObj) {
+                osObj->fields["buzzer"] = Value::Object(buzzerObj);
+            }
+            
             globals_["os"] = Value::Object(osObj);
         }
     }
@@ -79,8 +143,12 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     
     uint32_t entryPC = module_.functionEntryPoints[functionIndex];
     
-    // Save current PC
+    // Save current state
     uint32_t savedPC = pc_;
+    size_t stackSizeBefore = stack_.size();
+    
+    platform_.console_log("[VM] Before callback: PC=" + std::to_string(savedPC) + 
+                        ", Stack=" + std::to_string(stackSizeBefore));
     
     // Create call frame
     CallFrame frame;
@@ -88,6 +156,9 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     frame.stackBase = stack_.size();
     frame.functionName = (functionIndex < module_.functions.size()) ? 
                          module_.functions[functionIndex] : "<callback>";
+    
+    platform_.console_log("[VM] Invoking: " + frame.functionName + 
+                        " with " + std::to_string(args.size()) + " args");
     
     // Copy arguments to call frame locals (indexed by parameter number)
     for (uint8_t i = 0; i < args.size(); i++) {
@@ -104,14 +175,67 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     // Track call stack depth to know when callback completes
     size_t callDepthBefore = callStack_.size();
     
+    // Temporarily enable running state for callback execution
+    // (callbacks can run even if main script has finished)
+    bool wasRunning = running_;
+    running_ = true;
+    
     while (callStack_.size() >= callDepthBefore && !hasError() && running_) {
         VMResult result = step();
         if (result == VMResult::ERROR) {
+            platform_.console_log("[VM] ERROR in callback execution!");
+            if (!error_.empty()) {
+                platform_.console_log("[VM] Error: " + error_);
+            }
+            running_ = wasRunning;  // Restore original state
             return false;
         }
         if (result == VMResult::FINISHED) {
             break;
         }
+    }
+    
+    // Restore original running state
+    running_ = wasRunning;
+    
+    // Check if callback execution left an error
+    bool hadError = hasError();
+    if (hadError) {
+        platform_.console_log("[VM] Callback left error state!");
+        platform_.console_log("[VM] Error: " + error_);
+        
+        // Check if it's a fatal error (out of memory)
+        bool isFatalError = error_.find("Out of memory") != std::string::npos;
+        
+        if (isFatalError) {
+            // Fatal errors should halt execution
+            platform_.console_log("[VM] FATAL ERROR - halting VM execution");
+            running_ = false;  // Stop the VM completely
+            return false;
+        }
+        
+        // Non-fatal errors: clear error state so VM can continue
+        error_.clear();
+    }
+    
+    // Restore PC to where we were before callback
+    pc_ = savedPC;
+    
+    // Restore stack to exact state before callback
+    // The callback's RETURN cleans up to its stackBase and pushes return value
+    // We need to remove everything the callback added (including return value)
+    while (stack_.size() > stackSizeBefore) {
+        pop();
+    }
+    
+    size_t stackSizeAfter = stack_.size();
+    platform_.console_log("[VM] After callback: PC=" + std::to_string(pc_) + 
+                        ", Stack=" + std::to_string(stackSizeAfter) + 
+                        " (was " + std::to_string(stackSizeBefore) + ")");
+    
+    if (stackSizeAfter != stackSizeBefore) {
+        platform_.console_log("[VM] WARNING: Stack imbalance! Delta: " + 
+                            std::to_string((int)stackSizeAfter - (int)stackSizeBefore));
     }
     
     return !hasError();
@@ -788,6 +912,44 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
+                case NativeFunctionID::ENCODER_ON_TURN: {
+                    if (argCount < 1) {
+                        setError("onTurn() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onTurn() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("encoder.onTurn", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::ENCODER_ON_BUTTON: {
+                    if (argCount < 1) {
+                        setError("onButton() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onButton() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("encoder.onButton", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
                 // ===== System Functions =====
                 case NativeFunctionID::SYSTEM_GET_TIME: {
                     Value receiver = pop();
@@ -1346,6 +1508,63 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
+                case NativeFunctionID::TOUCH_ON_PRESS: {
+                    if (argCount < 1) {
+                        setError("onPress() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onPress() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("touch.onPress", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::TOUCH_ON_RELEASE: {
+                    if (argCount < 1) {
+                        setError("onRelease() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onRelease() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("touch.onRelease", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::TOUCH_ON_DRAG: {
+                    if (argCount < 1) {
+                        setError("onDrag() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onDrag() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("touch.onDrag", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
                 // ===== Directory Functions =====
                 case NativeFunctionID::DIR_LIST: {
                     if (argCount < 1) {
@@ -1427,6 +1646,82 @@ VMResult VMState::executeInstruction() {
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::String(platform_.app_getInfo()));
+                    break;
+                }
+                
+                case NativeFunctionID::APP_ON_LOAD: {
+                    if (argCount < 1) {
+                        setError("onLoad() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onLoad() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("app.onLoad", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::APP_ON_SUSPEND: {
+                    if (argCount < 1) {
+                        setError("onSuspend() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onSuspend() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("app.onSuspend", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::APP_ON_RESUME: {
+                    if (argCount < 1) {
+                        setError("onResume() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onResume() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("app.onResume", callback);
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::APP_ON_UNLOAD: {
+                    if (argCount < 1) {
+                        setError("onUnload() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value callback = pop();
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value receiver = pop();
+                    
+                    if (!callback.isFunction()) {
+                        setError("onUnload() requires a function argument");
+                        return VMResult::ERROR;
+                    }
+                    
+                    platform_.registerCallback("app.onUnload", callback);
+                    push(Value::Null());
                     break;
                 }
                 
