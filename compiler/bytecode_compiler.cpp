@@ -706,8 +706,9 @@ namespace dialos
                 funcName = id->name;
                 
                 // // Check if this is a user-defined function call
+                // // Only validate plain identifier calls (not os.* calls)
                 // if (declaredFunctions_.find(funcName) == declaredFunctions_.end()) {
-                //     // Not found in declared functions - this might be an error
+                //     // Not found in declared functions - emit error
                 //     error("Undefined function '" + funcName + "' at line " + std::to_string(id->line));
                 // }
             }

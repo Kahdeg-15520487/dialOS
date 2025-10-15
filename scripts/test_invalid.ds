@@ -1,0 +1,13 @@
+// Test undefined function detection
+
+function validFunc(): int {
+    return 42;
+}
+
+// This should work
+var x: validFunc();
+
+// This should fail at compile time
+var y: invalidFunc();
+
+os.console.log("This shouldn't execute");

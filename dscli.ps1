@@ -259,19 +259,33 @@ function Compile-ToBytecode {
         # Check if compilation failed
         $compilationFailed = ($LASTEXITCODE -ne 0)
         
-        # If compilation failed, show all compiler output
+        # Display compiler output
+        Write-Host ""
         if ($compilationFailed) {
-            Write-Host ""
             Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
             Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
             foreach ($line in $compilerOutput) {
-                Write-Host "$line" -ForegroundColor $Colors.Error
+                $lineStr = $line.ToString()
+                # Filter out PowerShell exception type lines
+                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
+                    Write-Host "$lineStr" -ForegroundColor $Colors.Error
+                }
             }
             Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
             Write-Host ""
             Write-Host "❌ Compilation failed" -ForegroundColor Red
             exit 1
         }
+        else {
+            # Show successful compilation output
+            foreach ($line in $compilerOutput) {
+                $lineStr = $line.ToString()
+                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
+                    Write-Host "$lineStr" -ForegroundColor $Colors.Info
+                }
+            }
+        }
+        Write-Host ""
         
         if (-not (Test-Path $OutputPath)) {
             Write-Host "❌ Bytecode file not generated" -ForegroundColor Red
@@ -323,19 +337,33 @@ function Compile-Applet {
         # Check if compilation failed
         $compilationFailed = ($LASTEXITCODE -ne 0)
         
-        # If compilation failed, show all compiler output
+        # Display compiler output
+        Write-Host ""
         if ($compilationFailed) {
-            Write-Host ""
             Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
             Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
             foreach ($line in $compilerOutput) {
-                Write-Host "$line" -ForegroundColor $Colors.Error
+                $lineStr = $line.ToString()
+                # Filter out PowerShell exception type lines
+                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
+                    Write-Host "$lineStr" -ForegroundColor $Colors.Error
+                }
             }
             Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
             Write-Host ""
             Write-Host "❌ Compilation failed" -ForegroundColor Red
             exit 1
         }
+        else {
+            # Show successful compilation output
+            foreach ($line in $compilerOutput) {
+                $lineStr = $line.ToString()
+                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
+                    Write-Host "$lineStr" -ForegroundColor $Colors.Info
+                }
+            }
+        }
+        Write-Host ""
         
         # Read the generated C array
         $cArrayContent = Get-Content $tempHeader -Raw
@@ -582,6 +610,8 @@ function Run-Simulator {
             $hasErrors = $false
             $inErrorSection = $false
             $errorLines = @()
+            $normalOutput = @()
+            
             foreach ($line in $compilerOutput) {
                 $lineStr = $line.ToString().Trim()
                 if ($lineStr -match "Compilation errors:") {
@@ -593,9 +623,14 @@ function Run-Simulator {
                     if ($lineStr -match "Note:|===|Bytecode") {
                         $inErrorSection = $false
                     }
-                    else {
+                    elseif ($lineStr -notmatch "System\.Management\.Automation\.") {
+                        # Filter out PowerShell exception type lines
                         $errorLines += $lineStr
                     }
+                }
+                elseif (-not $inErrorSection -and $lineStr -notmatch "System\.Management\.Automation\." -and $lineStr -ne "") {
+                    # Collect normal output to display
+                    $normalOutput += $lineStr
                 }
             }
 
@@ -608,6 +643,15 @@ function Run-Simulator {
                 Write-Host ""
                 Write-Host "❌ Compilation failed with errors" -ForegroundColor Red
                 exit 1
+            }
+
+            # Display normal compiler output
+            if ($normalOutput.Count -gt 0) {
+                Write-Host ""
+                foreach ($line in $normalOutput) {
+                    Write-Host "$line" -ForegroundColor $Colors.Info
+                }
+                Write-Host ""
             }
 
             if ($LASTEXITCODE -ne 0) {

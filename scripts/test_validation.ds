@@ -1,0 +1,24 @@
+// Test compile-time function validation
+
+// User-defined functions
+function greet(name: string): string {
+    return "Hello, " + name + "!";
+}
+
+function calculate(a: int, b: int): int {
+    return a * 2 + b;
+}
+
+// Test valid calls
+os.console.log("Testing function validation");
+
+// Valid user function call
+var greeting: greet("Alice");
+os.console.log(greeting);
+
+// Valid user function with math
+var result: calculate(5, 10);
+os.console.log("Result: " + result);
+
+// Valid native call
+os.console.log("All tests passed!");

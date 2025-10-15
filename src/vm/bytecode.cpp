@@ -435,6 +435,18 @@ std::string BytecodeModule::disassemble() const {
                     ss << " argc=" << static_cast<int>(argCount) << "\n";
                 }
                 break;
+            case Opcode::CALL_NATIVE:
+                if (pos + 2 < code.size()) {
+                    uint16_t funcIdx = code[pos] | (code[pos+1] << 8);
+                    uint8_t argCount = code[pos+2];
+                    pos += 3;
+                    ss << "CALL_NATIVE [" << funcIdx << "]";
+                    if (funcIdx < functions.size()) {
+                        ss << " " << functions[funcIdx];
+                    }
+                    ss << " argc=" << static_cast<int>(argCount) << "\n";
+                }
+                break;
             case Opcode::RETURN:
                 ss << "RETURN\n";
                 break;
