@@ -19,6 +19,7 @@ namespace vm {
 // Forward declarations
 struct Object;
 struct Array;
+struct Function;
 
 // Value type enumeration
 enum class ValueType : uint8_t {
@@ -29,7 +30,17 @@ enum class ValueType : uint8_t {
     STRING,
     OBJECT,
     ARRAY,
+    FUNCTION,    // Function reference
     NATIVE_FN
+};
+
+// Function reference - just index + param count
+struct Function {
+    uint16_t functionIndex;  // Index into BytecodeModule.functions
+    uint8_t paramCount;      // Number of parameters (for validation)
+    
+    Function(uint16_t idx, uint8_t params) 
+        : functionIndex(idx), paramCount(params) {}
 };
 
 // Value struct - tagged union
@@ -43,6 +54,7 @@ struct Value {
         std::string* stringVal;
         Object* objVal;
         Array* arrayVal;
+        Function* functionVal;
         void* nativeFn;
     };
     
@@ -79,6 +91,7 @@ struct Value {
     static Value String(const std::string& s);
     static Value Object(Object* obj);
     static Value Array(Array* arr);
+    static Value Function(Function* fn);
     
     // Type checking
     bool isNull() const { return type == ValueType::NULL_VAL; }
@@ -88,6 +101,10 @@ struct Value {
     bool isString() const { return type == ValueType::STRING; }
     bool isObject() const { return type == ValueType::OBJECT; }
     bool isArray() const { return type == ValueType::ARRAY; }
+    bool isFunction() const { return type == ValueType::FUNCTION; }
+    
+    // Value getters
+    struct Function* asFunction() const { return functionVal; }
     
     // Truthiness (for conditionals)
     bool isTruthy() const {
@@ -99,6 +116,7 @@ struct Value {
             case ValueType::STRING: return stringVal && !stringVal->empty();
             case ValueType::OBJECT: return objVal != nullptr;
             case ValueType::ARRAY: return arrayVal != nullptr;
+            case ValueType::FUNCTION: return functionVal != nullptr;
             default: return false;
         }
     }
@@ -137,6 +155,7 @@ public:
         for (auto* str : strings_) delete str;
         for (auto* obj : objects_) delete obj;
         for (auto* arr : arrays_) delete arr;
+        for (auto* fn : functions_) delete fn;
     }
     
     std::string* allocateString(const std::string& str) {
@@ -175,6 +194,18 @@ public:
         return arr;
     }
     
+    Function* allocateFunction(uint16_t funcIndex, uint8_t paramCount) {
+        size_t size = sizeof(Function);
+        if (allocated_ + size > heapSize_) {
+            return nullptr;
+        }
+        
+        auto* fn = new Function(funcIndex, paramCount);
+        functions_.push_back(fn);
+        allocated_ += size;
+        return fn;
+    }
+    
     size_t getAllocated() const { return allocated_; }
     size_t getAvailable() const { return heapSize_ - allocated_; }
     size_t getHeapSize() const { return heapSize_; }
@@ -185,6 +216,7 @@ private:
     std::vector<std::string*> strings_;
     std::vector<Object*> objects_;
     std::vector<Array*> arrays_;
+    std::vector<Function*> functions_;
 };
 
 } // namespace vm

@@ -30,6 +30,13 @@ Value Value::Array(vm::Array* arr) {
     return v;
 }
 
+Value Value::Function(vm::Function* fn) {
+    Value v;
+    v.type = ValueType::FUNCTION;
+    v.functionVal = fn;
+    return v;
+}
+
 std::string Value::toString() const {
     std::stringstream ss;
     
@@ -64,6 +71,15 @@ std::string Value::toString() const {
                 ss << "[Array length=" << arrayVal->elements.size() << "]";
             } else {
                 ss << "[Array null]";
+            }
+            return ss.str();
+            
+        case ValueType::FUNCTION:
+            if (functionVal) {
+                ss << "[Function #" << functionVal->functionIndex 
+                   << " params=" << (int)functionVal->paramCount << "]";
+            } else {
+                ss << "[Function null]";
             }
             return ss.str();
             
@@ -104,6 +120,9 @@ bool Value::equals(const Value& other) const {
             
         case ValueType::ARRAY:
             return arrayVal == other.arrayVal;
+            
+        case ValueType::FUNCTION:
+            return functionVal == other.functionVal;
             
         case ValueType::NATIVE_FN:
             return nativeFn == other.nativeFn;
