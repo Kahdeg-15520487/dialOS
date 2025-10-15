@@ -79,6 +79,7 @@ std::vector<uint8_t> BytecodeModule::serialize() const {
     for (size_t i = 0; i < functions.size(); i++) {
         writeString(functions[i]);
         writeU32(i < functionEntryPoints.size() ? functionEntryPoints[i] : 0);
+        data.push_back(i < functionParamCounts.size() ? functionParamCounts[i] : 0);
     }
     
     // Main entry point
@@ -170,9 +171,11 @@ BytecodeModule BytecodeModule::deserialize(const std::vector<uint8_t>& data) {
     uint32_t functionCount = readU32();
     module.functions.reserve(functionCount);
     module.functionEntryPoints.reserve(functionCount);
+    module.functionParamCounts.reserve(functionCount);
     for (uint32_t i = 0; i < functionCount; i++) {
         module.functions.push_back(readString());
         module.functionEntryPoints.push_back(readU32());
+        module.functionParamCounts.push_back(data[pos++]);
     }
     
     // Main entry point
@@ -449,6 +452,26 @@ std::string BytecodeModule::disassemble() const {
                 break;
             case Opcode::RETURN:
                 ss << "RETURN\n";
+                break;
+                
+            case Opcode::LOAD_FUNCTION:
+                if (pos + 1 < code.size()) {
+                    uint16_t funcIdx = code[pos] | (code[pos+1] << 8);
+                    pos += 2;
+                    ss << "LOAD_FUNCTION [" << funcIdx << "]";
+                    if (funcIdx < functions.size()) {
+                        ss << " " << functions[funcIdx];
+                    }
+                    ss << "\n";
+                }
+                break;
+                
+            case Opcode::CALL_INDIRECT:
+                if (pos < code.size()) {
+                    uint8_t argCount = code[pos];
+                    pos += 1;
+                    ss << "CALL_INDIRECT argc=" << static_cast<int>(argCount) << "\n";
+                }
                 break;
                 
             case Opcode::GET_FIELD:

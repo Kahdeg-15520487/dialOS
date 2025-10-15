@@ -77,6 +77,8 @@ enum class Opcode : uint8_t {
     CALL        = 0x80,  // Call function (function index, arg count)
     CALL_NATIVE = 0x81,  // Call native function (native index, arg count)
     RETURN      = 0x82,  // Return from function
+    LOAD_FUNCTION = 0x83,  // Push function reference (function index u16)
+    CALL_INDIRECT = 0x84,  // Call function from stack (arg count u8)
     
     // Object/Member access
     GET_FIELD   = 0x90,  // Get object field (field name index)
@@ -191,6 +193,7 @@ public:
     std::vector<std::string> globals;    // Global variable names
     std::vector<std::string> functions;  // Function names
     std::vector<uint32_t> functionEntryPoints;  // PC for each function
+    std::vector<uint8_t> functionParamCounts;   // Parameter count for each function
     uint32_t mainEntryPoint;             // Entry point for main code
     
     BytecodeModule() : mainEntryPoint(0) {}
@@ -219,7 +222,7 @@ public:
     }
     
     // Add function name, return index
-    uint16_t addFunction(const std::string& name) {
+    uint16_t addFunction(const std::string& name, uint8_t paramCount = 0) {
         for (size_t i = 0; i < functions.size(); i++) {
             if (functions[i] == name) {
                 return static_cast<uint16_t>(i);
@@ -227,6 +230,7 @@ public:
         }
         functions.push_back(name);
         functionEntryPoints.push_back(0); // Will be set later
+        functionParamCounts.push_back(paramCount); // Store param count
         return static_cast<uint16_t>(functions.size() - 1);
     }
     
