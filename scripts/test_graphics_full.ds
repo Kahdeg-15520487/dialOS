@@ -24,4 +24,4 @@ os.display.drawRect(140, 160, 60, 40, 0xFFF0, true);  // White filled
 os.display.drawText(60, 10, "Graphics Test", 0xFFFF, 2);
 os.display.drawText(70, 225, "dialOS", 0x07FF, 1);
 
-os.console.log("Graphics test complete!");
+os.console.print("Graphics test complete!");

@@ -2,7 +2,7 @@
 
 // Simple function with no arguments
 function sayHello(): string {
-    os.console.log("Hello from function!");
+    os.console.print("Hello from function!");
     return "hello";
 }
 
@@ -31,26 +31,26 @@ function factorial(n: int): int {
 }
 
 // Main execution
-os.console.log("Testing user-defined functions");
+os.console.print("Testing user-defined functions");
 
 // Test simple function
 var greeting: sayHello();
-os.console.log("Returned: " + greeting);
+os.console.print("Returned: " + greeting);
 
 // Test function with argument
 var doubled: double(5);
-os.console.log("Double of 5: " + doubled);
+os.console.print("Double of 5: " + doubled);
 
 // Test function with multiple arguments
 var sum: add(3, 7);
-os.console.log("3 + 7 = " + sum);
+os.console.print("3 + 7 = " + sum);
 
 // Test function calling another function
 var result: addAndDouble(2, 3);
-os.console.log("(2 + 3) * 2 = " + result);
+os.console.print("(2 + 3) * 2 = " + result);
 
 // Test recursion
 var fact5: factorial(5);
-os.console.log("Factorial of 5: " + fact5);
+os.console.print("Factorial of 5: " + fact5);
 
-os.console.log("Function tests complete!");
+os.console.print("Function tests complete!");

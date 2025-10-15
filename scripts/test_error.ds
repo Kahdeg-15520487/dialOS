@@ -3,10 +3,10 @@ var x: 5;
 var y: 10; 
 var z: x + y;
 
-os.console.log("Starting calculation...");
+os.console.print("Starting calculation...");
 
 // This will cause a division by zero error
 var divisor: 0;
 var result: 100 / divisor;  // Line that will cause error
 
-os.console.log("This should not print");
+os.console.print("This should not print");

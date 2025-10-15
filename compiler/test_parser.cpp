@@ -41,7 +41,7 @@ function main(): void {
     
     if (count = 0) {
         counter.increment();
-        os.console.log(message);
+        os.console.print(message);
     }
     
     while (counter.getValue() < 50) {
@@ -49,7 +49,7 @@ function main(): void {
     }
     
     var result: (counter.getValue() >= 50) ? "done" : "continue";
-    os.console.log(`Result: ${result}`);
+    os.console.print(`Result: ${result}`);
 }
 )";
 

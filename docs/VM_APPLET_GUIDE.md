@@ -10,7 +10,7 @@ Create a `.ds` file in the `scripts/` directory:
 
 ```javascript
 // scripts/hello_world.ds
-os.console.log("Hello from dialOS!");
+os.console.print("Hello from dialOS!");
 ```
 
 ### 2. Compile to Bytecode with C Array Output
@@ -102,13 +102,13 @@ assign name "New Name";
 
 ### Console Output
 ```javascript
-os.console.log("Hello");
-os.console.log(count);
+os.console.print("Hello");
+os.console.print(count);
 ```
 
 ### Known Limitations
 - **No template literals** (causes compiler bug): ❌ `"Count: ${count}"`
-- Use separate log calls instead: ✅ `os.console.log(count);`
+- Use separate log calls instead: ✅ `os.console.print(count);`
 
 ## Platform API Access
 
@@ -155,7 +155,7 @@ Your applets can access M5Dial hardware through the `os` object:
 // scripts/counter_applet.ds
 var count: 0;
 assign count count + 1;
-os.console.log(count);
+os.console.print(count);
 ```
 
 Registry entry:
@@ -168,7 +168,7 @@ Registry entry:
 // scripts/clock_applet.ds
 var seconds: 0;
 assign seconds seconds + 1;
-os.console.log(seconds);
+os.console.print(seconds);
 ```
 
 Registry entry:
@@ -249,4 +249,4 @@ Coming soon:
 
 ---
 
-**Ready to create your first applet?** Start with a simple `os.console.log()` example and build from there!
+**Ready to create your first applet?** Start with a simple `os.console.print()` example and build from there!

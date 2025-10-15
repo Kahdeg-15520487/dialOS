@@ -53,10 +53,17 @@ All APIs under `os.*` namespace are **CALL_NATIVE** opcodes.
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
+| `os.console.print()` | `message: string` | `null` | 🔜 Planned |
 | `os.console.log()` | `message: string` | `null` | ✅ Implemented |
 | `os.console.warn()` | `message: string` | `null` | 🔜 Planned |
 | `os.console.error()` | `message: string` | `null` | 🔜 Planned |
 | `os.console.clear()` | none | `null` | 🔜 Planned |
+
+### `os.console.print(message: string) -> null`
+Print message to console
+- **Parameters**: `message` (string) - Message to print
+- **Returns**: null
+- **Status**: 🔜 Planned
 
 ### `os.console.log(message: string) -> null`
 Log informational message to console

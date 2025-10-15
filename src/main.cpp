@@ -234,7 +234,29 @@ void ramfsTestTask(byte taskId, void *param) {
 
 // VM Platform implementation for ESP32
 class ESP32Platform : public dialos::vm::PlatformInterface {
+private:
+  int encoderPosition = 0;
+
 public:
+  // ===== Console Operations =====
+  void console_log(const std::string &message) override {
+    Serial.println(message.c_str());
+    Kernel::instance().getSystemServices()->log(LogLevel::INFO, message.c_str());
+  }
+  
+  void console_warn(const std::string &message) override {
+    Serial.print("[WARN] ");
+    Serial.println(message.c_str());
+    Kernel::instance().getSystemServices()->log(LogLevel::WARNING, message.c_str());
+  }
+  
+  void console_error(const std::string &message) override {
+    Serial.print("[ERROR] ");
+    Serial.println(message.c_str());
+    Kernel::instance().getSystemServices()->log(LogLevel::ERROR, message.c_str());
+  }
+  
+  // ===== Display Operations =====
   void display_clear(uint32_t color) override {
     M5Dial.Display.fillScreen(color);
   }
@@ -246,19 +268,221 @@ public:
     M5Dial.Display.setCursor(x, y);
     M5Dial.Display.print(text.c_str());
   }
+  
+  void display_drawRect(int x, int y, int w, int h, uint32_t color, bool filled) override {
+    if (filled) {
+      M5Dial.Display.fillRect(x, y, w, h, color);
+    } else {
+      M5Dial.Display.drawRect(x, y, w, h, color);
+    }
+  }
+  
+  void display_drawCircle(int x, int y, int r, uint32_t color, bool filled) override {
+    if (filled) {
+      M5Dial.Display.fillCircle(x, y, r, color);
+    } else {
+      M5Dial.Display.drawCircle(x, y, r, color);
+    }
+  }
+  
+  void display_drawLine(int x1, int y1, int x2, int y2, uint32_t color) override {
+    M5Dial.Display.drawLine(x1, y1, x2, y2, color);
+  }
+  
+  void display_drawPixel(int x, int y, uint32_t color) override {
+    M5Dial.Display.drawPixel(x, y, color);
+  }
+  
+  void display_setBrightness(int level) override {
+    M5Dial.Display.setBrightness(level);
+  }
+  
+  int display_getWidth() override {
+    return M5Dial.Display.width();
+  }
+  
+  int display_getHeight() override {
+    return M5Dial.Display.height();
+  }
 
-  bool encoder_getButton() override { return M5Dial.BtnA.isPressed(); }
+  // ===== Encoder Operations =====
+  bool encoder_getButton() override { 
+    return M5Dial.BtnA.isPressed(); 
+  }
 
-  int encoder_getDelta() override { return get_encoder(); }
+  int encoder_getDelta() override { 
+    int delta = get_encoder();
+    encoderPosition += delta;
+    return delta;
+  }
+  
+  int encoder_getPosition() override {
+    return encoderPosition;
+  }
+  
+  void encoder_reset() override {
+    encoderPosition = 0;
+  }
 
-  uint32_t system_getTime() override { return millis(); }
+  // ===== System Operations =====
+  uint32_t system_getTime() override { 
+    return millis(); 
+  }
 
-  void system_sleep(uint32_t ms) override { delay(ms); }
-
-  void console_log(const std::string &message) override {
-    Serial.println(message.c_str());
-    Kernel::instance().getSystemServices()->log(LogLevel::INFO,
-                                                message.c_str());
+  void system_sleep(uint32_t ms) override { 
+    delay(ms); 
+  }
+  
+  void system_yield() override {
+    yield();
+  }
+  
+  uint32_t system_getRTC() override {
+    // TODO: Implement BM8563 RTC reading
+    return millis() / 1000; // Return seconds as fallback
+  }
+  
+  void system_setRTC(uint32_t timestamp) override {
+    // TODO: Implement BM8563 RTC setting
+  }
+  
+  // ===== Touch Operations =====
+  int touch_getX() override {
+    auto touch = M5Dial.Touch.getDetail();
+    return touch.x;
+  }
+  
+  int touch_getY() override {
+    auto touch = M5Dial.Touch.getDetail();
+    return touch.y;
+  }
+  
+  bool touch_isPressed() override {
+    return M5Dial.Touch.isPressed();
+  }
+  
+  // ===== Memory Operations =====
+  int memory_getAvailable() override {
+    return ESP.getFreeHeap();
+  }
+  
+  int memory_getUsage() override {
+    return ESP.getHeapSize() - ESP.getFreeHeap();
+  }
+  
+  // ===== GPIO Operations =====
+  void gpio_pinMode(int pin, int mode) override {
+    pinMode(pin, mode);
+  }
+  
+  void gpio_digitalWrite(int pin, int value) override {
+    digitalWrite(pin, value);
+  }
+  
+  int gpio_digitalRead(int pin) override {
+    return digitalRead(pin);
+  }
+  
+  void gpio_analogWrite(int pin, int value) override {
+    analogWrite(pin, value);
+  }
+  
+  int gpio_analogRead(int pin) override {
+    return analogRead(pin);
+  }
+  
+  // ===== I2C Operations =====
+  std::vector<int> i2c_scan() override {
+    std::vector<int> devices;
+    for (int address = 1; address < 127; address++) {
+      Wire.beginTransmission(address);
+      if (Wire.endTransmission() == 0) {
+        devices.push_back(address);
+      }
+    }
+    return devices;
+  }
+  
+  bool i2c_write(int address, const std::vector<uint8_t>& data) override {
+    Wire.beginTransmission(address);
+    for (uint8_t byte : data) {
+      Wire.write(byte);
+    }
+    return Wire.endTransmission() == 0;
+  }
+  
+  std::vector<uint8_t> i2c_read(int address, int length) override {
+    std::vector<uint8_t> data;
+    Wire.requestFrom(address, length);
+    while (Wire.available()) {
+      data.push_back(Wire.read());
+    }
+    return data;
+  }
+  
+  // ===== Buzzer Operations =====
+  void buzzer_beep(int frequency, int duration) override {
+    // M5Dial has a buzzer on GPIO3
+    tone(3, frequency, duration);
+  }
+  
+  void buzzer_stop() override {
+    noTone(3);
+  }
+  
+  // ===== RFID Operations =====
+  std::string rfid_read() override {
+    // TODO: Implement WS1850S RFID reader support
+    return "";
+  }
+  
+  bool rfid_isPresent() override {
+    // TODO: Implement WS1850S RFID reader support
+    return false;
+  }
+  
+  // ===== Power Operations =====
+  void power_sleep() override {
+    // TODO: Implement deep sleep mode
+  }
+  
+  int power_getBatteryLevel() override {
+    // TODO: Implement battery level reading
+    return 100; // Return full as default
+  }
+  
+  bool power_isCharging() override {
+    // TODO: Implement charging detection
+    return false;
+  }
+  
+  // ===== File Operations (stubs for now) =====
+  int file_open(const std::string& path, const std::string& mode) override {
+    // TODO: Implement using RAMFS or future filesystem
+    return -1;
+  }
+  
+  std::string file_read(int handle, int size) override {
+    return "";
+  }
+  
+  int file_write(int handle, const std::string& data) override {
+    return -1;
+  }
+  
+  void file_close(int handle) override {
+  }
+  
+  bool file_exists(const std::string& path) override {
+    return false;
+  }
+  
+  bool file_delete(const std::string& path) override {
+    return false;
+  }
+  
+  int file_size(const std::string& path) override {
+    return -1;
   }
 };
 

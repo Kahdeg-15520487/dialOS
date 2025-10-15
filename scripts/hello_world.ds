@@ -1,1 +1,1 @@
-os.console.log("Hello world");
+os.console.print("Hello world");

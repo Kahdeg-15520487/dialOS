@@ -10,15 +10,15 @@ function calculate(a: int, b: int): int {
 }
 
 // Test valid calls
-os.console.log("Testing function validation");
+os.console.print("Testing function validation");
 
 // Valid user function call
 var greeting: greet("Alice");
-os.console.log(greeting);
+os.console.print(greeting);
 
 // Valid user function with math
 var result: calculate(5, 10);
-os.console.log("Result: " + result);
+os.console.print("Result: " + result);
 
 // Valid native call
-os.console.log("All tests passed!");
+os.console.print("All tests passed!");

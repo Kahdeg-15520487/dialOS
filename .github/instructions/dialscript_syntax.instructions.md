@@ -188,7 +188,7 @@ function add(x: int, y: int): int {
 }
 
 function greet(name: string): void {
-    os.console.log(`Hello, ${name}!`);
+    os.console.print(`Hello, ${name}!`);
 }
 
 function max(a: int, b: int): int {
@@ -302,7 +302,7 @@ for (initialization; condition; update) {
 
 // Example
 for (var i: 0; i < 10; assign i i + 1;) {
-    os.console.log(i);
+    os.console.print(i);
 }
 ```
 
@@ -374,7 +374,7 @@ os.display.drawCircle(x, y, radius, color, filled);
 
 ### Console Output
 ```javascript
-os.console.log("Debug message");
+os.console.print("Debug message");
 os.console.error("Error occurred");
 os.console.warn("Warning message");
 ```
@@ -437,12 +437,12 @@ class Timer {
     
     start(): void {
         assign this.running true;
-        os.console.log("Timer started");
+        os.console.print("Timer started");
     }
     
     stop(): void {
         assign this.running false;
-        os.console.log("Timer stopped");
+        os.console.print("Timer stopped");
     }
     
     tick(): void {
@@ -478,7 +478,7 @@ function main(): void {
         os.system.sleep(1000); // 1 second delay
     }
     
-    os.console.log("Timer finished!");
+    os.console.print("Timer finished!");
 }
 
 // Start the application

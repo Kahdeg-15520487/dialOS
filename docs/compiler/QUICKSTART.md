@@ -211,7 +211,7 @@ make test
 Or create your own test file `my_test.ds`:
 ```javascript
 var greeting: "Hello World";
-os.console.log(greeting);
+os.console.print(greeting);
 ```
 
 Then parse it:

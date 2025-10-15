@@ -6,14 +6,14 @@ function validFunction(): int {
 }
 
 // Main execution
-os.console.log("Testing undefined function handling");
+os.console.print("Testing undefined function handling");
 
 // Call a valid function first
 var result1: validFunction();
-os.console.log("Valid function result: " + result1);
+os.console.print("Valid function result: " + result1);
 
 // Try to call an undefined function
 var result2: undefinedFunction();
-os.console.log("Undefined function result: " + result2);
+os.console.print("Undefined function result: " + result2);
 
-os.console.log("Test complete");
+os.console.print("Test complete");

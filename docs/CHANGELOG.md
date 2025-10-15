@@ -31,7 +31,7 @@
 
 - **Fixed**: CALL opcode stack layout for method calls
   - Corrected receiver-on-top convention: `[..., arg1, argN, receiver]`
-  - Proper handling of `os.console.log()` native function calls
+  - Proper handling of `os.console.print()` native function calls
 
 #### Architecture Changes
 - **VM Task Structure**:
@@ -89,7 +89,7 @@
 
 #### dialScript Limitations
 - ❌ Template literals cause compiler bug (no `${variable}` syntax)
-- ✅ Use separate `os.console.log()` calls instead
+- ✅ Use separate `os.console.print()` calls instead
 
 ### Migration Guide
 

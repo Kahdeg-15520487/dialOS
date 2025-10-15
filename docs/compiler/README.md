@@ -155,7 +155,7 @@ function add(x: int, y: int): int {
 }
 
 function greet(): void {
-    os.console.log("Hello!");
+    os.console.print("Hello!");
 }
 ```
 
@@ -196,7 +196,7 @@ while (count < 10) {
 
 // For loop
 for (var i: 0; i < 10; assign i i + 1;) {
-    os.console.log(i);
+    os.console.print(i);
 }
 
 // Try-catch-finally
@@ -230,7 +230,7 @@ var formatted: `Score: ${score}, Status: ${status}`;
 
 // Member access
 var length: message.length;
-os.console.log(formatted);
+os.console.print(formatted);
 
 // Array access
 var first: items[0];

@@ -113,15 +113,15 @@ bool SDLPlatform::initialize(const std::string& title) {
     }
     
     initialized_ = true;
-    program_output("dialOS SDL Emulator initialized");
-    program_output("Hardware simulation active:");
-    program_output("- Display: 240x240 circular TFT (scaled 2x)");
-    program_output("- Encoder: Mouse wheel rotation + right click button");
-    program_output("- Touch: Left click in circular display area");
-    program_output("- RFID: Press 'R' to simulate card");
-    program_output("- Buzzer: Press 'B' for test beep");
-    program_output("- Debug: Press 'D' to toggle debug overlay");
-    program_output("- Quit: Press ESC or close window");
+    console_log("dialOS SDL Emulator initialized");
+    console_log("Hardware simulation active:");
+    console_log("- Display: 240x240 circular TFT (scaled 2x)");
+    console_log("- Encoder: Mouse wheel rotation + right click button");
+    console_log("- Touch: Left click in circular display area");
+    console_log("- RFID: Press 'R' to simulate card");
+    console_log("- Buzzer: Press 'B' for test beep");
+    console_log("- Debug: Press 'D' to toggle debug overlay");
+    console_log("- Quit: Press ESC or close window");
 
     return true;
 }
@@ -167,7 +167,7 @@ bool SDLPlatform::pollEvents() {
                         
                     case SDLK_d:
                         showDebugInfo_ = !showDebugInfo_;
-                        program_output(showDebugInfo_ ? "Debug overlay ON" : "Debug overlay OFF");
+                        console_log(showDebugInfo_ ? "Debug overlay ON" : "Debug overlay OFF");
                         break;
                         
                     case SDLK_r:
@@ -181,9 +181,9 @@ bool SDLPlatform::pollEvents() {
                                 ss << std::setw(2) << (rand() % 256);
                             }
                             rfid_.cardUID = ss.str();
-                            program_output("RFID card detected: " + rfid_.cardUID);
+                            console_log("RFID card detected: " + rfid_.cardUID);
                         } else {
-                            program_output("RFID card removed");
+                            console_log("RFID card removed");
                         }
                         break;
                         
@@ -321,11 +321,11 @@ void SDLPlatform::display_drawPixel(int x, int y, uint32_t color) {
 
 void SDLPlatform::display_drawLine(int x1, int y1, int x2, int y2, uint32_t color) {
     if (!initialized_) {
-        program_output("Error: display_drawLine called before initialization");
+        console_log("Error: display_drawLine called before initialization");
         return;
     }
     else{
-        program_output("Should draw line from " + std::to_string(x1) + "," + std::to_string(y1) + " to " + std::to_string(x2) + "," + std::to_string(y2));
+        console_log("Should draw line from " + std::to_string(x1) + "," + std::to_string(y1) + " to " + std::to_string(x2) + "," + std::to_string(y2));
     }
     
     Color lineColor(color);
@@ -453,7 +453,7 @@ bool SDLPlatform::rfid_isPresent() {
 
 int SDLPlatform::file_open(const std::string& path, const std::string& mode) {
     // TODO: Implement file system simulation
-    program_output("File open: " + path + " mode: " + mode);
+    console_log("File open: " + path + " mode: " + mode);
     return -1; // Not implemented
 }
 
@@ -485,13 +485,13 @@ int SDLPlatform::file_size(const std::string& path) {
 
 void SDLPlatform::gpio_pinMode(int pin, int mode) {
     gpioPins_[pin].mode = static_cast<uint8_t>(mode);
-    program_output("GPIO" + std::to_string(pin) + " mode: " + std::to_string(mode));
+    console_log("GPIO" + std::to_string(pin) + " mode: " + std::to_string(mode));
 }
 
 void SDLPlatform::gpio_digitalWrite(int pin, int value) {
     if (gpioPins_[pin].mode == GPIO_OUTPUT) {
         gpioPins_[pin].digitalValue = (value != 0);
-        program_output("GPIO" + std::to_string(pin) + " write: " + (value ? "HIGH" : "LOW"));
+        console_log("GPIO" + std::to_string(pin) + " write: " + (value ? "HIGH" : "LOW"));
     }
 }
 
@@ -502,7 +502,7 @@ int SDLPlatform::gpio_digitalRead(int pin) {
 void SDLPlatform::gpio_analogWrite(int pin, int value) {
     if (gpioPins_[pin].mode == GPIO_OUTPUT) {
         gpioPins_[pin].analogValue = static_cast<uint16_t>(value);
-        program_output("GPIO" + std::to_string(pin) + " PWM: " + std::to_string(value));
+        console_log("GPIO" + std::to_string(pin) + " PWM: " + std::to_string(value));
     }
 }
 
@@ -513,17 +513,17 @@ int SDLPlatform::gpio_analogRead(int pin) {
 // === I2C Operations (Stubs) ===
 
 std::vector<int> SDLPlatform::i2c_scan() {
-    program_output("I2C scan");
+    console_log("I2C scan");
     return {}; // Not implemented
 }
 
 bool SDLPlatform::i2c_write(int address, const std::vector<uint8_t>& data) {
-    program_output("I2C write to 0x" + std::to_string(address));
+    console_log("I2C write to 0x" + std::to_string(address));
     return false; // Not implemented
 }
 
 std::vector<uint8_t> SDLPlatform::i2c_read(int address, int length) {
-    program_output("I2C read from 0x" + std::to_string(address));
+    console_log("I2C read from 0x" + std::to_string(address));
     return {}; // Not implemented
 }
 
@@ -536,7 +536,7 @@ void SDLPlatform::buzzer_beep(int frequency, int duration) {
     
     // Simple audio simulation - just log for now
     // In a full implementation, you'd generate audio waveforms
-    program_output("Buzzer: " + std::to_string(frequency) + "Hz for " + std::to_string(duration) + "ms");
+    console_log("Buzzer: " + std::to_string(frequency) + "Hz for " + std::to_string(duration) + "ms");
 }
 
 void SDLPlatform::buzzer_stop() {
@@ -547,17 +547,22 @@ void SDLPlatform::buzzer_stop() {
 
 int SDLPlatform::timer_setTimeout(int ms) {
     // TODO: Implement timer system
-    program_output("setTimeout: " + std::to_string(ms) + "ms");
+    console_log("setTimeout: " + std::to_string(ms) + "ms");
     return -1; // Not implemented
 }
 
 int SDLPlatform::timer_setInterval(int ms) {
-    program_output("setInterval: " + std::to_string(ms) + "ms");
+    console_log("setInterval: " + std::to_string(ms) + "ms");
     return -1; // Not implemented
 }
 
-void SDLPlatform::timer_clear(int id) {
-    program_output("clearTimer: " + std::to_string(id));
+void SDLPlatform::timer_clearTimeout(int id) {
+    console_log("clearTimeout: " + std::to_string(id));
+    // Not implemented
+}
+
+void SDLPlatform::timer_clearInterval(int id) {
+    console_log("clearInterval: " + std::to_string(id));
     // Not implemented
 }
 
@@ -597,9 +602,15 @@ void SDLPlatform::system_setRTC(uint32_t timestamp) {
 
 // === Console Operations ===
 
-void SDLPlatform::console_log(const std::string& msg) {
-    std::cout << msg << std::endl;
+void SDLPlatform::console_print(const std::string& msg) {
+    std::cout << msg;
     outputLog_.addLine(msg);
+}
+
+void SDLPlatform::console_log(const std::string& msg) {
+    std::cout << "[dialOS] " << msg << std::endl;
+    consoleLog_.addLine("[dialOS] " + msg);
+    addDebugMessage(msg);
 }
 
 void SDLPlatform::console_warn(const std::string& msg) {
@@ -612,10 +623,8 @@ void SDLPlatform::console_error(const std::string& msg) {
     outputLog_.addLine("[ERROR] " + msg);
 }
 
-void SDLPlatform::program_output(const std::string& msg) {
-    std::cout << "[dialOS] " << msg << std::endl;
-    consoleLog_.addLine("[dialOS] " + msg);
-    addDebugMessage(msg);
+void SDLPlatform::console_clear() {
+    outputLog_.clear();
 }
 
 // Private helper methods
@@ -808,7 +817,7 @@ void SDLPlatform::debug_drawOverlay() {
 
 // Additional peripheral simulation methods (not part of PlatformInterface)
 
-uint8_t SDLPlatform::power_getBatteryLevel() {
+int SDLPlatform::power_getBatteryLevel() {
     return power_.batteryLevel;
 }
 
@@ -817,8 +826,150 @@ bool SDLPlatform::power_isCharging() {
 }
 
 void SDLPlatform::power_sleep() {
-    program_output("System entering sleep mode...");
+    console_log("System entering sleep mode...");
     // In a real implementation, this would put the system into low-power mode
+}
+
+// === Display Extended Operations ===
+
+void SDLPlatform::display_setTitle(const std::string& title) {
+    if (window_) {
+        SDL_SetWindowTitle(window_, title.c_str());
+    }
+}
+
+void SDLPlatform::display_drawImage(int x, int y, const std::vector<uint8_t>& imageData) {
+    // TODO: Implement image drawing from raw data
+    console_log("display_drawImage called at (" + std::to_string(x) + "," + std::to_string(y) + ")");
+}
+
+// === System Extended Operations ===
+
+void SDLPlatform::system_yield() {
+    SDL_Delay(1); // Small delay to allow other processes to run
+}
+
+// === Memory Extended Operations ===
+
+int SDLPlatform::memory_allocate(int size) {
+    // TODO: Implement memory allocation tracking
+    console_log("memory_allocate: " + std::to_string(size) + " bytes");
+    return -1; // Not implemented
+}
+
+void SDLPlatform::memory_free(int handle) {
+    // TODO: Implement memory deallocation tracking
+    console_log("memory_free: handle " + std::to_string(handle));
+}
+
+// === Directory Operations ===
+
+std::vector<std::string> SDLPlatform::dir_list(const std::string& path) {
+    // TODO: Implement directory listing
+    console_log("dir_list: " + path);
+    return {};
+}
+
+bool SDLPlatform::dir_create(const std::string& path) {
+    // TODO: Implement directory creation
+    console_log("dir_create: " + path);
+    return false;
+}
+
+bool SDLPlatform::dir_delete(const std::string& path) {
+    // TODO: Implement directory deletion
+    console_log("dir_delete: " + path);
+    return false;
+}
+
+bool SDLPlatform::dir_exists(const std::string& path) {
+    // TODO: Implement directory existence check
+    console_log("dir_exists: " + path);
+    return false;
+}
+
+// === App Operations ===
+
+void SDLPlatform::app_exit() {
+    console_log("App exit requested");
+    shouldQuit_ = true;
+}
+
+std::string SDLPlatform::app_getInfo() {
+    return "{\"name\":\"dialOS Emulator\",\"version\":\"1.0\",\"platform\":\"SDL2\"}";
+}
+
+// === Storage Operations ===
+
+std::vector<std::string> SDLPlatform::storage_getMounted() {
+    // TODO: Implement storage device listing
+    return {"internal"}; // Simulated internal storage
+}
+
+std::string SDLPlatform::storage_getInfo(const std::string& device) {
+    // TODO: Implement storage info retrieval
+    if (device == "internal") {
+        return "{\"device\":\"internal\",\"type\":\"flash\",\"size\":8388608,\"free\":4194304}";
+    }
+    return "{}";
+}
+
+// === Sensor Operations ===
+
+int SDLPlatform::sensor_attach(const std::string& port, const std::string& type) {
+    // TODO: Implement sensor attachment simulation
+    console_log("sensor_attach: port=" + port + " type=" + type);
+    return -1; // Not implemented
+}
+
+std::string SDLPlatform::sensor_read(int handle) {
+    // TODO: Implement sensor data reading
+    console_log("sensor_read: handle=" + std::to_string(handle));
+    return "{}";
+}
+
+void SDLPlatform::sensor_detach(int handle) {
+    // TODO: Implement sensor detachment
+    console_log("sensor_detach: handle=" + std::to_string(handle));
+}
+
+// === WiFi Operations ===
+
+bool SDLPlatform::wifi_connect(const std::string& ssid, const std::string& password) {
+    // TODO: Implement WiFi simulation
+    console_log("wifi_connect: ssid=" + ssid);
+    return false; // Not implemented
+}
+
+void SDLPlatform::wifi_disconnect() {
+    console_log("wifi_disconnect");
+}
+
+std::string SDLPlatform::wifi_getStatus() {
+    return "{\"status\":\"disconnected\"}";
+}
+
+std::string SDLPlatform::wifi_getIP() {
+    return "";
+}
+
+// === IPC Operations ===
+
+bool SDLPlatform::ipc_send(const std::string& appId, const std::string& message) {
+    // TODO: Implement IPC simulation
+    console_log("ipc_send: to=" + appId + " msg=" + message);
+    return false; // Not implemented
+}
+
+void SDLPlatform::ipc_broadcast(const std::string& message) {
+    console_log("ipc_broadcast: " + message);
+}
+
+// === Buzzer Extended Operations ===
+
+void SDLPlatform::buzzer_playMelody(const std::vector<int>& notes) {
+    // TODO: Implement melody playback
+    console_log("buzzer_playMelody: " + std::to_string(notes.size()) + " notes");
 }
 
 void SDLPlatform::renderConsoleArea() {

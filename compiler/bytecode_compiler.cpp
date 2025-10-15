@@ -723,7 +723,7 @@ namespace dialos
                 isNativeCall = isOsNamespaceCall(member->object.get());
                 
                 // For method calls, we don't validate against declaredFunctions_ as they might be:
-                // 1. Native OS functions (os.console.log, etc.)  
+                // 1. Native OS functions (os.console.print, etc.)  
                 // 2. Methods on objects that are dynamically resolved
             }
 
@@ -739,7 +739,7 @@ namespace dialos
         bool BytecodeCompiler::isOsNamespaceCall(const Expression *expr) const
         {
             // Check if this expression chain starts with 'os'
-            // Examples: os.console.log(), os.display.clear()
+            // Examples: os.console.print(), os.display.clear()
 
             if (auto *id = dynamic_cast<const Identifier *>(expr))
             {

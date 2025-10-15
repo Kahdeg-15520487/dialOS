@@ -18,14 +18,20 @@ using namespace dialos;
 class ConsolePlatform : public vm::PlatformInterface {
 public:
     // Console
+    void console_print(const std::string& msg) override {
+        std::cout << msg;
+    }
     void console_log(const std::string& msg) override {
-        std::cout << "[Console] " << msg << std::endl;
+        std::cout << "[INFO] " << msg << std::endl;
     }
     void console_warn(const std::string& msg) override {
         std::cout << "[WARN] " << msg << std::endl;
     }
     void console_error(const std::string& msg) override {
         std::cerr << "[ERROR] " << msg << std::endl;
+    }
+    void console_clear() override {
+        std::cout << "[Console] Clear" << std::endl;
     }
     
     // Display
@@ -45,6 +51,8 @@ public:
     void display_setBrightness(int brightness) override {}
     int display_getWidth() override { return 240; }
     int display_getHeight() override { return 240; }
+    void display_setTitle(const std::string& title) override {}
+    void display_drawImage(int x, int y, const std::vector<uint8_t>& imageData) override {}
     
     // Encoder
     bool encoder_getButton() override { return false; }
@@ -59,6 +67,7 @@ public:
     }
     uint32_t system_getRTC() override { return 0; }
     void system_setRTC(uint32_t timestamp) override {}
+    void system_yield() override {}
     
     // Touch
     int touch_getX() override { return 0; }
@@ -92,16 +101,54 @@ public:
     
     // Buzzer (stubs)
     void buzzer_beep(int frequency, int duration) override {}
+    void buzzer_playMelody(const std::vector<int>& notes) override {}
     void buzzer_stop() override {}
     
     // Timer (stubs)
     int timer_setTimeout(int ms) override { return -1; }
     int timer_setInterval(int ms) override { return -1; }
-    void timer_clear(int id) override {}
+    void timer_clearTimeout(int id) override {}
+    void timer_clearInterval(int id) override {}
     
     // Memory (stubs)
     int memory_getAvailable() override { return 0; }
     int memory_getUsage() override { return 0; }
+    int memory_allocate(int size) override { return -1; }
+    void memory_free(int handle) override {}
+    
+    // Directory (stubs)
+    std::vector<std::string> dir_list(const std::string& path) override { return {}; }
+    bool dir_create(const std::string& path) override { return false; }
+    bool dir_delete(const std::string& path) override { return false; }
+    bool dir_exists(const std::string& path) override { return false; }
+    
+    // Power (stubs)
+    void power_sleep() override {}
+    int power_getBatteryLevel() override { return 100; }
+    bool power_isCharging() override { return false; }
+    
+    // App (stubs)
+    void app_exit() override {}
+    std::string app_getInfo() override { return "{}"; }
+    
+    // Storage (stubs)
+    std::vector<std::string> storage_getMounted() override { return {}; }
+    std::string storage_getInfo(const std::string& device) override { return "{}"; }
+    
+    // Sensor (stubs)
+    int sensor_attach(const std::string& port, const std::string& type) override { return -1; }
+    std::string sensor_read(int handle) override { return "{}"; }
+    void sensor_detach(int handle) override {}
+    
+    // WiFi (stubs)
+    bool wifi_connect(const std::string& ssid, const std::string& password) override { return false; }
+    void wifi_disconnect() override {}
+    std::string wifi_getStatus() override { return "{}"; }
+    std::string wifi_getIP() override { return ""; }
+    
+    // IPC (stubs)
+    bool ipc_send(const std::string& appId, const std::string& message) override { return false; }
+    void ipc_broadcast(const std::string& message) override {}
 };
 
 int main(int argc, char** argv) {

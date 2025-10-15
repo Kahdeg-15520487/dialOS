@@ -148,21 +148,66 @@ public:
     // === Timer Operations ===
     int timer_setTimeout(int ms) override;
     int timer_setInterval(int ms) override;
-    void timer_clear(int id) override;
+    void timer_clearTimeout(int id) override;
+    void timer_clearInterval(int id) override;
     
     // === Memory Operations ===
     int memory_getAvailable() override;
     int memory_getUsage() override;
+    int memory_allocate(int size) override;
+    void memory_free(int handle) override;
+    
+    // === Console Operations ===
+    void console_print(const std::string& msg) override;
+    void console_clear() override;
+    
+    // === Display Operations ===
+    void display_setTitle(const std::string& title) override;
+    void display_drawImage(int x, int y, const std::vector<uint8_t>& imageData) override;
+    
+    // === System Operations ===
+    void system_yield() override;
+    
+    // === Directory Operations ===
+    std::vector<std::string> dir_list(const std::string& path) override;
+    bool dir_create(const std::string& path) override;
+    bool dir_delete(const std::string& path) override;
+    bool dir_exists(const std::string& path) override;
+    
+    // === Power Operations ===
+    void power_sleep() override;
+    int power_getBatteryLevel() override;
+    bool power_isCharging() override;
+    
+    // === App Operations ===
+    void app_exit() override;
+    std::string app_getInfo() override;
+    
+    // === Storage Operations ===
+    std::vector<std::string> storage_getMounted() override;
+    std::string storage_getInfo(const std::string& device) override;
+    
+    // === Sensor Operations ===
+    int sensor_attach(const std::string& port, const std::string& type) override;
+    std::string sensor_read(int handle) override;
+    void sensor_detach(int handle) override;
+    
+    // === WiFi Operations ===
+    bool wifi_connect(const std::string& ssid, const std::string& password) override;
+    void wifi_disconnect() override;
+    std::string wifi_getStatus() override;
+    std::string wifi_getIP() override;
+    
+    // === IPC Operations ===
+    bool ipc_send(const std::string& appId, const std::string& message) override;
+    void ipc_broadcast(const std::string& message) override;
+    
+    // === Buzzer Operations ===
+    void buzzer_playMelody(const std::vector<int>& notes) override;
     
     // === Extended Emulator Features ===
-    void program_output(const std::string& msg);
     void touch_getPosition(int& x, int& y);
     bool touch_isInDisplay(int x, int y); // Check if touch is within circular display
-    
-    // Power management simulation
-    uint8_t power_getBatteryLevel();
-    bool power_isCharging();
-    void power_sleep();
     
     // Debug overlay
     void debug_showInfo(bool show) { showDebugInfo_ = show; }

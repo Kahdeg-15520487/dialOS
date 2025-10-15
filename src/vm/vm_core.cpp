@@ -613,7 +613,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::DISPLAY_DRAW_LINE: {
-                    platform_.program_output("DISPLAY_DRAW_LINE called");
                     if (argCount < 5) {
                         setError("drawLine() requires 5 arguments");
                         return VMResult::ERROR;
@@ -1108,6 +1107,14 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
+                case NativeFunctionID::BUZZER_PLAY_MELODY: {
+                    // TODO: Implement melody playback
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
                 // ===== Timer Functions =====
                 case NativeFunctionID::TIMER_SET_TIMEOUT: {
                     if (argCount < 1) {
@@ -1139,15 +1146,20 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
-                case NativeFunctionID::TIMER_CLEAR: {
+                case NativeFunctionID::TIMER_CLEAR_TIMEOUT:
+                case NativeFunctionID::TIMER_CLEAR_INTERVAL: {
                     if (argCount < 1) {
-                        setError("clearTimer() requires 1 argument");
+                        setError("clearTimeout/clearInterval() requires 1 argument");
                         return VMResult::ERROR;
                     }
                     Value receiver = pop();
                     Value idVal = pop();
                     
-                    platform_.timer_clear(idVal.isInt32() ? idVal.int32Val : -1);
+                    if (funcID == NativeFunctionID::TIMER_CLEAR_TIMEOUT) {
+                        platform_.timer_clearTimeout(idVal.isInt32() ? idVal.int32Val : -1);
+                    } else {
+                        platform_.timer_clearInterval(idVal.isInt32() ? idVal.int32Val : -1);
+                    }
                     
                     for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
@@ -1168,6 +1180,331 @@ VMResult VMState::executeInstruction() {
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::Int32(platform_.memory_getUsage()));
+                    break;
+                }
+                
+                case NativeFunctionID::MEMORY_ALLOCATE: {
+                    if (argCount < 1) {
+                        setError("allocate() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value sizeVal = pop();
+                    
+                    int handle = platform_.memory_allocate(sizeVal.isInt32() ? sizeVal.int32Val : 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(handle));
+                    break;
+                }
+                
+                case NativeFunctionID::MEMORY_FREE: {
+                    if (argCount < 1) {
+                        setError("free() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value handleVal = pop();
+                    
+                    platform_.memory_free(handleVal.isInt32() ? handleVal.int32Val : -1);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Console Functions =====
+                case NativeFunctionID::CONSOLE_PRINT: {
+                    if (argCount < 1) {
+                        setError("print() requires at least 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value arg = pop();
+                    platform_.console_print(arg.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::CONSOLE_CLEAR: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    platform_.console_clear();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Display Functions =====
+                case NativeFunctionID::DISPLAY_SET_TITLE: {
+                    if (argCount < 1) {
+                        setError("setTitle() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value titleVal = pop();
+                    
+                    platform_.display_setTitle(titleVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_GET_SIZE:
+                case NativeFunctionID::DISPLAY_DRAW_IMAGE: {
+                    // TODO: Implement these functions
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== System Functions =====
+                case NativeFunctionID::SYSTEM_YIELD: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    platform_.system_yield();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Touch Functions =====
+                case NativeFunctionID::TOUCH_GET_POSITION: {
+                    // TODO: Return object with {x, y, pressed}
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== Directory Functions =====
+                case NativeFunctionID::DIR_LIST: {
+                    if (argCount < 1) {
+                        setError("list() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value pathVal = pop();
+                    
+                    // TODO: Implement directory listing
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::DIR_CREATE:
+                case NativeFunctionID::DIR_DELETE:
+                case NativeFunctionID::DIR_EXISTS: {
+                    if (argCount < 1) {
+                        setError("Directory operation requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value pathVal = pop();
+                    
+                    // TODO: Implement directory operations
+                    bool result = false;
+                    if (funcID == NativeFunctionID::DIR_CREATE) {
+                        result = platform_.dir_create(pathVal.toString());
+                    } else if (funcID == NativeFunctionID::DIR_DELETE) {
+                        result = platform_.dir_delete(pathVal.toString());
+                    } else {
+                        result = platform_.dir_exists(pathVal.toString());
+                    }
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Bool(result));
+                    break;
+                }
+                
+                // ===== Power Functions =====
+                case NativeFunctionID::POWER_SLEEP: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    platform_.power_sleep();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::POWER_GET_BATTERY_LEVEL: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Int32(platform_.power_getBatteryLevel()));
+                    break;
+                }
+                
+                case NativeFunctionID::POWER_IS_CHARGING: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::Bool(platform_.power_isCharging()));
+                    break;
+                }
+                
+                // ===== App Functions =====
+                case NativeFunctionID::APP_EXIT: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    platform_.app_exit();
+                    running_ = false;
+                    return VMResult::FINISHED;
+                }
+                
+                case NativeFunctionID::APP_GET_INFO: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::String(platform_.app_getInfo()));
+                    break;
+                }
+                
+                // ===== Storage Functions =====
+                case NativeFunctionID::STORAGE_GET_MOUNTED: {
+                    // TODO: Return array of mounted devices
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::STORAGE_GET_INFO: {
+                    if (argCount < 1) {
+                        setError("getInfo() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value deviceVal = pop();
+                    
+                    push(Value::String(platform_.storage_getInfo(deviceVal.toString())));
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    break;
+                }
+                
+                // ===== Sensor Functions =====
+                case NativeFunctionID::SENSOR_ATTACH: {
+                    if (argCount < 2) {
+                        setError("attach() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value typeVal = pop();
+                    Value portVal = pop();
+                    
+                    int handle = platform_.sensor_attach(portVal.toString(), typeVal.toString());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Int32(handle));
+                    break;
+                }
+                
+                case NativeFunctionID::SENSOR_READ: {
+                    if (argCount < 1) {
+                        setError("read() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value handleVal = pop();
+                    
+                    push(Value::String(platform_.sensor_read(handleVal.isInt32() ? handleVal.int32Val : -1)));
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    break;
+                }
+                
+                case NativeFunctionID::SENSOR_DETACH: {
+                    if (argCount < 1) {
+                        setError("detach() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value handleVal = pop();
+                    
+                    platform_.sensor_detach(handleVal.isInt32() ? handleVal.int32Val : -1);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
+                    break;
+                }
+                
+                // ===== WiFi Functions =====
+                case NativeFunctionID::WIFI_CONNECT: {
+                    if (argCount < 2) {
+                        setError("connect() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value passwordVal = pop();
+                    Value ssidVal = pop();
+                    
+                    bool connected = platform_.wifi_connect(ssidVal.toString(), passwordVal.toString());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Bool(connected));
+                    break;
+                }
+                
+                case NativeFunctionID::WIFI_DISCONNECT: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    platform_.wifi_disconnect();
+                    push(Value::Null());
+                    break;
+                }
+                
+                case NativeFunctionID::WIFI_GET_STATUS: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::String(platform_.wifi_getStatus()));
+                    break;
+                }
+                
+                case NativeFunctionID::WIFI_GET_IP: {
+                    Value receiver = pop();
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    push(Value::String(platform_.wifi_getIP()));
+                    break;
+                }
+                
+                // ===== IPC Functions =====
+                case NativeFunctionID::IPC_SEND: {
+                    if (argCount < 2) {
+                        setError("send() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value messageVal = pop();
+                    Value appIdVal = pop();
+                    
+                    bool sent = platform_.ipc_send(appIdVal.toString(), messageVal.toString());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Bool(sent));
+                    break;
+                }
+                
+                case NativeFunctionID::IPC_BROADCAST: {
+                    if (argCount < 1) {
+                        setError("broadcast() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value messageVal = pop();
+                    
+                    platform_.ipc_broadcast(messageVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Null());
                     break;
                 }
                 
@@ -1414,7 +1751,7 @@ VMResult VMState::executeInstruction() {
         // ===== Special =====
         case compiler::Opcode::PRINT: {
             Value v = pop();
-            platform_.program_output(v.toString());
+            platform_.console_print(v.toString());
             break;
         }
         
