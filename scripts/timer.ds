@@ -43,10 +43,10 @@ class TimerDisplay {
     }
     
     render(): void {
-        os.display.clear(0x0000);
+        os.display.clear(_color.black);
         
         // Title
-        os.display.drawText(70, 40, "Timer", 0xFFFF, 2);
+        os.display.drawText(70, 40, "Timer", _color.white, 2);
         
         // Time display
         var mins: this.timer.seconds / 60;
@@ -54,18 +54,18 @@ class TimerDisplay {
         var timeStr: `${mins}:${secs < 10 ? "0" : ""}${secs}`;
         
         // Color based on state
-        var color: 0xFFFF;  // White default
+        var color: _color.white;  // White default
         if (this.timer.running) {
-            assign color 0x07E0;  // Green when running
+            assign color _color.green;  // Green when running
         } else if (this.timer.isFinished()) {
-            assign color 0xF800;  // Red when finished
+            assign color _color.red;  // Red when finished
         }
         
         os.display.drawText(60, 110, timeStr, color, 3);
         
         // Status
         var status: this.timer.running ? "Running" : "Paused";
-        os.display.drawText(80, 180, status, 0x7BEF, 1);
+        os.display.drawText(80, 180, status, _color.gray, 1);
     }
 }
 
@@ -127,3 +127,7 @@ function appOnLoad(): void {
 
 // Set app lifecycle handler
 os.app.onLoad(appOnLoad);
+
+while(true){
+    os.system.yield();
+}

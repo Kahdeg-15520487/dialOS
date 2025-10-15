@@ -1,16 +1,16 @@
 
 // Clear screen to black
-os.display.clear(0x0000);
+os.display.clear(_color.black);
 
 // Draw a diagonal line (cyan)
-os.display.drawLine(50, 50, 190, 190, 0x07FF);
+os.display.drawLine(50, 50, 190, 190, _color.cyan);
 
 // Draw a horizontal line (red)
-os.display.drawLine(20, 120, 220, 120, 0xF800);
+os.display.drawLine(20, 120, 220, 120, _color.red);
 
 // Draw a vertical line (green)
-os.display.drawLine(120, 20, 120, 220, 0x07E0);
+os.display.drawLine(120, 20, 120, 220, _color.green);
 
 // Draw some circles
-os.display.drawCircle(60, 60, 30, 0xFFE0, false);  // Yellow outline
-os.display.drawCircle(180, 60, 25, 0xF81F, true);  // Magenta filled
+os.display.drawCircle(60, 60, 30, _color.yellow, false);  // Yellow outline
+os.display.drawCircle(180, 60, 25, _color.magenta, true);  // Magenta filled

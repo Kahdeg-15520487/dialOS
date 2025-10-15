@@ -599,8 +599,8 @@ namespace dialos
             virtual void display_setBrightness(int level) = 0;
             virtual int display_getWidth() = 0;
             virtual int display_getHeight() = 0;
-            virtual void display_setTitle(const std::string &title) {}
-            virtual void display_drawImage(int x, int y, const std::vector<uint8_t> &imageData) {}
+            virtual void display_setTitle(const std::string & /*title*/) {}
+            virtual void display_drawImage(int /*x*/, int /*y*/, const std::vector<uint8_t> & /*imageData*/) {}
 
             // ===== Encoder Operations =====
             virtual bool encoder_getButton() = 0;
@@ -613,7 +613,7 @@ namespace dialos
             virtual void system_sleep(uint32_t ms) = 0;
             virtual void system_yield() {}
             virtual uint32_t system_getRTC() { return 0; }
-            virtual void system_setRTC(uint32_t timestamp) {}
+            virtual void system_setRTC(uint32_t /*timestamp*/) {}
 
             // ===== Touch Operations =====
             virtual int touch_getX() { return 0; }
@@ -625,48 +625,48 @@ namespace dialos
             virtual bool rfid_isPresent() { return false; }
 
             // ===== File Operations =====
-            virtual int file_open(const std::string &path, const std::string &mode) { return -1; }
-            virtual std::string file_read(int handle, int size) { return ""; }
-            virtual int file_write(int handle, const std::string &data) { return -1; }
-            virtual void file_close(int handle) {}
-            virtual bool file_exists(const std::string &path) { return false; }
-            virtual bool file_delete(const std::string &path) { return false; }
-            virtual int file_size(const std::string &path) { return -1; }
+            virtual int file_open(const std::string & /*path*/, const std::string & /*mode*/) { return -1; }
+            virtual std::string file_read(int /*handle*/, int /*size*/) { return ""; }
+            virtual int file_write(int /*handle*/, const std::string & /*data*/) { return -1; }
+            virtual void file_close(int /*handle*/) {}
+            virtual bool file_exists(const std::string & /*path*/) { return false; }
+            virtual bool file_delete(const std::string & /*path*/) { return false; }
+            virtual int file_size(const std::string & /*path*/) { return -1; }
 
             // ===== Directory Operations =====
-            virtual std::vector<std::string> dir_list(const std::string &path) { return {}; }
-            virtual bool dir_create(const std::string &path) { return false; }
-            virtual bool dir_delete(const std::string &path) { return false; }
-            virtual bool dir_exists(const std::string &path) { return false; }
+            virtual std::vector<std::string> dir_list(const std::string & /*path*/) { return {}; }
+            virtual bool dir_create(const std::string & /*path*/) { return false; }
+            virtual bool dir_delete(const std::string & /*path*/) { return false; }
+            virtual bool dir_exists(const std::string & /*path*/) { return false; }
 
             // ===== GPIO Operations =====
-            virtual void gpio_pinMode(int pin, int mode) {}
-            virtual void gpio_digitalWrite(int pin, int value) {}
-            virtual int gpio_digitalRead(int pin) { return 0; }
-            virtual void gpio_analogWrite(int pin, int value) {}
-            virtual int gpio_analogRead(int pin) { return 0; }
+            virtual void gpio_pinMode(int /*pin*/, int /*mode*/) {}
+            virtual void gpio_digitalWrite(int /*pin*/, int /*value*/) {}
+            virtual int gpio_digitalRead(int /*pin*/) { return 0; }
+            virtual void gpio_analogWrite(int /*pin*/, int /*value*/) {}
+            virtual int gpio_analogRead(int /*pin*/) { return 0; }
 
             // ===== I2C Operations =====
             virtual std::vector<int> i2c_scan() { return {}; }
-            virtual bool i2c_write(int address, const std::vector<uint8_t> &data) { return false; }
-            virtual std::vector<uint8_t> i2c_read(int address, int length) { return {}; }
+            virtual bool i2c_write(int /*address*/, const std::vector<uint8_t> & /*data*/) { return false; }
+            virtual std::vector<uint8_t> i2c_read(int /*address*/, int /*length*/) { return {}; }
 
             // ===== Buzzer Operations =====
-            virtual void buzzer_beep(int frequency, int duration) {}
-            virtual void buzzer_playMelody(const std::vector<int> &notes) {}
+            virtual void buzzer_beep(int /*frequency*/, int /*duration*/) {}
+            virtual void buzzer_playMelody(const std::vector<int> & /*notes*/) {}
             virtual void buzzer_stop() {}
 
             // ===== Timer Operations =====
-            virtual int timer_setTimeout(int ms) { return -1; }
-            virtual int timer_setInterval(int ms) { return -1; }
-            virtual void timer_clearTimeout(int id) {}
-            virtual void timer_clearInterval(int id) {}
+            virtual int timer_setTimeout(int /*ms*/) { return -1; }
+            virtual int timer_setInterval(int /*ms*/) { return -1; }
+            virtual void timer_clearTimeout(int /*id*/) {}
+            virtual void timer_clearInterval(int /*id*/) {}
 
             // ===== Memory Operations =====
             virtual int memory_getAvailable() { return 0; }
             virtual int memory_getUsage() { return 0; }
-            virtual int memory_allocate(int size) { return -1; }
-            virtual void memory_free(int handle) {}
+            virtual int memory_allocate(int /*size*/) { return -1; }
+            virtual void memory_free(int /*handle*/) {}
 
             // ===== Power Operations =====
             virtual void power_sleep() {}
@@ -679,22 +679,22 @@ namespace dialos
 
             // ===== Storage Operations =====
             virtual std::vector<std::string> storage_getMounted() { return {}; }
-            virtual std::string storage_getInfo(const std::string &device) { return "{}"; }
+            virtual std::string storage_getInfo(const std::string & /*device*/) { return "{}"; }
 
             // ===== Sensor Operations =====
-            virtual int sensor_attach(const std::string &port, const std::string &type) { return -1; }
-            virtual std::string sensor_read(int handle) { return "{}"; }
-            virtual void sensor_detach(int handle) {}
+            virtual int sensor_attach(const std::string & /*port*/, const std::string & /*type*/) { return -1; }
+            virtual std::string sensor_read(int /*handle*/) { return "{}"; }
+            virtual void sensor_detach(int /*handle*/) {}
 
             // ===== WiFi Operations =====
-            virtual bool wifi_connect(const std::string &ssid, const std::string &password) { return false; }
+            virtual bool wifi_connect(const std::string & /*ssid*/, const std::string & /*password*/) { return false; }
             virtual void wifi_disconnect() {}
             virtual std::string wifi_getStatus() { return "{}"; }
             virtual std::string wifi_getIP() { return ""; }
 
             // ===== IPC Operations =====
-            virtual bool ipc_send(const std::string &appId, const std::string &message) { return false; }
-            virtual void ipc_broadcast(const std::string &message) {}
+            virtual bool ipc_send(const std::string & /*appId*/, const std::string & /*message*/) { return false; }
+            virtual void ipc_broadcast(const std::string & /*message*/) {}
 
             // ===== Callback System =====
             /**

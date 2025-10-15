@@ -76,6 +76,10 @@ private:
     // Helpers for checking statement/expression starts
     bool isStatementStart() const;
     bool isTypeKeyword() const;
+    
+    // Color constant helpers
+    uint32_t getColorConstant(const std::string& name) const;
+    std::string toHexString(uint32_t value) const;
 };
 
 } // namespace compiler

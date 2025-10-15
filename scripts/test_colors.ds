@@ -1,0 +1,87 @@
+// Color constants test - showcase all available _color constants
+
+os.display.clear(_color.black);
+
+// Draw a grid of colored circles
+var row: 0;
+var col: 0;
+var radius: 15;
+var spacing: 35;
+var startX: 20;
+var startY: 20;
+
+// Row 1: Basic colors
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.red, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.green, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.blue, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.yellow, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.cyan, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.magenta, true);
+
+// Row 2: Extended colors
+assign row row + 1;
+assign col 0;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.orange, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.purple, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.pink, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.brown, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lime, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.navy, true);
+
+// Row 3: Gray scale
+assign row row + 1;
+assign col 0;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.white, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lightgray, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.gray, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.darkgray, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.black, true);
+assign col col + 1;
+// Draw white outline for the black circle to make it visible
+os.display.drawCircle(startX + 4 * spacing, startY + 2 * spacing, radius, _color.white, false);
+
+// Row 4: Light variations
+assign row row + 1;
+assign col 0;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lightred, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lightgreen, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lightblue, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lightyellow, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lightcyan, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.lightmagenta, true);
+
+// Row 5: Dark variations
+assign row row + 1;
+assign col 0;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.darkred, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.darkgreen, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.darkblue, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.maroon, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.olive, true);
+assign col col + 1;
+os.display.drawCircle(startX + col * spacing, startY + row * spacing, radius, _color.teal, true);
+
+os.console.print("Color palette demonstration complete!");

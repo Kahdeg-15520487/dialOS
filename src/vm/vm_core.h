@@ -59,10 +59,12 @@ public:
     size_t getPC() const { return pc_; }
     size_t getStackSize() const { return stack_.size(); }
     const std::vector<CallFrame>& getCallStack() const { return callStack_; }
+    size_t getCallStackDepth() const { return callStack_.size(); }
     const std::map<std::string, Value>& getGlobals() const { return globals_; }
     std::string getError() const { return error_; }
     bool isRunning() const { return running_; }
     bool hasError() const { return !error_.empty(); }
+    size_t getHeapUsage() const { return pool_.getAllocated(); }
     
     // Reset VM
     void reset();

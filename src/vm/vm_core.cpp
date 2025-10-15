@@ -144,7 +144,7 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     uint32_t entryPC = module_.functionEntryPoints[functionIndex];
     
     // Save current state
-    uint32_t savedPC = pc_;
+    uint32_t savedPC = static_cast<uint32_t>(pc_);
     size_t stackSizeBefore = stack_.size();
     
     platform_.console_log("[VM] Before callback: PC=" + std::to_string(savedPC) + 
@@ -714,8 +714,8 @@ VMResult VMState::executeInstruction() {
                         setError("clear() requires at least 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value colorVal = pop();
+                    Value receiver = pop();
                     uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0;
                     platform_.display_clear(color);
                     
@@ -729,12 +729,12 @@ VMResult VMState::executeInstruction() {
                         setError("drawText() requires 5 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value sizeVal = pop();
                     Value colorVal = pop();
                     Value textVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
+                    Value receiver = pop();
                     
                     platform_.display_drawText(
                         xVal.isInt32() ? xVal.int32Val : 0,
@@ -754,13 +754,13 @@ VMResult VMState::executeInstruction() {
                         setError("drawRect() requires 6 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value filledVal = pop();
                     Value colorVal = pop();
                     Value hVal = pop();
                     Value wVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
+                    Value receiver = pop();
                     
                     platform_.display_drawRect(
                         xVal.isInt32() ? xVal.int32Val : 0,
@@ -781,20 +781,24 @@ VMResult VMState::executeInstruction() {
                         setError("drawCircle() requires 5 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
+                    
+                    // Pop arguments first (they're on top of stack)
                     Value filledVal = pop();
                     Value colorVal = pop();
                     Value rVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
+                    // Then pop receiver (it's below the arguments)
+                    Value receiver = pop();
                     
-                    platform_.display_drawCircle(
-                        xVal.isInt32() ? xVal.int32Val : 0,
-                        yVal.isInt32() ? yVal.int32Val : 0,
-                        rVal.isInt32() ? rVal.int32Val : 0,
-                        colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF,
-                        filledVal.isTruthy()
-                    );
+                    // Debug logging
+                    int x = xVal.isInt32() ? xVal.int32Val : 0;
+                    int y = yVal.isInt32() ? yVal.int32Val : 0;
+                    int r = rVal.isInt32() ? rVal.int32Val : 0;
+                    uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0xFFFFFF;
+                    bool filled = filledVal.isTruthy();
+                    
+                    platform_.display_drawCircle(x, y, r, color, filled);
                     
                     for (uint8_t i = 5; i < argCount; i++) pop();
                     push(Value::Null());
@@ -806,12 +810,12 @@ VMResult VMState::executeInstruction() {
                         setError("drawLine() requires 5 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value colorVal = pop();
                     Value y2Val = pop();
                     Value x2Val = pop();
                     Value y1Val = pop();
                     Value x1Val = pop();
+                    Value receiver = pop();
                     
                     platform_.display_drawLine(
                         x1Val.isInt32() ? x1Val.int32Val : 0,
@@ -831,10 +835,10 @@ VMResult VMState::executeInstruction() {
                         setError("drawPixel() requires 3 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value colorVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
+                    Value receiver = pop();
                     
                     platform_.display_drawPixel(
                         xVal.isInt32() ? xVal.int32Val : 0,
@@ -852,8 +856,8 @@ VMResult VMState::executeInstruction() {
                         setError("setBrightness() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value levelVal = pop();
+                    Value receiver = pop();
                     
                     platform_.display_setBrightness(levelVal.isInt32() ? levelVal.int32Val : 128);
                     
@@ -863,16 +867,16 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::DISPLAY_GET_WIDTH: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.display_getWidth()));
                     break;
                 }
                 
                 case NativeFunctionID::DISPLAY_GET_HEIGHT: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.display_getHeight()));
                     break;
@@ -880,32 +884,32 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== Encoder Functions =====
                 case NativeFunctionID::ENCODER_GET_BUTTON: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Bool(platform_.encoder_getButton()));
                     break;
                 }
                 
                 case NativeFunctionID::ENCODER_GET_DELTA: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.encoder_getDelta()));
                     break;
                 }
                 
                 case NativeFunctionID::ENCODER_GET_POSITION: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.encoder_getPosition()));
                     break;
                 }
                 
                 case NativeFunctionID::ENCODER_RESET: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     platform_.encoder_reset();
                     push(Value::Null());
@@ -952,8 +956,8 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== System Functions =====
                 case NativeFunctionID::SYSTEM_GET_TIME: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(static_cast<int32_t>(platform_.system_getTime())));
                     break;
@@ -964,8 +968,8 @@ VMResult VMState::executeInstruction() {
                         setError("sleep() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value msVal = pop();
+                    Value receiver = pop();
                     
                     platform_.system_sleep(msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0);
                     
@@ -975,8 +979,8 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::SYSTEM_GET_RTC: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(static_cast<int32_t>(platform_.system_getRTC())));
                     break;
@@ -987,8 +991,8 @@ VMResult VMState::executeInstruction() {
                         setError("setRTC() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value timestampVal = pop();
+                    Value receiver = pop();
                     
                     platform_.system_setRTC(timestampVal.isInt32() ? static_cast<uint32_t>(timestampVal.int32Val) : 0);
                     
@@ -999,24 +1003,24 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== Touch Functions =====
                 case NativeFunctionID::TOUCH_GET_X: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.touch_getX()));
                     break;
                 }
                 
                 case NativeFunctionID::TOUCH_GET_Y: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.touch_getY()));
                     break;
                 }
                 
                 case NativeFunctionID::TOUCH_IS_PRESSED: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Bool(platform_.touch_isPressed()));
                     break;
@@ -1024,16 +1028,16 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== RFID Functions =====
                 case NativeFunctionID::RFID_READ: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::String(platform_.rfid_read()));
                     break;
                 }
                 
                 case NativeFunctionID::RFID_IS_PRESENT: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value receiver = pop();
                     
                     push(Value::Bool(platform_.rfid_isPresent()));
                     break;
@@ -1045,9 +1049,9 @@ VMResult VMState::executeInstruction() {
                         setError("open() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value modeVal = pop();
                     Value pathVal = pop();
+                    Value receiver = pop();
                     
                     int handle = platform_.file_open(pathVal.toString(), modeVal.toString());
                     
@@ -1061,9 +1065,9 @@ VMResult VMState::executeInstruction() {
                         setError("read() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value sizeVal = pop();
                     Value handleVal = pop();
+                    Value receiver = pop();
                     
                     std::string data = platform_.file_read(
                         handleVal.isInt32() ? handleVal.int32Val : -1,
@@ -1080,9 +1084,9 @@ VMResult VMState::executeInstruction() {
                         setError("write() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value dataVal = pop();
                     Value handleVal = pop();
+                    Value receiver = pop();
                     
                     int written = platform_.file_write(
                         handleVal.isInt32() ? handleVal.int32Val : -1,

@@ -89,6 +89,33 @@ var floating: 3.14;
 var hex: 0xFF;
 ```
 
+### Color Constants
+DialScript provides built-in color constants for RGB565 displays:
+
+```javascript
+// Basic colors
+os.display.clear(_color.black);
+os.display.drawCircle(120, 120, 50, _color.blue, true);
+os.display.drawLine(0, 0, 240, 240, _color.red);
+
+// Extended colors
+os.display.drawRect(10, 10, 50, 50, _color.orange, true);
+os.display.drawCircle(60, 60, 20, _color.purple, false);
+
+// Light/dark variations
+var bgColor: _color.lightblue;
+var fgColor: _color.darkred;
+```
+
+**Available Colors:**
+- Basic: `black`, `white`, `red`, `green`, `blue`, `yellow`, `cyan`, `magenta`
+- Grayscale: `darkgray`, `gray`, `lightgray` (also `grey` spellings)
+- Extended: `orange`, `purple`, `pink`, `brown`, `lime`, `navy`, `teal`, `maroon`, `olive`
+- Light: `lightred`, `lightgreen`, `lightblue`, `lightyellow`, `lightcyan`, `lightmagenta`
+- Dark: `darkred`, `darkgreen`, `darkblue`, `darkyellow`, `darkcyan`, `darkmagenta`
+
+**Note:** Color constants are compile-time replacements (zero runtime overhead).
+
 ### Strings
 ```javascript
 var simple: "Hello";

@@ -81,6 +81,10 @@ public:
     void present();
     bool shouldQuit() const { return shouldQuit_; }
     
+    // Debug overlay control
+    void debug_showInfo(bool show);
+    void debug_drawOverlay();
+    
     // === PlatformInterface Implementation ===
     
     // === Console Operations ===
@@ -210,10 +214,6 @@ public:
     void touch_getPosition(int& x, int& y);
     bool touch_isInDisplay(int x, int y); // Check if touch is within circular display
     
-    // Debug overlay
-    void debug_showInfo(bool show) { showDebugInfo_ = show; }
-    void debug_drawOverlay();
-    
     // Output capture for VM programs
     void captureOutput(const std::string& output) { outputLog_.addLine(output); }
     
@@ -286,9 +286,6 @@ private:
         bool charging;
         std::chrono::steady_clock::time_point lastUpdate;
     } power_;
-    
-    // Debug overlay
-    bool showDebugInfo_;
     std::vector<std::string> debugMessages_;
     
     // Console logging

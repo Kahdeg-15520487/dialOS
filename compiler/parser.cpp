@@ -606,16 +606,38 @@ std::unique_ptr<Expression> Parser::parsePostfix() {
             Token dotToken = current_; // Current token is now after DOT
             Token member = consume(TokenType::IDENTIFIER, "Expected property name after '.'");
             
-            auto access = std::make_unique<MemberAccess>();
-            access->object = std::move(expr);
-            access->property = member.value;
-            
-            // Set line and column from the dot token (need to use the previous token)
-            // Since we already advanced past DOT, we need to get line from the member token
-            access->line = member.line;
-            access->column = member.column;
-            
-            expr = std::move(access);
+            // Check if this is a _color constant access
+            auto* identExpr = dynamic_cast<Identifier*>(expr.get());
+            if (identExpr && identExpr->name == "_color") {
+                // Convert _color.name to a number literal with RGB565 value
+                uint32_t colorValue = getColorConstant(member.value);
+                if (colorValue != 0xFFFFFFFF) { // Valid color found
+                    auto lit = std::make_unique<NumberLiteral>();
+                    lit->value = "0x" + toHexString(colorValue);
+                    lit->isFloat = false;
+                    lit->isHex = true;
+                    lit->line = member.line;
+                    lit->column = member.column;
+                    expr = std::move(lit);
+                } else {
+                    error("Unknown color constant: _color." + member.value);
+                    // Continue with regular member access on error
+                    auto access = std::make_unique<MemberAccess>();
+                    access->object = std::move(expr);
+                    access->property = member.value;
+                    access->line = member.line;
+                    access->column = member.column;
+                    expr = std::move(access);
+                }
+            } else {
+                // Regular member access
+                auto access = std::make_unique<MemberAccess>();
+                access->object = std::move(expr);
+                access->property = member.value;
+                access->line = member.line;
+                access->column = member.column;
+                expr = std::move(access);
+            }
             
         } else if (match(TokenType::LBRACKET)) {
             // Array access
@@ -969,6 +991,70 @@ std::unique_ptr<MethodDeclaration> Parser::parseMethodDeclaration(const Token& n
     method->body = parseBlock();
     
     return method;
+}
+
+// Color constant lookup - returns RGB565 values
+uint32_t Parser::getColorConstant(const std::string& name) const {
+    // RGB565 color format: RRRRRGGGGGGBBBBB
+    // Common colors mapped to their RGB565 hex values
+    
+    // Basic colors
+    if (name == "black") return 0x0000;
+    if (name == "white") return 0xFFFF;
+    if (name == "red") return 0xF800;
+    if (name == "green") return 0x07E0;
+    if (name == "blue") return 0x001F;
+    if (name == "yellow") return 0xFFE0;
+    if (name == "cyan") return 0x07FF;
+    if (name == "magenta") return 0xF81F;
+    
+    // Shades of gray
+    if (name == "darkgray" || name == "darkgrey") return 0x39E7;
+    if (name == "gray" || name == "grey") return 0x7BEF;
+    if (name == "lightgray" || name == "lightgrey") return 0xBDF7;
+    
+    // Extended colors
+    if (name == "orange") return 0xFD20;
+    if (name == "purple") return 0x780F;
+    if (name == "pink") return 0xFE19;
+    if (name == "brown") return 0x9A60;
+    if (name == "lime") return 0x07E0;
+    if (name == "navy") return 0x000F;
+    if (name == "teal") return 0x0410;
+    if (name == "maroon") return 0x7800;
+    if (name == "olive") return 0x7BE0;
+    
+    // Light variations
+    if (name == "lightred") return 0xFBAE;
+    if (name == "lightgreen") return 0x9772;
+    if (name == "lightblue") return 0xAEDC;
+    if (name == "lightyellow") return 0xFFFC;
+    if (name == "lightcyan") return 0xE7FF;
+    if (name == "lightmagenta") return 0xFBDF;
+    
+    // Dark variations
+    if (name == "darkred") return 0x8800;
+    if (name == "darkgreen") return 0x0400;
+    if (name == "darkblue") return 0x0010;
+    if (name == "darkyellow") return 0x8C00;
+    if (name == "darkcyan") return 0x0410;
+    if (name == "darkmagenta") return 0x8010;
+    
+    // Unknown color
+    return 0xFFFFFFFF;
+}
+
+std::string Parser::toHexString(uint32_t value) const {
+    const char* hexDigits = "0123456789ABCDEF";
+    std::string result;
+    
+    // Convert to 4-digit hex for RGB565 (16-bit)
+    result += hexDigits[(value >> 12) & 0xF];
+    result += hexDigits[(value >> 8) & 0xF];
+    result += hexDigits[(value >> 4) & 0xF];
+    result += hexDigits[value & 0xF];
+    
+    return result;
 }
 
 } // namespace compiler
