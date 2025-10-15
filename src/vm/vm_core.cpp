@@ -1549,6 +1549,79 @@ VMResult VMState::executeInstruction() {
             break;
         }
         
+        case compiler::Opcode::LOAD_FUNCTION: {
+            uint16_t funcIndex = readU16();
+            
+            if (funcIndex >= module_.functions.size()) {
+                setError("Invalid function index: " + std::to_string(funcIndex));
+                return VMResult::ERROR;
+            }
+            
+            // Get parameter count from module
+            uint8_t paramCount = (funcIndex < module_.functionParamCounts.size()) 
+                                ? module_.functionParamCounts[funcIndex] 
+                                : 0;
+            
+            Function* fn = pool_.allocateFunction(funcIndex, paramCount);
+            if (!fn) {
+                setError("Out of memory allocating function");
+                return VMResult::OUT_OF_MEMORY;
+            }
+            
+            push(Value::Function(fn));
+            break;
+        }
+        
+        case compiler::Opcode::CALL_INDIRECT: {
+            uint8_t argCount = readU8();
+            
+            // Pop function value (on top of stack, after arguments)
+            Value funcVal = pop();
+            if (!funcVal.isFunction()) {
+                setError("CALL_INDIRECT: value is not a function");
+                return VMResult::ERROR;
+            }
+            
+            Function* fn = funcVal.asFunction();
+            
+            // Validate argument count
+            if (argCount != fn->paramCount) {
+                setError("Function '" + module_.functions[fn->functionIndex] + 
+                        "' expects " + std::to_string(fn->paramCount) + 
+                        " arguments, got " + std::to_string(argCount));
+                return VMResult::ERROR;
+            }
+            
+            // Get function entry point
+            uint16_t funcIndex = fn->functionIndex;
+            if (funcIndex >= module_.functionEntryPoints.size()) {
+                setError("Invalid function entry point");
+                return VMResult::ERROR;
+            }
+            
+            uint32_t entryPoint = module_.functionEntryPoints[funcIndex];
+            
+            // Create call frame (same as CALL opcode)
+            CallFrame frame;
+            frame.returnPC = pc_;
+            frame.stackBase = stack_.size() - argCount;
+            frame.functionName = module_.functions[funcIndex];
+            
+            // Store arguments in locals
+            for (uint8_t i = 0; i < argCount; i++) {
+                frame.locals[i] = stack_[frame.stackBase + i];
+            }
+            
+            // Remove arguments from stack
+            stack_.resize(frame.stackBase);
+            
+            // Push call frame and jump
+            callStack_.push_back(frame);
+            pc_ = entryPoint;
+            
+            break;
+        }
+        
         // ===== Object/Array Operations =====
         case compiler::Opcode::GET_FIELD: {
             uint16_t fieldIndex = readU16();
