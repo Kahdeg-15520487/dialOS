@@ -2,24 +2,30 @@
 
 ## Table of Contents
 
-| # | Namespace | Description | Implemented | Planned | Blocked |
-|---|-----------|-------------|-------------|---------|---------|
-| [1](#1-console-apis-osconsole) | `os.console.*` | Console logging and output | 1 | 3 | 0 |
-| [2](#2-display-apis-osdisplay) | `os.display.*` | Display and graphics rendering | 2 | 7 | 0 |
-| [3](#3-encoder-apis-osencoder) | `os.encoder.*` | Rotary encoder input | 2 | 2 | 2 |
-| [4](#4-touch-apis-ostouch) | `os.touch.*` | Touchscreen input | 0 | 1 | 3 |
-| [5](#5-system-apis-ossystem) | `os.system.*` | System time and control | 2 | 3 | 0 |
-| [6](#6-memory-apis-osmemory) | `os.memory.*` | Memory management | 0 | 4 | 0 |
-| [7](#7-file-apis-osfile) | `os.file.*` | File operations | 0 | 7 | 0 |
-| [8](#8-directory-apis-osdir) | `os.dir.*` | Directory operations | 0 | 4 | 0 |
-| [9](#9-gpio-apis-osgpio) | `os.gpio.*` | GPIO pin control | 0 | 5 | 0 |
-| [10](#10-i2c-apis-osi2c) | `os.i2c.*` | I2C communication | 0 | 3 | 0 |
-| [11](#11-buzzer-apis-osbuzzer) | `os.buzzer.*` | Buzzer/audio output | 0 | 3 | 0 |
-| [12](#12-timer-apis-ostimer) | `os.timer.*` | Timers and intervals | 0 | 0 | 4 |
-| [13](#13-rfid-apis-osrfid) | `os.rfid.*` | RFID card reader | 0 | 2 | 2 |
-| [14](#14-power-apis-ospower) | `os.power.*` | Power management | 0 | 3 | 0 |
-| [15](#15-app-apis-osapp) | `os.app.*` | Application lifecycle | 0 | 2 | 0 |
-| **Total** | **15 namespaces** | **95 functions** | **7** | **73** | **15** |
+| Namespace | Description | Implemented | Planned | Blocked |
+|-----------|-------------|-------------|---------|---------|
+| [`os.console.*`](#1-console-apis-osconsole) | Console logging and output | 1 | 3 | 0 |
+| [`os.display.*`](#2-display-apis-osdisplay) | Display and graphics rendering | 2 | 8 | 0 |
+| [`os.encoder.*`](#3-encoder-apis-osencoder) | Rotary encoder input | 2 | 2 | 2 |
+| [`os.touch.*`](#4-touch-apis-ostouch) | Touchscreen input | 0 | 1 | 3 |
+| [`os.system.*`](#5-system-apis-ossystem) | System time and control | 2 | 3 | 0 |
+| [`os.memory.*`](#6-memory-apis-osmemory) | Memory management | 0 | 4 | 0 |
+| [`os.file.*`](#7-file-apis-osfile) | File operations | 0 | 7 | 0 |
+| [`os.dir.*`](#8-directory-apis-osdir) | Directory operations | 0 | 4 | 0 |
+| [`os.gpio.*`](#9-gpio-apis-osgpio) | GPIO pin control | 0 | 5 | 0 |
+| [`os.i2c.*`](#10-i2c-apis-osi2c) | I2C communication | 0 | 3 | 2 |
+| [`os.buzzer.*`](#11-buzzer-apis-osbuzzer) | Buzzer/audio output | 0 | 3 | 0 |
+| [`os.timer.*`](#12-timer-apis-ostimer) | Timers and intervals | 0 | 0 | 4 |
+| [`os.rfid.*`](#13-rfid-apis-osrfid) | RFID card reader | 0 | 2 | 2 |
+| [`os.power.*`](#14-power-apis-ospower) | Power management | 0 | 2 | 1 |
+| [`os.app.*`](#15-app-apis-osapp) | Application lifecycle | 0 | 2 | 4 |
+| [`os.storage.*`](#16-storage-apis-osstorage) | Storage device management | 0 | 2 | 2 |
+| [`os.sensor.*`](#17-sensor-apis-ossensor) | Hardware sensor interface | 0 | 2 | 2 |
+| [`os.events.*`](#18-events-apis-osevents) | Event system | 0 | 0 | 3 |
+| [`os.wifi.*`](#19-wifi-apis-oswifi) | WiFi connectivity | 0 | 4 | 0 |
+| [`os.http.*`](#20-http-apis-oshttp) | HTTP client | 0 | 0 | 2 |
+| [`os.ipc.*`](#21-ipc-apis-osipc) | Inter-process communication | 0 | 1 | 2 |
+| **Total** | **21 namespaces** | **130 functions** | **7** | **88** | **35** |
 
 **Legend:**
 - ✅ **Implemented** - Function is working and tested
@@ -88,6 +94,7 @@ Clear console buffer
 | `os.display.drawLine()` | `x1: int, y1: int, x2: int, y2: int, color: int` | `null` | 🔜 Planned |
 | `os.display.drawRect()` | `x: int, y: int, w: int, h: int, color: int, filled: bool` | `null` | 🔜 Planned |
 | `os.display.drawCircle()` | `x: int, y: int, r: int, color: int, filled: bool` | `null` | 🔜 Planned |
+| `os.display.drawImage()` | `x: int, y: int, imageData: object` | `null` | 🔜 Planned |
 | `os.display.setBrightness()` | `level: int` | `null` | 🔜 Planned |
 | `os.display.getSize()` | none | `object` | 🔜 Planned |
 | `os.display.setTitle()` | `text: string` | `null` | 🔜 Planned |
@@ -144,6 +151,14 @@ Draw circle
   - `r` (int) - Radius
   - `color` (int) - RGB565 color
   - `filled` (bool) - Fill circle if true
+- **Returns**: null
+- **Status**: 🔜 Planned
+
+### `os.display.drawImage(x: int, y: int, imageData: object) -> null`
+Draw bitmap image
+- **Parameters**:
+  - `x, y` (int) - Top-left position
+  - `imageData` (object) - Image data object
 - **Returns**: null
 - **Status**: 🔜 Planned
 
@@ -480,6 +495,8 @@ ADC read
 | `os.i2c.scan()` | none | `array` | 🔜 Planned |
 | `os.i2c.write()` | `address: int, data: string` | `bool` | 🔜 Planned |
 | `os.i2c.read()` | `address: int, length: int` | `string` | 🔜 Planned |
+| `os.i2c.onDeviceAdded()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.i2c.onDeviceRemoved()` | `callback: function` | `null` | 🔒 Blocked |
 
 ### `os.i2c.scan() -> array`
 Scan for I2C devices
@@ -502,6 +519,18 @@ Read from I2C device
   - `length` (int) - Bytes to read
 - **Returns**: string - Data read
 - **Status**: 🔜 Planned
+
+### `os.i2c.onDeviceAdded(callback: function) -> null`
+New device detected event
+- **Parameters**: `callback` (function) - Called when I2C device detected
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.i2c.onDeviceRemoved(callback: function) -> null`
+Device removed event
+- **Parameters**: `callback` (function) - Called when I2C device removed
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
 
 ---
 
@@ -616,6 +645,7 @@ Card removed event
 | `os.power.sleep()` | none | `null` | 🔜 Planned |
 | `os.power.getBatteryLevel()` | none | `int` | 🔜 Planned |
 | `os.power.isCharging()` | none | `bool` | 🔜 Planned |
+| `os.power.onLowBattery()` | `callback: function` | `null` | 🔒 Blocked |
 
 ### `os.power.sleep() -> null`
 Enter sleep mode (wake on button/RTC)
@@ -635,6 +665,12 @@ Check if charging
 - **Returns**: bool
 - **Status**: 🔜 Planned
 
+### `os.power.onLowBattery(callback: function) -> null`
+Low battery event
+- **Parameters**: `callback` (function) - Called when battery is low
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
 ---
 
 ## 15. App APIs (`os.app.*`)
@@ -643,6 +679,10 @@ Check if charging
 |----------|------------|---------|--------|
 | `os.app.exit()` | none | `null` | 🔜 Planned |
 | `os.app.getInfo()` | none | `object` | 🔜 Planned |
+| `os.app.onLoad()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.app.onSuspend()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.app.onResume()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.app.onUnload()` | `callback: function` | `null` | 🔒 Blocked |
 
 ### `os.app.exit() -> null`
 Terminate current app
@@ -656,11 +696,236 @@ Get app metadata
 - **Returns**: object with `{name, version, memoryUsage}`
 - **Status**: 🔜 Planned
 
+### `os.app.onLoad(callback: function) -> null`
+Called when app starts
+- **Parameters**: `callback` (function) - Initialization callback
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.app.onSuspend(callback: function) -> null`
+Called when app is frozen
+- **Parameters**: `callback` (function) - Suspend callback
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.app.onResume(callback: function) -> null`
+Called when app becomes active again
+- **Parameters**: `callback` (function) - Resume callback
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.app.onUnload(callback: function) -> null`
+Called when app exits
+- **Parameters**: `callback` (function) - Cleanup callback
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+---
+
+## 16. Storage APIs (`os.storage.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.storage.getMounted()` | none | `array` | 🔜 Planned |
+| `os.storage.getInfo()` | `device: string` | `object` | 🔜 Planned |
+| `os.storage.onMount()` | `callback: function` | `null` | 🔒 Blocked |
+| `os.storage.onUnmount()` | `callback: function` | `null` | 🔒 Blocked |
+
+### `os.storage.getMounted() -> array`
+List mounted storage devices
+- **Parameters**: none
+- **Returns**: array - Array of mounted device names
+- **Status**: 🔜 Planned
+
+### `os.storage.getInfo(device: string) -> object`
+Get device info (size, free space, type)
+- **Parameters**: `device` (string) - Device name
+- **Returns**: object with `{size, free, type}`
+- **Status**: 🔜 Planned
+
+### `os.storage.onMount(callback: function) -> null`
+Storage device mounted event
+- **Parameters**: `callback` (function) - Called when device mounted
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.storage.onUnmount(callback: function) -> null`
+Storage device removed event
+- **Parameters**: `callback` (function) - Called when device unmounted
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+---
+
+## 17. Sensor APIs (`os.sensor.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.sensor.attach()` | `port: string, type: string` | `int` | 🔜 Planned |
+| `os.sensor.read()` | `handle: int` | `object` | 🔜 Planned |
+| `os.sensor.detach()` | `handle: int` | `null` | 🔒 Blocked |
+| `os.sensor.onData()` | `handle: int, callback: function` | `null` | 🔒 Blocked |
+
+### `os.sensor.attach(port: string, type: string) -> int`
+Attach sensor to PORT.A/B
+- **Parameters**:
+  - `port` (string) - "PORT.A" or "PORT.B"
+  - `type` (string) - Sensor type identifier
+- **Returns**: int - Sensor handle (or -1 on failure)
+- **Status**: 🔜 Planned
+
+### `os.sensor.read(handle: int) -> object`
+Read sensor value
+- **Parameters**: `handle` (int) - Sensor handle
+- **Returns**: object - Sensor data
+- **Status**: 🔜 Planned
+
+### `os.sensor.detach(handle: int) -> null`
+Detach sensor
+- **Parameters**: `handle` (int) - Sensor handle
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.sensor.onData(handle: int, callback: function) -> null`
+Sensor data event
+- **Parameters**:
+  - `handle` (int) - Sensor handle
+  - `callback` (function) - Called when sensor has new data
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+---
+
+## 18. Events APIs (`os.events.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.events.emit()` | `eventName: string, data: any` | `null` | 🔒 Blocked |
+| `os.events.on()` | `eventName: string, callback: function` | `null` | 🔒 Blocked |
+| `os.events.off()` | `eventName: string, callback: function` | `null` | 🔒 Blocked |
+
+### `os.events.emit(eventName: string, data: any) -> null`
+Emit custom event
+- **Parameters**:
+  - `eventName` (string) - Event name
+  - `data` (any) - Event data
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.events.on(eventName: string, callback: function) -> null`
+Listen for event
+- **Parameters**:
+  - `eventName` (string) - Event name
+  - `callback` (function) - Event handler
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.events.off(eventName: string, callback: function) -> null`
+Remove event listener
+- **Parameters**:
+  - `eventName` (string) - Event name
+  - `callback` (function) - Event handler to remove
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+---
+
+## 19. WiFi APIs (`os.wifi.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.wifi.connect()` | `ssid: string, password: string` | `bool` | 🔜 Planned |
+| `os.wifi.disconnect()` | none | `null` | 🔜 Planned |
+| `os.wifi.getStatus()` | none | `object` | 🔜 Planned |
+| `os.wifi.getIP()` | none | `string` | 🔜 Planned |
+
+### `os.wifi.connect(ssid: string, password: string) -> bool`
+Connect to WiFi
+- **Parameters**:
+  - `ssid` (string) - Network SSID
+  - `password` (string) - Network password
+- **Returns**: bool - Connection success
+- **Status**: 🔜 Planned (Future)
+
+### `os.wifi.disconnect() -> null`
+Disconnect WiFi
+- **Parameters**: none
+- **Returns**: null
+- **Status**: 🔜 Planned (Future)
+
+### `os.wifi.getStatus() -> object`
+Get connection status
+- **Parameters**: none
+- **Returns**: object with `{connected: bool, ssid: string, rssi: int}`
+- **Status**: 🔜 Planned (Future)
+
+### `os.wifi.getIP() -> string`
+Get IP address
+- **Parameters**: none
+- **Returns**: string - IP address or empty string
+- **Status**: 🔜 Planned (Future)
+
+---
+
+## 20. HTTP APIs (`os.http.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.http.get()` | `url: string, callback: function` | `null` | 🔒 Blocked |
+| `os.http.post()` | `url: string, data: string, callback: function` | `null` | 🔒 Blocked |
+
+### `os.http.get(url: string, callback: function) -> null`
+HTTP GET request
+- **Parameters**:
+  - `url` (string) - Request URL
+  - `callback` (function) - Called with response
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support, Future)
+
+### `os.http.post(url: string, data: string, callback: function) -> null`
+HTTP POST request
+- **Parameters**:
+  - `url` (string) - Request URL
+  - `data` (string) - Request body
+  - `callback` (function) - Called with response
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support, Future)
+
+---
+
+## 21. IPC APIs (`os.ipc.*`)
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.ipc.send()` | `appId: string, message: any` | `bool` | 🔜 Planned |
+| `os.ipc.broadcast()` | `message: any` | `null` | 🔒 Blocked |
+| `os.ipc.onMessage()` | `callback: function` | `null` | 🔒 Blocked |
+
+### `os.ipc.send(appId: string, message: any) -> bool`
+Send message to another app
+- **Parameters**:
+  - `appId` (string) - Target app ID
+  - `message` (any) - Message data
+- **Returns**: bool - Send success
+- **Status**: 🔜 Planned
+
+### `os.ipc.broadcast(message: any) -> null`
+Broadcast to all apps
+- **Parameters**: `message` (any) - Message data
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
+### `os.ipc.onMessage(callback: function) -> null`
+Receive messages
+- **Parameters**: `callback` (function) - Message handler
+- **Returns**: null
+- **Status**: 🔒 Blocked (requires function support)
+
 ---
 
 ## Implementation Status Summary
 
-### ✅ Implemented (8 functions)
+### ✅ Implemented (7 functions)
 - `os.console.log()`
 - `os.display.clear()`
 - `os.display.drawText()`
@@ -669,17 +934,29 @@ Get app metadata
 - `os.system.getTime()`
 - `os.system.sleep()`
 
-### 🔜 Planned (80+ functions)
-All other APIs require:
+### 🔜 Planned (88 functions)
+All other non-callback APIs require:
 1. Platform interface expansion
 2. VM CALL_NATIVE dispatch updates
 3. Compiler recognition of os.* calls
 
-### 🔒 Blocked (15+ callback-based APIs)
+### 🔒 Blocked (35 callback-based APIs)
 Require function/callback support in VM:
-- Event handlers (onTurn, onPress, etc.)
-- Timers (setTimeout, setInterval)
-- IPC message handlers
+- **App Lifecycle**: onLoad, onSuspend, onResume, onUnload (4)
+- **Input Events**: encoder.onTurn, encoder.onButton, touch events (6)
+- **Timers**: setTimeout, setInterval, clear functions (4)
+- **I2C Events**: onDeviceAdded, onDeviceRemoved (2)
+- **RFID Events**: onCardDetected, onCardRemoved (2)
+- **Power Events**: onLowBattery (1)
+- **Storage Events**: onMount, onUnmount (2)
+- **Sensor Events**: onData, detach (2)
+- **Event System**: emit, on, off (3)
+- **HTTP**: get, post (2)
+- **IPC**: broadcast, onMessage (2)
+- **Timer Clears**: clearTimeout, clearInterval (2)
+- **Sensor**: detach (1)
+- **Timer Intervals**: setInterval (already counted above)
+- **Total Blocked**: 35 functions
 
 ---
 
