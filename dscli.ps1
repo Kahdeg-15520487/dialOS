@@ -65,11 +65,19 @@
     .\dscli.ps1 run scripts\counter_applet.ds -DebugInfo -ShowDebug
     Compile with debug info and run with debug overlay
 
+.EXAMPLE
+    .\dscli.ps1 disasm temp\counter_applet.dsb
+    Disassemble a compiled bytecode file
+
+.EXAMPLE
+    .\dscli.ps1 disasm scripts\counter_applet.ds
+    Compile and disassemble a source file
+
 #>
 
 param(
     [Parameter(Mandatory = $false, Position = 0)]
-    [ValidateSet("registry", "compile", "run", "setup")]
+    [ValidateSet("registry", "compile", "run", "setup", "disasm")]
     [string]$Command,
     
     [Parameter(Mandatory = $false, Position = 1)]
@@ -227,6 +235,82 @@ function Resolve-SourcePath {
     return (Resolve-Path $Path).Path
 }
 
+# Core compilation function - handles running the compiler and displaying output
+function Invoke-Compiler {
+    param(
+        [string]$SourcePath,
+        [string]$OutputPath,
+        [string[]]$AdditionalArgs = @(),
+        [bool]$ShowOutput = $true
+    )
+    
+    # Build compiler arguments
+    $compilerArgs = @($SourcePath, $OutputPath) + $AdditionalArgs
+    
+    # Run compiler
+    $compilerOutput = & $CompilerExe @compilerArgs 2>&1
+    
+    # Check if compilation failed
+    $compilationFailed = ($LASTEXITCODE -ne 0)
+    
+    # Parse compiler output for errors
+    $hasErrors = $false
+    $inErrorSection = $false
+    $errorLines = @()
+    $normalOutput = @()
+    
+    foreach ($line in $compilerOutput) {
+        $lineStr = $line.ToString().Trim()
+        if ($lineStr -match "Compilation errors:") {
+            $hasErrors = $true
+            $inErrorSection = $true
+            continue
+        }
+        if ($inErrorSection -and $lineStr -ne "") {
+            if ($lineStr -match "Note:|===|Bytecode") {
+                $inErrorSection = $false
+            }
+            elseif ($lineStr -notmatch "System\.Management\.Automation\.") {
+                # Filter out PowerShell exception type lines
+                $errorLines += $lineStr
+            }
+        }
+        elseif (-not $inErrorSection -and $lineStr -notmatch "System\.Management\.Automation\." -and $lineStr -ne "") {
+            # Collect normal output
+            $normalOutput += $lineStr
+        }
+    }
+    
+    # Display output based on compilation result
+    if ($ShowOutput) {
+        Write-Host ""
+    }
+    
+    if ($compilationFailed -or ($hasErrors -and $errorLines.Count -gt 0)) {
+        if ($ShowOutput) {
+            Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
+            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
+            foreach ($errorLine in $errorLines) {
+                Write-Host "  $errorLine" -ForegroundColor $Colors.Error
+            }
+            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
+            Write-Host ""
+            Write-Host "❌ Compilation failed" -ForegroundColor Red
+        }
+        return $false
+    }
+    else {
+        # Show successful compilation output
+        if ($ShowOutput -and $normalOutput.Count -gt 0) {
+            foreach ($line in $normalOutput) {
+                Write-Host "$line" -ForegroundColor $Colors.Info
+            }
+            Write-Host ""
+        }
+        return $true
+    }
+}
+
 # Compile source to bytecode file
 function Compile-ToBytecode {
     param([string]$SourcePath, [string]$OutputPath, [bool]$IncludeDebugInfo = $false)
@@ -247,45 +331,18 @@ function Compile-ToBytecode {
     }
     
     try {
-        # Build compiler arguments
-        $compilerArgs = @($SourcePath, $OutputPath)
+        # Prepare compiler arguments
+        $additionalArgs = @()
         if ($IncludeDebugInfo) {
-            $compilerArgs += "--debug"
+            $additionalArgs += "--debug"
         }
         
-        # Run compiler to generate bytecode
-        $compilerOutput = & $CompilerExe @compilerArgs 2>&1
+        # Run compiler
+        $success = Invoke-Compiler -SourcePath $SourcePath -OutputPath $OutputPath -AdditionalArgs $additionalArgs -ShowOutput $true
         
-        # Check if compilation failed
-        $compilationFailed = ($LASTEXITCODE -ne 0)
-        
-        # Display compiler output
-        Write-Host ""
-        if ($compilationFailed) {
-            Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
-            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
-            foreach ($line in $compilerOutput) {
-                $lineStr = $line.ToString()
-                # Filter out PowerShell exception type lines
-                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
-                    Write-Host "$lineStr" -ForegroundColor $Colors.Error
-                }
-            }
-            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
-            Write-Host ""
-            Write-Host "❌ Compilation failed" -ForegroundColor Red
+        if (-not $success) {
             exit 1
         }
-        else {
-            # Show successful compilation output
-            foreach ($line in $compilerOutput) {
-                $lineStr = $line.ToString()
-                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
-                    Write-Host "$lineStr" -ForegroundColor $Colors.Info
-                }
-            }
-        }
-        Write-Host ""
         
         if (-not (Test-Path $OutputPath)) {
             Write-Host "❌ Bytecode file not generated" -ForegroundColor Red
@@ -325,45 +382,18 @@ function Compile-Applet {
     $tempHeader = [System.IO.Path]::GetTempFileName()
     
     try {
-        # Build compiler arguments
-        $compilerArgs = @($SourcePath, $tempHeader, "--c-array")
+        # Prepare compiler arguments
+        $additionalArgs = @("--c-array")
         if ($IncludeDebugInfo) {
-            $compilerArgs += "--debug"
+            $additionalArgs += "--debug"
         }
         
-        # Run compiler with --c-array flag
-        $compilerOutput = & $CompilerExe @compilerArgs 2>&1
+        # Run compiler
+        $success = Invoke-Compiler -SourcePath $SourcePath -OutputPath $tempHeader -AdditionalArgs $additionalArgs -ShowOutput $true
         
-        # Check if compilation failed
-        $compilationFailed = ($LASTEXITCODE -ne 0)
-        
-        # Display compiler output
-        Write-Host ""
-        if ($compilationFailed) {
-            Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
-            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
-            foreach ($line in $compilerOutput) {
-                $lineStr = $line.ToString()
-                # Filter out PowerShell exception type lines
-                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
-                    Write-Host "$lineStr" -ForegroundColor $Colors.Error
-                }
-            }
-            Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
-            Write-Host ""
-            Write-Host "❌ Compilation failed" -ForegroundColor Red
+        if (-not $success) {
             exit 1
         }
-        else {
-            # Show successful compilation output
-            foreach ($line in $compilerOutput) {
-                $lineStr = $line.ToString()
-                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
-                    Write-Host "$lineStr" -ForegroundColor $Colors.Info
-                }
-            }
-        }
-        Write-Host ""
         
         # Read the generated C array
         $cArrayContent = Get-Content $tempHeader -Raw
@@ -597,65 +627,16 @@ function Run-Simulator {
                 Write-Info "Compiling applet $baseName from $SourcePath for simulation..."
             }
             
-            # Build compiler arguments
-            $compilerArgs = @($SourcePath, $tempDsb)
+            # Prepare compiler arguments
+            $additionalArgs = @()
             if ($IncludeDebugInfo) {
-                $compilerArgs += "--debug"
+                $additionalArgs += "--debug"
             }
             
-            # Compile to bytecode
-            $compilerOutput = & $CompilerExe @compilerArgs 2>&1
-
-            # Parse compiler output for errors
-            $hasErrors = $false
-            $inErrorSection = $false
-            $errorLines = @()
-            $normalOutput = @()
+            # Run compiler
+            $success = Invoke-Compiler -SourcePath $SourcePath -OutputPath $tempDsb -AdditionalArgs $additionalArgs -ShowOutput $true
             
-            foreach ($line in $compilerOutput) {
-                $lineStr = $line.ToString().Trim()
-                if ($lineStr -match "Compilation errors:") {
-                    $hasErrors = $true
-                    $inErrorSection = $true
-                    continue
-                }
-                if ($inErrorSection -and $lineStr -ne "") {
-                    if ($lineStr -match "Note:|===|Bytecode") {
-                        $inErrorSection = $false
-                    }
-                    elseif ($lineStr -notmatch "System\.Management\.Automation\.") {
-                        # Filter out PowerShell exception type lines
-                        $errorLines += $lineStr
-                    }
-                }
-                elseif (-not $inErrorSection -and $lineStr -notmatch "System\.Management\.Automation\." -and $lineStr -ne "") {
-                    # Collect normal output to display
-                    $normalOutput += $lineStr
-                }
-            }
-
-            if ($hasErrors -and $errorLines.Count -gt 0) {
-                Write-Host ""
-                Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
-                foreach ($errorLine in $errorLines) {
-                    Write-Host "  $errorLine" -ForegroundColor $Colors.Error
-                }
-                Write-Host ""
-                Write-Host "❌ Compilation failed with errors" -ForegroundColor Red
-                exit 1
-            }
-
-            # Display normal compiler output
-            if ($normalOutput.Count -gt 0) {
-                Write-Host ""
-                foreach ($line in $normalOutput) {
-                    Write-Host "$line" -ForegroundColor $Colors.Info
-                }
-                Write-Host ""
-            }
-
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "❌ Compilation failed" -ForegroundColor Red
+            if (-not $success) {
                 exit 1
             }
 
@@ -698,6 +679,144 @@ function Run-Simulator {
     }
 }
 
+# Disassemble bytecode file or compile and disassemble source
+function Show-Disassembly {
+    param([string]$SourcePath, [bool]$IncludeDebugInfo = $false)
+    
+    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($SourcePath)
+    $extension = [System.IO.Path]::GetExtension($SourcePath).ToLower()
+    $tempDsb = $null
+    
+    try {
+        Write-Host ""
+        Write-Host "╔═══════════════════════════════════════════════════════╗" -ForegroundColor $Colors.Banner
+        Write-Host "║                Bytecode Disassembly                   ║" -ForegroundColor $Colors.Banner
+        Write-Host "╚═══════════════════════════════════════════════════════╝" -ForegroundColor $Colors.Banner
+        Write-Host ""
+        
+        if ($extension -eq ".dsb") {
+            # Disassemble existing bytecode file
+            Write-Info "Disassembling bytecode file: $baseName.dsb"
+            Write-Host ""
+            
+            # Run compiler in disassemble mode (it detects .dsb extension)
+            $compilerOutput = & $CompilerExe $SourcePath 2>&1
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "❌ Failed to disassemble bytecode file" -ForegroundColor Red
+                exit 1
+            }
+            
+            # Display disassembly output with color coding
+            foreach ($line in $compilerOutput) {
+                $lineStr = $line.ToString()
+                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
+                    if ($lineStr -match "^===") {
+                        Write-Host $lineStr -ForegroundColor $Colors.Banner
+                    }
+                    elseif ($lineStr -match "^\s*\[\d+\]|^Functions|^Constants|^Globals|^Main Entry|^Metadata:|^Debug Info:|^Code \(") {
+                        Write-Host $lineStr -ForegroundColor $Colors.Highlight
+                    }
+                    elseif ($lineStr -match "^\d{6}") {
+                        Write-Host $lineStr -ForegroundColor $Colors.Info
+                    }
+                    else {
+                        Write-Host $lineStr -ForegroundColor $Colors.Info
+                    }
+                }
+            }
+        }
+        else {
+            # Source file - compile first (compilation automatically shows disassembly)
+            $tempDsb = Join-Path $TempDir "$baseName.dsb"
+            
+            if ($IncludeDebugInfo) {
+                Write-Info "Compiling and disassembling $baseName (with debug info)..."
+            }
+            else {
+                Write-Info "Compiling and disassembling $baseName..."
+            }
+            Write-Host ""
+            
+            # Prepare compiler arguments
+            $additionalArgs = @()
+            if ($IncludeDebugInfo) {
+                $additionalArgs += "--debug"
+            }
+            
+            # Run compiler - it automatically shows disassembly
+            $compilerArgs = @($SourcePath, $tempDsb) + $additionalArgs
+            $compilerOutput = & $CompilerExe @compilerArgs 2>&1
+            
+            # Check if compilation failed
+            $compilationFailed = ($LASTEXITCODE -ne 0)
+            
+            if ($compilationFailed) {
+                # Parse and show errors
+                $hasErrors = $false
+                $inErrorSection = $false
+                $errorLines = @()
+                
+                foreach ($line in $compilerOutput) {
+                    $lineStr = $line.ToString().Trim()
+                    if ($lineStr -match "Compilation errors:|Parse errors:") {
+                        $hasErrors = $true
+                        $inErrorSection = $true
+                        continue
+                    }
+                    if ($inErrorSection -and $lineStr -ne "") {
+                        if ($lineStr -notmatch "System\.Management\.Automation\.") {
+                            $errorLines += $lineStr
+                        }
+                    }
+                }
+                
+                if ($hasErrors -and $errorLines.Count -gt 0) {
+                    Write-Host "❌ Compilation Errors:" -ForegroundColor $Colors.Error
+                    Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
+                    foreach ($errorLine in $errorLines) {
+                        Write-Host "  $errorLine" -ForegroundColor $Colors.Error
+                    }
+                    Write-Host "----------------------------------------" -ForegroundColor $Colors.Error
+                }
+                Write-Host ""
+                exit 1
+            }
+            
+            # Display the compiler output (includes disassembly)
+            foreach ($line in $compilerOutput) {
+                $lineStr = $line.ToString()
+                if ($lineStr -notmatch "System\.Management\.Automation\." -and $lineStr.Trim() -ne "") {
+                    if ($lineStr -match "^===") {
+                        Write-Host $lineStr -ForegroundColor $Colors.Banner
+                    }
+                    elseif ($lineStr -match "^\s*\[\d+\]|^Functions|^Constants|^Globals|^Main Entry|^Metadata:|^Debug Info:|^Code \(") {
+                        Write-Host $lineStr -ForegroundColor $Colors.Highlight
+                    }
+                    elseif ($lineStr -match "^\d{6}") {
+                        Write-Host $lineStr -ForegroundColor $Colors.Info
+                    }
+                    else {
+                        Write-Host $lineStr -ForegroundColor $Colors.Info
+                    }
+                }
+            }
+        }
+        
+        Write-Host ""
+        Write-Success "Disassembly complete"
+    }
+    catch {
+        Write-ErrorAndExit "Failed to disassemble: $($_.Exception.Message)" $_
+    }
+    finally {
+        # Clean up temporary file if we created one
+        if ($tempDsb -and (Test-Path $tempDsb)) {
+            Remove-Item $tempDsb -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 # Show usage information
 function Show-Usage {
     Write-Host "Usage:" -ForegroundColor $Colors.Info
@@ -714,6 +833,8 @@ function Show-Usage {
     Write-Host "    dscli run <source.ds|.dsb>            Run simulator (compile if needed)" -ForegroundColor $Colors.Info
     Write-Host "    dscli run <source.ds|.dsb> -ShowDebug Run with debug overlay" -ForegroundColor $Colors.Info
     Write-Host "    dscli run <source.ds> -DebugInfo      Compile with debug info and run" -ForegroundColor $Colors.Info
+    Write-Host "    dscli disasm <source.ds|.dsb>         Show bytecode disassembly" -ForegroundColor $Colors.Info
+    Write-Host "    dscli disasm <source.ds> -DebugInfo   Disassemble with debug info" -ForegroundColor $Colors.Info
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor $Colors.Highlight
     Write-Host "  .\dscli.ps1 registry list" -ForegroundColor $Colors.Info
@@ -724,6 +845,8 @@ function Show-Usage {
     Write-Host "  .\dscli.ps1 run scripts\timer.ds -ShowDebug" -ForegroundColor $Colors.Info
     Write-Host "  .\dscli.ps1 run scripts\timer.ds -DebugInfo -ShowDebug" -ForegroundColor $Colors.Info
     Write-Host "  .\dscli.ps1 run temp\hello_world.dsb" -ForegroundColor $Colors.Info
+    Write-Host "  .\dscli.ps1 disasm temp\counter.dsb" -ForegroundColor $Colors.Info
+    Write-Host "  .\dscli.ps1 disasm scripts\timer.ds -DebugInfo" -ForegroundColor $Colors.Info
 }
 
 # Main execution
@@ -790,6 +913,15 @@ try {
             
             $SourcePath = Resolve-SourcePath -Path $Action
             Run-Simulator -SourcePath $SourcePath -Debug $ShowDebug -IncludeDebugInfo $DebugInfo
+        }
+
+        "disasm" {
+            if ([string]::IsNullOrEmpty($Action)) {
+                Write-ErrorAndExit "Source or bytecode file required for disasm"
+            }
+            
+            $SourcePath = Resolve-SourcePath -Path $Action
+            Show-Disassembly -SourcePath $SourcePath -IncludeDebugInfo $DebugInfo
         }
 
         "setup" {

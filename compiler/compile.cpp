@@ -39,13 +39,53 @@ bool writeFile(const std::string& filename, const std::vector<uint8_t>& data) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <input.ds> [output.dsb] [--c-array] [--debug]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <input.ds|input.dsb> [output.dsb] [--c-array] [--debug]" << std::endl;
+        std::cerr << "  input.ds:  Compile dialScript source to bytecode" << std::endl;
+        std::cerr << "  input.dsb: Disassemble bytecode file" << std::endl;
         std::cerr << "  --c-array: Output as C/C++ byte array instead of binary file" << std::endl;
         std::cerr << "  --debug:   Include debug line information in bytecode" << std::endl;
         return 1;
     }
     
     std::string inputFile = argv[1];
+    
+    // Check if input is a .dsb file (disassemble mode)
+    if (inputFile.length() >= 4 && inputFile.substr(inputFile.length() - 4) == ".dsb") {
+        // Disassemble mode
+        std::cout << "=== dialScript Bytecode Disassembler ===" << std::endl;
+        std::cout << "Input:  " << inputFile << std::endl << std::endl;
+        
+        // Read bytecode file
+        std::ifstream file(inputFile, std::ios::binary);
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open bytecode file '" << inputFile << "'" << std::endl;
+            return 1;
+        }
+        
+        std::vector<uint8_t> bytecode((std::istreambuf_iterator<char>(file)),
+                                       std::istreambuf_iterator<char>());
+        file.close();
+        
+        if (bytecode.empty()) {
+            std::cerr << "Error: Bytecode file is empty" << std::endl;
+            return 1;
+        }
+        
+        std::cout << "Bytecode: " << bytecode.size() << " bytes" << std::endl << std::endl;
+        
+        // Deserialize and disassemble
+        try {
+            BytecodeModule module = BytecodeModule::deserialize(bytecode);
+            std::cout << module.disassemble() << std::endl;
+            std::cout << "=== Disassembly Complete ===" << std::endl;
+            return 0;
+        } catch (const std::exception& e) {
+            std::cerr << "Error: Failed to deserialize bytecode: " << e.what() << std::endl;
+            return 1;
+        }
+    }
+    
+    // Compile mode
     std::string outputFile = (argc >= 3 && std::string(argv[2]) != "--c-array" && std::string(argv[2]) != "--debug") ? argv[2] : "output.dsb";
     bool outputCArray = false;
     bool debugInfo = false;

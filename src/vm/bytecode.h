@@ -245,8 +245,15 @@ public:
         code.insert(code.end(), instr.operands.begin(), instr.operands.end());
         
         // Add line number mapping for each bytecode byte if debug info is enabled
-        if (!debugLines.empty() || lineNumber > 0) {
-            // Ensure debugLines is the same size as code
+        // Only add debug info if debugLines has been initialized via enableDebugInfo()
+        if (!debugLines.empty()) {
+            // If debugLines has a dummy element at position 0 (from enableDebugInfo when code was empty),
+            // and this is the first real code, remove it
+            if (debugLines.size() == 1 && startPos == 0 && code.size() > 0) {
+                debugLines.clear();
+            }
+            
+            // Ensure debugLines is the same size as code before this instruction
             while (debugLines.size() < startPos) {
                 debugLines.push_back(0); // Fill gaps with line 0 (unknown)
             }
@@ -266,9 +273,9 @@ public:
     
     // Enable debug line tracking
     void enableDebugInfo() {
-        if (debugLines.empty()) {
-            debugLines.resize(code.size(), 0); // Fill existing code with line 0
-        }
+        // Mark debug info as enabled by ensuring debugLines is not empty
+        // Even if no code exists yet, we need to mark it so emit() knows to add lines
+        debugLines.resize(code.size() > 0 ? code.size() : 1, 0);
     }
     
     // Disable debug line tracking (to save memory)
