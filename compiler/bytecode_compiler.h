@@ -49,6 +49,9 @@ private:
     std::vector<JumpPatch> jumpPatches_;
     std::map<std::string, size_t> labels_;
     
+    // Helper function to get full namespace path
+    std::string getFullNamespacePath(const MemberAccess* expr);
+    
     // Helper methods
     void emit(const Instruction& instr, const ASTNode* node = nullptr) {
         uint32_t lineNumber = 0;

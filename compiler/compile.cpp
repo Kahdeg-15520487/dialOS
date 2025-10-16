@@ -126,13 +126,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     std::cout << "✓ Parse successful" << std::endl << std::endl;
-    
-    // DEBUG: Print AST
-    ASTPrinter astPrinter;
-    std::string astOutput = astPrinter.print(*program);
-    std::cout << "=== AST DEBUG ===" << std::endl;
-    std::cout << astOutput << std::endl;
-    std::cout << "=== END AST DEBUG ===" << std::endl << std::endl;
 
     // Compile to bytecode
     std::cout << "Compiling to bytecode..." << std::endl;

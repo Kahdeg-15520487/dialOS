@@ -2,6 +2,7 @@
 #include <sstream>
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 
 namespace dialos
 {
@@ -732,14 +733,20 @@ namespace dialos
             }
             else if (auto *member = dynamic_cast<const MemberAccess *>(expr.callee.get()))
             {
-                funcName = member->property;
                 isNativeCall = isOsNamespaceCall(member->object.get());
                 
                 if (isNativeCall)
                 {
+                    // Use full namespace path for native calls
+                    funcName = getFullNamespacePath(member);
                     // Native call: compile object (os.console, etc.)
                     compileExpression(*member->object);
                     isDirectFunctionCall = true; // Will use CALL_NATIVE, not indirect
+                }
+                else
+                {
+                    // Regular member access - just use property name
+                    funcName = member->property;
                 }
             }
             
@@ -1047,6 +1054,58 @@ namespace dialos
                     error("Undefined label: " + patch.label);
                 }
             }
+        }
+
+        std::string BytecodeCompiler::getFullNamespacePath(const MemberAccess* expr)
+        {
+            std::vector<std::string> parts;
+            
+            // Traverse the member expression chain to build the full path
+            const MemberAccess* current = expr;
+            while (current != nullptr)
+            {
+                parts.push_back(current->property);
+                
+                // Check if the base is another member access
+                if (auto* memberBase = dynamic_cast<const MemberAccess*>(current->object.get()))
+                {
+                    current = memberBase;
+                }
+                else if (auto* id = dynamic_cast<const Identifier*>(current->object.get()))
+                {
+                    // Base identifier (e.g., "os")
+                    parts.push_back(id->name);
+                    break;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            
+            // Reverse the parts since we built them backwards
+            std::reverse(parts.begin(), parts.end());
+            
+            // Join with dots, but skip the "os" prefix for the native function lookup
+            std::string result;
+            if (parts.size() > 1 && parts[0] == "os")
+            {
+                for (size_t i = 1; i < parts.size(); ++i)
+                {
+                    if (i > 1) result += ".";
+                    result += parts[i];
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < parts.size(); ++i)
+                {
+                    if (i > 0) result += ".";
+                    result += parts[i];
+                }
+            }
+            
+            return result;
         }
 
     } // namespace compiler

@@ -54,9 +54,12 @@ namespace dialos
 
         bool PlatformInterface::invokeCallback(const std::string& eventName, const std::vector<Value>& args)
         {
+            // console_log("[DEBUG] Event occurred: " + eventName);
+            
             // Check if VM is initialized and still running
             if (vm_ == nullptr || !vm_->isRunning())
             {
+                // console_log("[DEBUG] VM not running for event: " + eventName);
                 return false;
             }
 
@@ -64,16 +67,27 @@ namespace dialos
             const Value* callback = getCallback(eventName);
             if (callback == nullptr || !callback->isFunction())
             {
+                // console_log("[DEBUG] No callback registered for event: " + eventName);
                 return false;
             }
 
-            console_log("[VM] Invoking callback for event: " + eventName);
-
+            // console_log("[DEBUG] Invoking callback for event: " + eventName);
+            
             // Use VM's invokeFunction method for immediate callback execution
             bool success = vm_->invokeFunction(*callback, args);
             
             if (!success) {
                 console_log("[VM] Callback invocation failed for event: " + eventName);
+                // Also log any VM error details immediately
+                if (vm_->hasError()) {
+                    console_log("[VM] VM Error during callback: " + vm_->getError());
+                } else {
+                    console_log("[VM] No VM error reported - callback failed for unknown reason");
+                }
+                // Check VM state
+                console_log("[VM] VM running state: " + std::string(vm_->isRunning() ? "true" : "false"));
+            } else {
+                // console_log("[DEBUG] Callback succeeded for event: " + eventName);
             }
             
             return success;

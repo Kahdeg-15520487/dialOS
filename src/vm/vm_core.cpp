@@ -134,6 +134,12 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     
     // Validate argument count
     if (args.size() != func->paramCount) {
+        // Set detailed error message for parameter count mismatch
+        std::string functionName = (func->functionIndex < module_.functions.size()) ? 
+                                 module_.functions[func->functionIndex] : "<callback>";
+        error_ = "Parameter count mismatch: function '" + functionName + 
+                "' expects " + std::to_string(func->paramCount) + 
+                " parameter(s), but " + std::to_string(args.size()) + " provided";
         return false;
     }
     
@@ -149,18 +155,12 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     uint32_t savedPC = static_cast<uint32_t>(pc_);
     size_t stackSizeBefore = stack_.size();
     
-    platform_.console_log("[VM] Before callback: PC=" + std::to_string(savedPC) + 
-                        ", Stack=" + std::to_string(stackSizeBefore));
-    
     // Create call frame
     CallFrame frame;
     frame.returnPC = savedPC;
     frame.stackBase = stack_.size();
     frame.functionName = (functionIndex < module_.functions.size()) ? 
                          module_.functions[functionIndex] : "<callback>";
-    
-    platform_.console_log("[VM] Invoking: " + frame.functionName + 
-                        " with " + std::to_string(args.size()) + " args");
     
     // Copy arguments to call frame locals (indexed by parameter number)
     for (uint8_t i = 0; i < args.size(); i++) {
@@ -238,14 +238,14 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     }
     
     size_t stackSizeAfter = stack_.size();
-    platform_.console_log("[VM] After callback: PC=" + std::to_string(pc_) + 
-                        ", Stack=" + std::to_string(stackSizeAfter) + 
-                        " (was " + std::to_string(stackSizeBefore) + ")");
     
     if (stackSizeAfter != stackSizeBefore) {
-        platform_.console_log("[VM] WARNING: Stack imbalance! Delta: " + 
+        platform_.console_warn("[VM] WARNING: Stack imbalance! Delta: " + 
                             std::to_string((int)stackSizeAfter - (int)stackSizeBefore));
     }
+    
+    // Clean up unreferenced strings after callback completes
+    pool_.garbageCollectStrings();
     
     return !hasError();
 }
@@ -294,7 +294,7 @@ Value VMState::loadConstant(uint16_t index) {
         return Value::Null();
     }
     
-    return Value::String(module_.constants[index]);
+    return Value::StringFromPool(str);
 }
 
 Value VMState::loadGlobal(uint16_t index) {
@@ -325,11 +325,7 @@ void VMState::storeGlobal(uint16_t index, const Value& value) {
     
     const std::string& name = module_.globals[index];
     globals_[name] = value;
-    if (value.isNull()) {
-        platform_.console_log(std::string("storeGlobal: stored null into global '") + name + "'");
-    } else {
-        platform_.console_log(std::string("storeGlobal: stored into global '") + name + "' type=" + std::to_string(static_cast<int>(value.type)));
-    }
+    // Logging removed to reduce verbosity during normal operation
 }
 
 VMResult VMState::execute(uint32_t maxInstructions) {
@@ -531,10 +527,15 @@ VMResult VMState::executeInstruction() {
             std::string result = a.toString() + b.toString();
             std::string* str = pool_.allocateString(result);
             if (!str) {
-                setError("Out of memory in string concatenation");
-                return VMResult::OUT_OF_MEMORY;
+                // Try garbage collection and retry
+                pool_.garbageCollectStrings();
+                str = pool_.allocateString(result);
+                if (!str) {
+                    setError("Out of memory in string concatenation");
+                    return VMResult::OUT_OF_MEMORY;
+                }
             }
-            push(Value::String(result));
+            push(Value::StringFromPool(str));
             break;
         }
         
@@ -2519,7 +2520,7 @@ Value VMState::add(const Value& a, const Value& b) {
             setError("Out of memory in add");
             return Value::Null();
         }
-        return Value::String(result);
+        return Value::StringFromPool(str);
     }
     
     return Value::Null();

@@ -156,218 +156,221 @@ namespace dialos
         // Helper function to map function name to ID
         inline NativeFunctionID getNativeFunctionID(const std::string &name)
         {
-            // Console functions
-            if (name == "print")
+            // Console functions (full namespace paths)
+            if (name == "console.print")
                 return NativeFunctionID::CONSOLE_PRINT;
-            if (name == "println")
+            if (name == "console.println")
                 return NativeFunctionID::CONSOLE_PRINTLN;
-            if (name == "log")
+            if (name == "console.log")
                 return NativeFunctionID::CONSOLE_LOG;
-            if (name == "warn")
+            if (name == "console.warn")
                 return NativeFunctionID::CONSOLE_WARN;
-            if (name == "error")
+            if (name == "console.error")
                 return NativeFunctionID::CONSOLE_ERROR;
-            if (name == "clear")
+            if (name == "console.clear")
                 return NativeFunctionID::CONSOLE_CLEAR;
 
-            // Display functions
-            if (name == "clear")
+            // Display functions (full namespace paths)
+            if (name == "display.clear")
                 return NativeFunctionID::DISPLAY_CLEAR;
-            if (name == "drawText")
+            // Display functions (full namespace paths)
+            if (name == "display.clear")
+                return NativeFunctionID::DISPLAY_CLEAR;
+            if (name == "display.drawText")
                 return NativeFunctionID::DISPLAY_DRAW_TEXT;
-            if (name == "drawRect")
+            if (name == "display.drawRect")
                 return NativeFunctionID::DISPLAY_DRAW_RECT;
-            if (name == "drawCircle")
+            if (name == "display.drawCircle")
                 return NativeFunctionID::DISPLAY_DRAW_CIRCLE;
-            if (name == "drawLine")
+            if (name == "display.drawLine")
                 return NativeFunctionID::DISPLAY_DRAW_LINE;
-            if (name == "drawPixel")
+            if (name == "display.drawPixel")
                 return NativeFunctionID::DISPLAY_DRAW_PIXEL;
-            if (name == "setBrightness")
+            if (name == "display.setBrightness")
                 return NativeFunctionID::DISPLAY_SET_BRIGHTNESS;
-            if (name == "getWidth")
+            if (name == "display.getWidth")
                 return NativeFunctionID::DISPLAY_GET_WIDTH;
-            if (name == "getHeight")
+            if (name == "display.getHeight")
                 return NativeFunctionID::DISPLAY_GET_HEIGHT;
-            if (name == "setTitle")
+            if (name == "display.setTitle")
                 return NativeFunctionID::DISPLAY_SET_TITLE;
-            if (name == "getSize")
+            if (name == "display.getSize")
                 return NativeFunctionID::DISPLAY_GET_SIZE;
-            if (name == "drawImage")
+            if (name == "display.drawImage")
                 return NativeFunctionID::DISPLAY_DRAW_IMAGE;
 
-            // Encoder functions
-            if (name == "getButton")
+            // Encoder functions (full namespace paths)
+            if (name == "encoder.getButton")
                 return NativeFunctionID::ENCODER_GET_BUTTON;
-            if (name == "getDelta")
+            if (name == "encoder.getDelta")
                 return NativeFunctionID::ENCODER_GET_DELTA;
-            if (name == "getPosition")
+            if (name == "encoder.getPosition")
                 return NativeFunctionID::ENCODER_GET_POSITION;
-            if (name == "reset")
+            if (name == "encoder.reset")
                 return NativeFunctionID::ENCODER_RESET;
-            if (name == "onTurn")
+            if (name == "encoder.onTurn")
                 return NativeFunctionID::ENCODER_ON_TURN;
-            if (name == "onButton")
+            if (name == "encoder.onButton")
                 return NativeFunctionID::ENCODER_ON_BUTTON;
 
-            // System functions
-            if (name == "getTime")
+            // System functions (full namespace paths)
+            if (name == "system.getTime")
                 return NativeFunctionID::SYSTEM_GET_TIME;
-            if (name == "sleep")
+            if (name == "system.sleep")
                 return NativeFunctionID::SYSTEM_SLEEP;
-            if (name == "yield")
+            if (name == "system.yield")
                 return NativeFunctionID::SYSTEM_YIELD;
-            if (name == "getRTC")
+            if (name == "system.getRTC")
                 return NativeFunctionID::SYSTEM_GET_RTC;
-            if (name == "setRTC")
+            if (name == "system.setRTC")
                 return NativeFunctionID::SYSTEM_SET_RTC;
 
-            // Touch functions
-            if (name == "getX")
+            // Touch functions (full namespace paths)
+            if (name == "touch.getX")
                 return NativeFunctionID::TOUCH_GET_X;
-            if (name == "getY")
+            if (name == "touch.getY")
                 return NativeFunctionID::TOUCH_GET_Y;
-            if (name == "isPressed")
+            if (name == "touch.isPressed")
                 return NativeFunctionID::TOUCH_IS_PRESSED;
-            if (name == "getPosition")
+            if (name == "touch.getPosition")
                 return NativeFunctionID::TOUCH_GET_POSITION;
-            if (name == "onPress")
+            if (name == "touch.onPress")
                 return NativeFunctionID::TOUCH_ON_PRESS;
-            if (name == "onRelease")
+            if (name == "touch.onRelease")
                 return NativeFunctionID::TOUCH_ON_RELEASE;
-            if (name == "onDrag")
+            if (name == "touch.onDrag")
                 return NativeFunctionID::TOUCH_ON_DRAG;
 
-            // RFID functions
-            if (name == "read")
+            // RFID functions (full namespace paths)
+            if (name == "rfid.read")
                 return NativeFunctionID::RFID_READ;
-            if (name == "isPresent")
+            if (name == "rfid.isPresent")
                 return NativeFunctionID::RFID_IS_PRESENT;
 
-            // File functions
-            if (name == "open")
+            // File functions (full namespace paths)
+            if (name == "file.open")
                 return NativeFunctionID::FILE_OPEN;
-            if (name == "read")
+            if (name == "file.read")
                 return NativeFunctionID::FILE_READ;
-            if (name == "write")
+            if (name == "file.write")
                 return NativeFunctionID::FILE_WRITE;
-            if (name == "close")
+            if (name == "file.close")
                 return NativeFunctionID::FILE_CLOSE;
-            if (name == "exists")
+            if (name == "file.exists")
                 return NativeFunctionID::FILE_EXISTS;
-            if (name == "delete")
+            if (name == "file.delete")
                 return NativeFunctionID::FILE_DELETE;
-            if (name == "size")
+            if (name == "file.size")
                 return NativeFunctionID::FILE_SIZE;
 
-            // Directory functions
-            if (name == "list")
+            // Directory functions (full namespace paths)
+            if (name == "dir.list")
                 return NativeFunctionID::DIR_LIST;
-            if (name == "create")
+            if (name == "dir.create")
                 return NativeFunctionID::DIR_CREATE;
-            if (name == "delete")
+            if (name == "dir.delete")
                 return NativeFunctionID::DIR_DELETE;
-            if (name == "exists")
+            if (name == "dir.exists")
                 return NativeFunctionID::DIR_EXISTS;
 
-            // GPIO functions
-            if (name == "pinMode")
+            // GPIO functions (full namespace paths)
+            if (name == "gpio.pinMode")
                 return NativeFunctionID::GPIO_PIN_MODE;
-            if (name == "digitalWrite")
+            if (name == "gpio.digitalWrite")
                 return NativeFunctionID::GPIO_DIGITAL_WRITE;
-            if (name == "digitalRead")
+            if (name == "gpio.digitalRead")
                 return NativeFunctionID::GPIO_DIGITAL_READ;
-            if (name == "analogWrite")
+            if (name == "gpio.analogWrite")
                 return NativeFunctionID::GPIO_ANALOG_WRITE;
-            if (name == "analogRead")
+            if (name == "gpio.analogRead")
                 return NativeFunctionID::GPIO_ANALOG_READ;
 
-            // I2C functions
-            if (name == "scan")
+            // I2C functions (full namespace paths)
+            if (name == "i2c.scan")
                 return NativeFunctionID::I2C_SCAN;
-            if (name == "write")
+            if (name == "i2c.write")
                 return NativeFunctionID::I2C_WRITE;
-            if (name == "read")
+            if (name == "i2c.read")
                 return NativeFunctionID::I2C_READ;
 
-            // Buzzer functions
-            if (name == "beep")
+            // Buzzer functions (full namespace paths)
+            if (name == "buzzer.beep")
                 return NativeFunctionID::BUZZER_BEEP;
-            if (name == "playMelody")
+            if (name == "buzzer.playMelody")
                 return NativeFunctionID::BUZZER_PLAY_MELODY;
-            if (name == "stop")
+            if (name == "buzzer.stop")
                 return NativeFunctionID::BUZZER_STOP;
 
-            // Timer functions
-            if (name == "setTimeout")
+            // Timer functions (full namespace paths)
+            if (name == "timer.setTimeout")
                 return NativeFunctionID::TIMER_SET_TIMEOUT;
-            if (name == "setInterval")
+            if (name == "timer.setInterval")
                 return NativeFunctionID::TIMER_SET_INTERVAL;
-            if (name == "clearTimeout")
+            if (name == "timer.clearTimeout")
                 return NativeFunctionID::TIMER_CLEAR_TIMEOUT;
-            if (name == "clearInterval")
+            if (name == "timer.clearInterval")
                 return NativeFunctionID::TIMER_CLEAR_INTERVAL;
 
-            // Memory functions
-            if (name == "getAvailable")
+            // Memory functions (full namespace paths)
+            if (name == "memory.getAvailable")
                 return NativeFunctionID::MEMORY_GET_AVAILABLE;
-            if (name == "getUsage")
+            if (name == "memory.getUsage")
                 return NativeFunctionID::MEMORY_GET_USAGE;
-            if (name == "allocate")
+            if (name == "memory.allocate")
                 return NativeFunctionID::MEMORY_ALLOCATE;
-            if (name == "free")
+            if (name == "memory.free")
                 return NativeFunctionID::MEMORY_FREE;
 
-            // Power functions
-            if (name == "sleep")
+            // Power functions (full namespace paths)
+            if (name == "power.sleep")
                 return NativeFunctionID::POWER_SLEEP;
-            if (name == "getBatteryLevel")
+            if (name == "power.getBatteryLevel")
                 return NativeFunctionID::POWER_GET_BATTERY_LEVEL;
-            if (name == "isCharging")
+            if (name == "power.isCharging")
                 return NativeFunctionID::POWER_IS_CHARGING;
 
-            // App functions
-            if (name == "exit")
+            // App functions (full namespace paths)
+            if (name == "app.exit")
                 return NativeFunctionID::APP_EXIT;
-            if (name == "getInfo")
+            if (name == "app.getInfo")
                 return NativeFunctionID::APP_GET_INFO;
-            if (name == "onLoad")
+            if (name == "app.onLoad")
                 return NativeFunctionID::APP_ON_LOAD;
-            if (name == "onSuspend")
+            if (name == "app.onSuspend")
                 return NativeFunctionID::APP_ON_SUSPEND;
-            if (name == "onResume")
+            if (name == "app.onResume")
                 return NativeFunctionID::APP_ON_RESUME;
-            if (name == "onUnload")
+            if (name == "app.onUnload")
                 return NativeFunctionID::APP_ON_UNLOAD;
 
-            // Storage functions
-            if (name == "getMounted")
+            // Storage functions (full namespace paths)
+            if (name == "storage.getMounted")
                 return NativeFunctionID::STORAGE_GET_MOUNTED;
-            if (name == "getInfo")
+            if (name == "storage.getInfo")
                 return NativeFunctionID::STORAGE_GET_INFO;
 
-            // Sensor functions
-            if (name == "attach")
+            // Sensor functions (full namespace paths)
+            if (name == "sensor.attach")
                 return NativeFunctionID::SENSOR_ATTACH;
-            if (name == "read")
+            if (name == "sensor.read")
                 return NativeFunctionID::SENSOR_READ;
-            if (name == "detach")
+            if (name == "sensor.detach")
                 return NativeFunctionID::SENSOR_DETACH;
 
-            // WiFi functions
-            if (name == "connect")
+            // WiFi functions (full namespace paths)
+            if (name == "wifi.connect")
                 return NativeFunctionID::WIFI_CONNECT;
-            if (name == "disconnect")
+            if (name == "wifi.disconnect")
                 return NativeFunctionID::WIFI_DISCONNECT;
-            if (name == "getStatus")
+            if (name == "wifi.getStatus")
                 return NativeFunctionID::WIFI_GET_STATUS;
-            if (name == "getIP")
+            if (name == "wifi.getIP")
                 return NativeFunctionID::WIFI_GET_IP;
 
-            // IPC functions
-            if (name == "send")
+            // IPC functions (full namespace paths)
+            if (name == "ipc.send")
                 return NativeFunctionID::IPC_SEND;
-            if (name == "broadcast")
+            if (name == "ipc.broadcast")
                 return NativeFunctionID::IPC_BROADCAST;
 
             return NativeFunctionID::UNKNOWN;

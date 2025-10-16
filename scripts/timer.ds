@@ -75,15 +75,18 @@ var display: TimerDisplay(timer);
 var lastTick: 0;               // int inferred
 
 // Handler functions
-function handleEncoderButton(): void {
-    if (timer.running) {
-        timer.stop();
-        os.buzzer.beep(440, 50);
-    } else {
-        timer.start();
-        os.buzzer.beep(880, 50);
+function handleEncoderButton(pressed: bool): void {
+    // Only act on button press, not release
+    if (pressed) {
+        if (timer.running) {
+            timer.stop();
+            os.buzzer.beep(440, 50);
+        } else {
+            timer.start();
+            os.buzzer.beep(880, 50);
+        }
+        display.render();
     }
-    display.render();
 }
 
 function handleEncoderTurn(delta: int): void {

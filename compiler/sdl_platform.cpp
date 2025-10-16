@@ -723,13 +723,15 @@ namespace dialos
         // New: register interval callback
         int SDLPlatform::timer_setInterval(const Value &callback, int ms)
         {
-            console_log("setInterval: " + std::to_string(ms) + "ms");
+            // console_log("[DEBUG] setInterval: " + std::to_string(ms) + "ms");
 
             if (!callback.isFunction())
             {
                 console_warn("timer_setInterval called with non-function callback");
                 return -1;
             }
+
+            // console_log("[DEBUG] Callback is function: " + callback.toString());
 
             TimerEntry entry;
             entry.id = nextTimerId_++;
@@ -740,7 +742,7 @@ namespace dialos
 
             timers_[entry.id] = entry;
 
-            console_log("Registered timer id=" + std::to_string(entry.id));
+            // console_log("[DEBUG] Registered timer id=" + std::to_string(entry.id) + " with " + std::to_string(timers_.size()) + " total timers");
             return entry.id;
         }
 
@@ -769,9 +771,11 @@ namespace dialos
         void SDLPlatform::processTimers()
         {
             if (timers_.empty()){
-                console_log("No active timers to process");
+                // console_log("[DEBUG] No active timers to process");
                 return;
             }
+
+            // console_log("[DEBUG] Processing " + std::to_string(timers_.size()) + " timers");
 
             auto now = std::chrono::steady_clock::now();
             std::vector<int> firedIds;
@@ -779,8 +783,13 @@ namespace dialos
             for (auto &kv : timers_)
             {
                 TimerEntry &entry = kv.second;
+                // console_log(std::string("[DEBUG] Timer ") + std::to_string(entry.id) + " check: now >= nextFire = " + 
+                //            (now >= entry.nextFire ? "true" : "false"));
+                
                 if (now >= entry.nextFire)
                 {
+                    // console_log("[DEBUG] Timer " + std::to_string(entry.id) + " firing!");
+                    
                     // Fire the callback synchronously via VM
                     // Build empty args vector (timers don't pass args by default)
                     std::vector<Value> args;
@@ -789,11 +798,17 @@ namespace dialos
                     bool attempted = false;
                     bool success = false;
 
+                    // console_log(std::string("[DEBUG] VM state: vm_=") + (vm_ ? "valid" : "null") + 
+                    //            " isRunning=" + (vm_ && vm_->isRunning() ? "true" : "false") + 
+                    //            " hasError=" + (vm_ && vm_->hasError() ? "true" : "false"));
+
                     if (vm_ != nullptr && vm_->isRunning() && !vm_->hasError())
                     {
                         attempted = true;
+                        // console_log("[DEBUG] Attempting to invoke timer callback");
                         // Directly invoke the function value
                         success = vm_->invokeFunction(entry.callback, args);
+                        // console_log(std::string("[DEBUG] Callback invocation result: ") + (success ? "success" : "failed"));
 
                         // If the VM entered an error state during invocation, stop scheduling further callbacks
                         if (vm_->hasError() && !vm_->isRunning()) {
@@ -802,6 +817,8 @@ namespace dialos
                             timers_.clear();
                             break;
                         }
+                    } else {
+                        // console_log("[DEBUG] Skipping timer callback - VM not ready");
                     }
 
                     // Only warn if we attempted invocation and it failed. If we didn't attempt
@@ -1407,7 +1424,7 @@ namespace dialos
                 if (i == static_cast<int>(idx))
                 {
                     // simple caret indicator on next line
-                    oss << "^--- error on this line\n";
+                    oss << " ^--- error on this line\n";
                 }
             }
             return oss.str();

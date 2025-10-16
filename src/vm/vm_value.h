@@ -89,6 +89,12 @@ struct Value {
     }
     
     static Value String(const std::string& s);
+    static Value StringFromPool(std::string* s) {
+        Value v;
+        v.type = ValueType::STRING;
+        v.stringVal = s;
+        return v;
+    }
     static Value Object(Object* obj);
     static Value Array(Array* arr);
     static Value Function(Function* fn);
@@ -145,7 +151,7 @@ struct Array {
     explicit Array(size_t size) : elements(size) {}
 };
 
-// Memory pool for heap-allocated values
+// Memory pool for heap-allocated values with reference counting
 class ValuePool {
 public:
     ValuePool(size_t heapSize) : heapSize_(heapSize), allocated_(0) {}
@@ -159,13 +165,27 @@ public:
     }
     
     std::string* allocateString(const std::string& str) {
+        // String interning: check if we already have this string
+        for (size_t i = 0; i < strings_.size(); ++i) {
+            if (*strings_[i] == str) {
+                stringRefCounts_[i]++; // Increment reference count
+                return strings_[i]; // Reuse existing string
+            }
+        }
+        
+        // Not found, allocate new string
         size_t size = str.length() + sizeof(std::string);
         if (allocated_ + size > heapSize_) {
-            return nullptr; // Out of memory
+            // Try garbage collection first
+            garbageCollectStrings();
+            if (allocated_ + size > heapSize_) {
+                return nullptr; // Still out of memory
+            }
         }
         
         auto* s = new std::string(str);
         strings_.push_back(s);
+        stringRefCounts_.push_back(1); // Initialize reference count
         allocated_ += size;
         return s;
     }
@@ -210,10 +230,40 @@ public:
     size_t getAvailable() const { return heapSize_ - allocated_; }
     size_t getHeapSize() const { return heapSize_; }
     
+    // Reference counting for strings
+    void releaseString(std::string* str) {
+        for (size_t i = 0; i < strings_.size(); ++i) {
+            if (strings_[i] == str) {
+                if (stringRefCounts_[i] > 0) {
+                    stringRefCounts_[i]--;
+                }
+                return;
+            }
+        }
+    }
+    
+    void garbageCollectStrings() {
+        // Simple heuristic: reset all reference counts and clean up
+        // This works because we're called at callback boundaries when temporaries should be gone
+        for (size_t i = 0; i < stringRefCounts_.size(); ++i) {
+            stringRefCounts_[i] = 0;  // Reset all reference counts
+        }
+        
+        // Remove all strings with zero reference count (now all of them)
+        for (auto* str : strings_) {
+            size_t size = str->length() + sizeof(std::string);
+            allocated_ -= size;
+            delete str;
+        }
+        strings_.clear();
+        stringRefCounts_.clear();
+    }
+    
 private:
     size_t heapSize_;
     size_t allocated_;
     std::vector<std::string*> strings_;
+    std::vector<int> stringRefCounts_;  // Reference counts for strings
     std::vector<Object*> objects_;
     std::vector<Array*> arrays_;
     std::vector<Function*> functions_;
