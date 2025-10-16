@@ -6,6 +6,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "bytecode_compiler.h"
+#include "ast_printer.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -126,6 +127,13 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "✓ Parse successful" << std::endl << std::endl;
     
+    // DEBUG: Print AST
+    ASTPrinter astPrinter;
+    std::string astOutput = astPrinter.print(*program);
+    std::cout << "=== AST DEBUG ===" << std::endl;
+    std::cout << astOutput << std::endl;
+    std::cout << "=== END AST DEBUG ===" << std::endl << std::endl;
+
     // Compile to bytecode
     std::cout << "Compiling to bytecode..." << std::endl;
     if (debugInfo) {

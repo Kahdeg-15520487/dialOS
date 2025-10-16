@@ -155,11 +155,24 @@ namespace dialos
                 emit(Instruction(Opcode::PUSH_NULL), &decl);
             }
 
-            // Store to global variable
-            uint16_t globalIdx = module_.addGlobal(decl.name);
-            Instruction instr(Opcode::STORE_GLOBAL);
-            instr.addOperandU16(globalIdx);
-            module_.emit(instr, decl.line);
+            // If we're inside a function/method (locals_ is non-empty), allocate a local
+            // variable and store to local. Otherwise store to global scope.
+            if (!locals_.empty()) {
+                // Allocate local slot for this variable (if not already present)
+                if (locals_.find(decl.name) == locals_.end()) {
+                    allocateLocal(decl.name);
+                }
+                uint8_t localIdx = locals_[decl.name];
+                Instruction instr(Opcode::STORE_LOCAL);
+                instr.addOperandU8(localIdx);
+                module_.emit(instr, decl.line);
+            } else {
+                // Store to global variable
+                uint16_t globalIdx = module_.addGlobal(decl.name);
+                Instruction instr(Opcode::STORE_GLOBAL);
+                instr.addOperandU16(globalIdx);
+                module_.emit(instr, decl.line);
+            }
         }
 
         void BytecodeCompiler::compileAssignment(const Assignment &assign)
@@ -258,7 +271,8 @@ namespace dialos
             {
                 // Compile constructor as a function
                 std::string ctorName = cls.name + "::constructor";
-                uint16_t funcIdx = module_.addFunction(ctorName);
+                uint8_t paramCount = static_cast<uint8_t>(cls.constructor->parameters.size());
+                uint16_t funcIdx = module_.addFunction(ctorName, paramCount);
 
                 // Record entry point
                 size_t ctorStart = module_.getCurrentPosition();
@@ -295,7 +309,8 @@ namespace dialos
             for (const auto &method : cls.methods)
             {
                 std::string methodName = cls.name + "::" + method->name;
-                uint16_t funcIdx = module_.addFunction(methodName);
+                uint8_t paramCount = static_cast<uint8_t>(method->parameters.size());
+                uint16_t funcIdx = module_.addFunction(methodName, paramCount);
 
                 // Record entry point
                 size_t methodStart = module_.getCurrentPosition();
@@ -600,6 +615,11 @@ namespace dialos
             {
                 compileTemplateLiteral(*tmpl);
             }
+            else if (auto *paren = dynamic_cast<const ParenthesizedExpression *>(&expr))
+            {
+                // Just compile the inner expression - parentheses are for parsing precedence only
+                compileExpression(*paren->expression);
+            }
         }
 
         void BytecodeCompiler::compileBinaryExpression(const BinaryExpression &expr)
@@ -723,12 +743,26 @@ namespace dialos
                 }
             }
             
-            // Push arguments onto stack
-            for (const auto &arg : expr.arguments)
-            {
-                compileExpression(*arg);
+            // Special-case member calls (obj.method(args...)) so we push the receiver
+            // before the arguments (VM expects stack: [..., receiver, arg0, arg1, ...])
+            bool isMemberCall = dynamic_cast<const MemberAccess *>(expr.callee.get()) != nullptr && !isNativeCall && !isDirectFunctionCall;
+
+            if (isMemberCall) {
+                // Compile receiver first
+                auto *member = dynamic_cast<const MemberAccess *>(expr.callee.get());
+                compileExpression(*member->object);
+                // Then push arguments
+                for (const auto &arg : expr.arguments) {
+                    compileExpression(*arg);
+                }
+            } else {
+                // Push arguments onto stack (normal order)
+                for (const auto &arg : expr.arguments)
+                {
+                    compileExpression(*arg);
+                }
             }
-            
+
             if (isDirectFunctionCall)
             {
                 // Direct call: CALL or CALL_NATIVE
@@ -741,13 +775,23 @@ namespace dialos
             else
             {
                 // Indirect call: calling through a variable
-                // Compile the callee expression (will push function value onto stack)
-                compileExpression(*expr.callee);
-                
-                // Emit CALL_INDIRECT
-                Instruction instr(Opcode::CALL_INDIRECT);
-                instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
-                emit(instr, &expr);
+                // Special-case member access (obj.method()) so we preserve the receiver
+                if (auto *member = dynamic_cast<const MemberAccess *>(expr.callee.get())) {
+                    // Member call: receiver and args already pushed in correct order above
+                    uint16_t nameIdx = module_.addConstant(member->property);
+                    Instruction instr(Opcode::CALL_METHOD);
+                    instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
+                    instr.addOperandU16(nameIdx);
+                    emit(instr, &expr);
+                } else {
+                    // Regular indirect call: compile the callee expression (will push function value onto stack)
+                    compileExpression(*expr.callee);
+
+                    // Emit CALL_INDIRECT
+                    Instruction instr(Opcode::CALL_INDIRECT);
+                    instr.addOperandU8(static_cast<uint8_t>(expr.arguments.size()));
+                    emit(instr, &expr);
+                }
             }
         }
 

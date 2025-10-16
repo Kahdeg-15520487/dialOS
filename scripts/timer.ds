@@ -116,18 +116,13 @@ function handleTimerTick(): void {
     }
 }
 
-function appOnLoad(): void {
-    display.render();
-    
-    // Register event handlers
-    os.encoder.onButton(handleEncoderButton);
-    os.encoder.onTurn(handleEncoderTurn);
-    os.timer.setInterval(handleTimerTick, 100);
-}
+display.render();
 
-// Set app lifecycle handler
-os.app.onLoad(appOnLoad);
+// Register event handlers
+os.encoder.onButton(handleEncoderButton);
+os.encoder.onTurn(handleEncoderTurn);
+os.timer.setInterval(handleTimerTick, 100);
 
 while(true){
-    os.system.yield();
+//    os.system.yield();
 }

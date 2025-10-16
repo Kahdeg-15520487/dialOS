@@ -14,6 +14,7 @@
 #define DIALOS_SDL_PLATFORM_H
 
 #include "../src/vm/platform.h"
+#include "../src/vm/vm_value.h"
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
@@ -152,7 +153,8 @@ public:
     
     // === Timer Operations ===
     int timer_setTimeout(int ms) override;
-    int timer_setInterval(int ms) override;
+    // New: accept callback Value and interval ms
+    int timer_setInterval(const Value& callback, int ms) override;
     void timer_clearTimeout(int id) override;
     void timer_clearInterval(int id) override;
     
@@ -214,11 +216,18 @@ public:
     // === Extended Emulator Features ===
     void touch_getPosition(int& x, int& y);
     bool touch_isInDisplay(int x, int y); // Check if touch is within circular display
+
+    // Source lookup & runtime error printing (platform-level diagnostics)
+    std::string locateSourceFile(const std::string &bytecodePath) override;
+    void printRuntimeError(const VMState &vm, const std::string &bytecodePath, size_t pc, const std::string &errorMessage, uint32_t sourceLine = 0) override;
     
     // Output capture for VM programs
     void captureOutput(const std::string& output) { outputLog_.addText(output); }
     
 private:
+    // Internal helpers (private static)
+    static std::string getSourceContextFromFile(const std::string &sourceFile, uint32_t errorLine, int contextLines = 5);
+    static std::string locateSourceForBytecode(const std::string &bytecodePath);
     // SDL components
     SDL_Window* window_;
     SDL_Renderer* renderer_;
@@ -349,6 +358,21 @@ private:
     void renderConsoleArea();
     void renderLogWindow(int x, int y, int width, int height, const std::string& title, const ConsoleLog& log);
     void renderDebugPanel();
+    // Timer processing called from pollEvents/present
+    void processTimers();
+
+    // Timer entry
+    struct TimerEntry {
+        int id;
+        Value callback;
+        int intervalMs;
+        std::chrono::steady_clock::time_point nextFire;
+        bool repeating;
+    };
+
+    // Timer container
+    std::map<int, TimerEntry> timers_;
+    int nextTimerId_ = 1;
 };
 
 } // namespace vm

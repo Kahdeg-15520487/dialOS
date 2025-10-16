@@ -8,6 +8,8 @@
 #include "vm_value.h"
 #include "vm_core.h"
 #include <map>
+#include <sstream>
+#include <iomanip>
 
 namespace dialos
 {
@@ -75,6 +77,48 @@ namespace dialos
             }
             
             return success;
+        }
+
+        void PlatformInterface::dumpVMState(const VMState &vm, size_t pc, const std::string &reason)
+        {
+            std::stringstream ss;
+            ss << "[PLATFORM-VM-DUMP] Reason: " << reason << " PC=" << pc << "\n";
+            ss << "[PLATFORM-VM-DUMP] Stack size=" << vm.getStackSize() << "\n";
+
+            // Attempt to print globals
+            ss << "[PLATFORM-VM-DUMP] Globals:\n";
+            const auto &globals = vm.getGlobals();
+            for (const auto &p : globals) {
+                try { ss << "  " << p.first << " = " << p.second.toString() << "\n"; } catch (...) { ss << "  " << p.first << " = <unprintable>\n"; }
+            }
+
+            // Print call frames
+            ss << "[PLATFORM-VM-DUMP] CallStack depth=" << vm.getCallStack().size() << "\n";
+            const auto &callstack = vm.getCallStack();
+            for (size_t i = 0; i < callstack.size(); ++i) {
+                const auto &cf = callstack[i];
+                ss << "  Frame[" << i << "] func=" << cf.functionName << " stackBase=" << cf.stackBase << " locals={";
+                bool first = true;
+                for (const auto &loc : cf.locals) {
+                    if (!first) ss << ", "; first = false;
+                    try { ss << (int)loc.first << ":" << loc.second.toString(); } catch (...) { ss << (int)loc.first << ":<unprintable>"; }
+                }
+                ss << "}\n";
+            }
+
+            console_log(ss.str());
+
+            // If debug info exists, attempt to print source context by searching common script paths
+            // Note: VMState does not expose module directly; we rely on debug info being reachable via pc mapping (best-effort)
+            // For now we only print the minimal dump above; platform-specific implementations (SDLPlatform) can extend this.
+        }
+
+        void PlatformInterface::printRuntimeError(const VMState &vm, const std::string &bytecodePath, size_t pc, const std::string &errorMessage, uint32_t sourceLine)
+        {
+            // Default behavior: basic console output plus VM dump
+            console_error("Runtime Error: " + errorMessage);
+            console_log(std::string("PC: ") + std::to_string(pc) + ", Stack: " + std::to_string(vm.getStackSize()));
+            // Platform-specific implementations (like SDLPlatform) may override to open files and print context
         }
 
     } // namespace vm

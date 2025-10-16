@@ -292,6 +292,10 @@ void vmAppletTask(byte taskId, void *param) {
     vmState->reset();
     sys->logf(LogLevel::INFO, "VM initialized for '%s', heap: %d bytes",
               applet->name, module->metadata.heapSize);
+    // Invoke app.onLoad callback if registered so the app can perform startup setup
+    // (e.g., register encoders, timers). Use an empty args vector.
+    platform->invokeCallback("app.onLoad", std::vector<dialos::vm::Value>());
+    platform->console_log("Invoked app.onLoad callback if registered");
     initialized = true;
   } else {
     // Reset VM for repeated execution

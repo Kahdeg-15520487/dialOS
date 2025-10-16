@@ -594,6 +594,23 @@ namespace dialos
             virtual void console_error(const std::string &msg) { console_log("[ERROR] " + msg); }
             virtual void console_clear() {}
 
+
+            // Dump VM diagnostic state (called by VM when it encounters serious errors)
+            virtual void dumpVMState(const VMState &vm, size_t pc, const std::string &reason);
+
+            // Locate source file for a loaded bytecode module (default: no-op)
+            // Implementations may search common paths and return an empty string if not found.
+            virtual std::string locateSourceFile(const std::string &bytecodePath) {
+                (void)bytecodePath;
+                return std::string();
+            }
+
+            // Print a runtime error including optional source-context. Platform
+            // implementation should perform any file I/O needed to show the
+            // surrounding source lines. Default implementation falls back to
+            // simple console output.
+            virtual void printRuntimeError(const VMState &vm, const std::string &bytecodePath, size_t pc, const std::string &errorMessage, uint32_t sourceLine = 0);
+
             // ===== Display Operations =====
             virtual void display_clear(uint32_t color) = 0;
             virtual void display_drawText(int x, int y, const std::string &text,
@@ -663,8 +680,9 @@ namespace dialos
             virtual void buzzer_stop() {}
 
             // ===== Timer Operations =====
+            // Note: timer_setInterval accepts a callback Value and interval in ms
             virtual int timer_setTimeout(int /*ms*/) { return -1; }
-            virtual int timer_setInterval(int /*ms*/) { return -1; }
+            virtual int timer_setInterval(const Value& /*callback*/, int /*ms*/) { return -1; }
             virtual void timer_clearTimeout(int /*id*/) {}
             virtual void timer_clearInterval(int /*id*/) {}
 

@@ -473,6 +473,16 @@ std::string BytecodeModule::disassemble() const {
                     ss << "CALL_INDIRECT argc=" << static_cast<int>(argCount) << "\n";
                 }
                 break;
+            case Opcode::CALL_METHOD:
+                if (pos + 2 < code.size()) {
+                    uint8_t argCount = code[pos++];
+                    uint16_t nameIdx = code[pos] | (code[pos+1] << 8);
+                    pos += 2;
+                    ss << "CALL_METHOD argc=" << static_cast<int>(argCount) << " nameIdx=[" << nameIdx << "]";
+                    if (nameIdx < constants.size()) ss << " " << constants[nameIdx];
+                    ss << "\n";
+                }
+                break;
                 
             case Opcode::GET_FIELD:
             case Opcode::SET_FIELD:

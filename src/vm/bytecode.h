@@ -79,6 +79,7 @@ enum class Opcode : uint8_t {
     RETURN      = 0x82,  // Return from function
     LOAD_FUNCTION = 0x83,  // Push function reference (function index u16)
     CALL_INDIRECT = 0x84,  // Call function from stack (arg count u8)
+    CALL_METHOD = 0x85,  // Call method with implicit receiver (u8 argCount, u16 methodNameIdx?)
     
     // Object/Member access
     GET_FIELD   = 0x90,  // Get object field (field name index)

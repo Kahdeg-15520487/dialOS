@@ -8,6 +8,8 @@
 #include <cstring>
 #include <sstream>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 #include <cmath>
 
 namespace dialos {
@@ -187,16 +189,28 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
             if (!error_.empty()) {
                 platform_.console_log("[VM] Error: " + error_);
             }
-            running_ = wasRunning;  // Restore original state
-            return false;
+            // Determine if this is a fatal error
+            bool isFatalError = error_.find("Out of memory") != std::string::npos;
+
+            // Unwind any frames pushed for the callback so VM state is consistent
+            while (callStack_.size() >= callDepthBefore) {
+                callStack_.pop_back();
+            }
+
+            // Restore PC and stack to the state before the callback
+            pc_ = savedPC;
+            while (stack_.size() > stackSizeBefore) pop();
+
+                // Treat any error during a callback as fatal. Do not clear the error.
+                platform_.console_log("[VM] ERROR during callback - halting VM");
+                // Ensure VM is stopped so host/emulator can inspect state and report diagnostics
+                running_ = false;
+                return false;
         }
         if (result == VMResult::FINISHED) {
             break;
         }
     }
-    
-    // Restore original running state
-    running_ = wasRunning;
     
     // Check if callback execution left an error
     bool hadError = hasError();
@@ -204,19 +218,14 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
         platform_.console_log("[VM] Callback left error state!");
         platform_.console_log("[VM] Error: " + error_);
         
-        // Check if it's a fatal error (out of memory)
-        bool isFatalError = error_.find("Out of memory") != std::string::npos;
-        
-        if (isFatalError) {
-            // Fatal errors should halt execution
-            platform_.console_log("[VM] FATAL ERROR - halting VM execution");
-            running_ = false;  // Stop the VM completely
-            return false;
-        }
-        
-        // Non-fatal errors: clear error state so VM can continue
-        error_.clear();
+        // Treat any error during a callback as fatal. Do not clear the error.
+        platform_.console_log("[VM] ERROR during callback - halting VM");
+        running_ = false;  // Stop the VM completely
+        return false;
     }
+    
+    // Restore original running state only if no error occurred
+    running_ = wasRunning;
     
     // Restore PC to where we were before callback
     pc_ = savedPC;
@@ -260,6 +269,15 @@ Value VMState::peek(size_t offset) const {
 
 void VMState::setError(const std::string& msg) {
     error_ = msg;
+    // If stack underflow, ask platform to dump VM state (platform-level I/O requested)
+    if (msg == "Stack underflow") {
+        try {
+            platform_.dumpVMState(*this, pc_, msg);
+        } catch (...) {
+            platform_.console_log("[VM] Failed to run platform dumpVMState()");
+        }
+    }
+    // mark VM as not running after recording the error
     running_ = false;
 }
 
@@ -288,9 +306,14 @@ Value VMState::loadGlobal(uint16_t index) {
     const std::string& name = module_.globals[index];
     auto it = globals_.find(name);
     if (it != globals_.end()) {
-        return it->second;
+        Value v = it->second;
+        if (v.isNull()) {
+            platform_.console_log(std::string("loadGlobal: global '") + name + " is null");
+        }
+        return v;
     }
     
+    platform_.console_log(std::string("loadGlobal: global '") + name + " not found, returning null");
     return Value::Null();
 }
 
@@ -302,6 +325,11 @@ void VMState::storeGlobal(uint16_t index, const Value& value) {
     
     const std::string& name = module_.globals[index];
     globals_[name] = value;
+    if (value.isNull()) {
+        platform_.console_log(std::string("storeGlobal: stored null into global '") + name + "'");
+    } else {
+        platform_.console_log(std::string("storeGlobal: stored into global '") + name + "' type=" + std::to_string(static_cast<int>(value.type)));
+    }
 }
 
 VMResult VMState::execute(uint32_t maxInstructions) {
@@ -1352,27 +1380,41 @@ VMResult VMState::executeInstruction() {
                         setError("setTimeout() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
+                    // Stack layout: [..., receiver, callbackArgs..., arg0]
+                    // Compiler pushes arguments in order so the top of the stack is the last argument (ms)
                     Value msVal = pop();
-                    
+                    // After popping arguments, the next value is the receiver
+                    Value receiver = pop();
+
                     int timerId = platform_.timer_setTimeout(msVal.isInt32() ? msVal.int32Val : 0);
-                    
+
+                    // Pop any additional args (if more than expected)
                     for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Int32(timerId));
                     break;
                 }
                 
                 case NativeFunctionID::TIMER_SET_INTERVAL: {
-                    if (argCount < 1) {
-                        setError("setInterval() requires 1 argument");
+                    // Expect: receiver, callback (function), ms (int)
+                    if (argCount < 2) {
+                        setError("setInterval() requires 2 arguments (callback, ms)");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
+
+                    // Pop ms (top), then callback, then receiver
                     Value msVal = pop();
-                    
-                    int timerId = platform_.timer_setInterval(msVal.isInt32() ? msVal.int32Val : 0);
-                    
-                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    Value callback = pop();
+                    Value receiver = pop();
+
+                    if (!callback.isFunction()) {
+                        setError("setInterval() first argument must be a function");
+                        return VMResult::ERROR;
+                    }
+
+                    int timerId = platform_.timer_setInterval(callback, msVal.isInt32() ? msVal.int32Val : 0);
+
+                    // Pop any additional args beyond the expected two
+                    for (uint8_t i = 2; i < argCount; i++) pop();
                     push(Value::Int32(timerId));
                     break;
                 }
@@ -1383,15 +1425,17 @@ VMResult VMState::executeInstruction() {
                         setError("clearTimeout/clearInterval() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
+
+                    // Pop id (top) then receiver
                     Value idVal = pop();
-                    
+                    Value receiver = pop();
+
                     if (funcID == NativeFunctionID::TIMER_CLEAR_TIMEOUT) {
                         platform_.timer_clearTimeout(idVal.isInt32() ? idVal.int32Val : -1);
                     } else {
                         platform_.timer_clearInterval(idVal.isInt32() ? idVal.int32Val : -1);
                     }
-                    
+
                     for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
@@ -1682,6 +1726,7 @@ VMResult VMState::executeInstruction() {
                     }
                     
                     platform_.registerCallback("app.onLoad", callback);
+                    platform_.console_log("Registered app.onLoad callback " + std::to_string(callback.asFunction()->functionIndex));
                     push(Value::Null());
                     break;
                 }
@@ -1922,8 +1967,28 @@ VMResult VMState::executeInstruction() {
                 stack_.pop_back();
             }
             
-            // Push return value
-            push(returnValue);
+            // If this function is a constructor, return the 'this' object instead of returnValue
+            bool isConstructor = false;
+            if (!frame.functionName.empty()) {
+                const std::string ctorSuffix = "::constructor";
+                if (frame.functionName.size() >= ctorSuffix.size() &&
+                    frame.functionName.compare(frame.functionName.size() - ctorSuffix.size(), ctorSuffix.size(), ctorSuffix) == 0) {
+                    isConstructor = true;
+                }
+            }
+
+            if (isConstructor) {
+                auto it = frame.locals.find(0);
+                if (it != frame.locals.end()) {
+                    push(it->second);
+                } else {
+                    // Fallback to returnValue if 'this' not found
+                    push(returnValue);
+                }
+            } else {
+                // Push normal return value
+                push(returnValue);
+            }
             break;
         }
         
@@ -1959,7 +2024,7 @@ VMResult VMState::executeInstruction() {
                 setError("CALL_INDIRECT: value is not a function");
                 return VMResult::ERROR;
             }
-            
+
             Function* fn = funcVal.asFunction();
             
             // Validate argument count
@@ -1982,21 +2047,183 @@ VMResult VMState::executeInstruction() {
             // Create call frame (same as CALL opcode)
             CallFrame frame;
             frame.returnPC = pc_;
+
+            // Detect implicit receiver presence: if there's still an extra value below the function
+            // (compiler emits receiver + DUP + GET_FIELD + function on top), the receiver will be
+            // located at stack_.size() - argCount - 1
+            bool hasReceiver = false;
+            Value receiverVal;
+            if (stack_.size() >= (size_t)argCount + 1) {
+                // Candidate receiver position
+                size_t recvPos = stack_.size() - argCount - 1;
+                receiverVal = stack_[recvPos];
+                if (receiverVal.isObject()) {
+                    hasReceiver = true;
+                }
+            }
+
+            // Stack base for arguments (arguments are currently on top of stack)
             frame.stackBase = stack_.size() - argCount;
             frame.functionName = module_.functions[funcIndex];
-            
-            // Store arguments in locals
-            for (uint8_t i = 0; i < argCount; i++) {
-                frame.locals[i] = stack_[frame.stackBase + i];
+
+            // If we have a receiver, make it local 0 and shift argument locals by +1
+            if (hasReceiver) {
+                // Store receiver in local 0
+                frame.locals[0] = receiverVal;
+
+                // Store arguments starting at locals[1]
+                for (uint8_t i = 0; i < argCount; i++) {
+                    frame.locals[i + 1] = stack_[frame.stackBase + i];
+                }
+
+                // Remove arguments and the receiver from stack
+                stack_.resize(frame.stackBase - 1);
+            } else {
+                // Store arguments in locals starting at 0
+                for (uint8_t i = 0; i < argCount; i++) {
+                    frame.locals[i] = stack_[frame.stackBase + i];
+                }
+
+                // Remove arguments from stack
+                stack_.resize(frame.stackBase);
             }
-            
-            // Remove arguments from stack
-            stack_.resize(frame.stackBase);
             
             // Push call frame and jump
             callStack_.push_back(frame);
             pc_ = entryPoint;
             
+            break;
+        }
+
+        case compiler::Opcode::CALL_METHOD: {
+            uint8_t argCount = readU8();
+            uint16_t nameIdx = readU16();
+
+            if (nameIdx >= module_.constants.size()) {
+                setError("CALL_METHOD: invalid method name index");
+                return VMResult::ERROR;
+            }
+
+            const std::string& methodName = module_.constants[nameIdx];
+
+            // Pop receiver from stack (it should be below the arguments on the stack)
+            // Stack layout before CALL_METHOD: [..., receiver, arg0, arg1, ..., argN]
+            if (stack_.size() < (size_t)argCount + 1) {
+                setError("CALL_METHOD: stack underflow for receiver/args");
+                return VMResult::ERROR;
+            }
+
+            // Receiver is located at position: stack.size() - argCount - 1
+            size_t recvPos = stack_.size() - argCount - 1;
+            Value receiver = stack_[recvPos];
+            if (!receiver.isObject() || !receiver.objVal) {
+                // Detailed debug: show receiver type, value, and source mapping when available
+                std::stringstream dbg;
+                dbg << "CALL_METHOD on non-object receiver at PC:" << pc_ << ": type=" << static_cast<int>(receiver.type);
+                try { dbg << " value=" << receiver.toString(); } catch (...) {}
+
+                // Include the method name being called
+                dbg << " method='" << methodName << "'";
+
+                // If debug info exists in the module, attempt to map PC to source line
+                if (module_.hasDebugInfo()) {
+                    uint32_t srcLine = module_.getSourceLine(pc_);
+                    if (srcLine > 0) {
+                        dbg << " (source line: " << srcLine << ")";
+                    }
+                }
+
+                // If we have a current call frame, include its function name for context
+                if (!callStack_.empty()) {
+                    dbg << " in function: " << callStack_.back().functionName;
+                }
+
+                platform_.console_log(dbg.str());
+                setError("CALL_METHOD on non-object receiver");
+                return VMResult::ERROR;
+            }
+
+            // Lookup the method in the receiver's fields
+            auto it = receiver.objVal->fields.find(methodName);
+            if (it == receiver.objVal->fields.end()) {
+                // Log available fields for debugging
+                std::string dbg = "Method '" + methodName + "' not found on object of class " + receiver.objVal->className + ": fields=[";
+                bool first = true;
+                for (const auto &p : receiver.objVal->fields) {
+                    if (!first) dbg += ", ";
+                    dbg += p.first;
+                    first = false;
+                }
+                dbg += "]";
+                platform_.console_log(dbg);
+                setError("Method '" + methodName + "' not found on object");
+                return VMResult::ERROR;
+            }
+
+            Value methodVal = it->second;
+
+            // Method must be a function value
+            if (!methodVal.isFunction()) {
+                // Log field type for debugging
+                std::string dbg = "CALL_METHOD: field '" + methodName + "' on class " + receiver.objVal->className + " is present but not a function. Type: ";
+                switch (methodVal.type) {
+                    case vm::ValueType::NULL_VAL: dbg += "null"; break;
+                    case vm::ValueType::BOOL: dbg += "bool"; break;
+                    case vm::ValueType::INT32: dbg += "int32"; break;
+                    case vm::ValueType::FLOAT32: dbg += "float32"; break;
+                    case vm::ValueType::STRING: dbg += "string"; break;
+                    case vm::ValueType::OBJECT: dbg += "object"; break;
+                    case vm::ValueType::ARRAY: dbg += "array"; break;
+                    case vm::ValueType::FUNCTION: dbg += "function"; break;
+                    case vm::ValueType::NATIVE_FN: dbg += "native_fn"; break;
+                    default: dbg += "unknown"; break;
+                }
+                platform_.console_log(dbg);
+                setError("CALL_METHOD: field '" + methodName + "' is not a function");
+                return VMResult::ERROR;
+            }
+
+            Function* fn = methodVal.asFunction();
+
+            // Validate argument count against function's paramCount (method receives 'this' as implicit local 0)
+            if (argCount != fn->paramCount) {
+                // Note: methods compiled with 'this' as local 0 still have paramCount equal to declared params
+                if (argCount != fn->paramCount) {
+                    setError("Method '" + methodName + "' expects " + std::to_string(fn->paramCount) +
+                             " arguments, got " + std::to_string(argCount));
+                    return VMResult::ERROR;
+                }
+            }
+
+            uint16_t funcIndex = fn->functionIndex;
+            if (funcIndex >= module_.functionEntryPoints.size()) {
+                setError("Invalid function entry point for method");
+                return VMResult::ERROR;
+            }
+
+            uint32_t entryPoint = module_.functionEntryPoints[funcIndex];
+
+            // Build call frame: local 0 = receiver, locals 1..N = args
+            CallFrame frame;
+            frame.returnPC = pc_;
+            frame.stackBase = recvPos; // base was where receiver is
+            frame.functionName = module_.functions[funcIndex];
+
+            // Store receiver as local 0
+            frame.locals[0] = receiver;
+
+            // Store arguments into locals[1..]
+            for (uint8_t i = 0; i < argCount; i++) {
+                frame.locals[i + 1] = stack_[recvPos + 1 + i];
+            }
+
+            // Remove receiver and args from the stack
+            stack_.resize(recvPos);
+
+            // Push call frame and jump
+            callStack_.push_back(frame);
+            pc_ = entryPoint;
+
             break;
         }
         
@@ -2027,19 +2254,23 @@ VMResult VMState::executeInstruction() {
         
         case compiler::Opcode::SET_FIELD: {
             uint16_t fieldIndex = readU16();
-            Value value = pop();
+            // Note: compiler emits value then object (value pushed first, then receiver)
+            // So pop receiver (object) first, then the value
             Value obj = pop();
-            
+            Value value = pop();
+
             if (!obj.isObject() || !obj.objVal) {
+                // Debug: log what we popped
+                platform_.console_log(std::string("SET_FIELD on non-object; popped type: ") + std::to_string(static_cast<int>(obj.type)));
                 setError("SET_FIELD on non-object");
                 return VMResult::ERROR;
             }
-            
+
             if (fieldIndex >= module_.constants.size()) {
                 setError("Invalid field name index");
                 return VMResult::ERROR;
             }
-            
+
             const std::string& fieldName = module_.constants[fieldIndex];
             obj.objVal->fields[fieldName] = value;
             break;
@@ -2115,16 +2346,63 @@ VMResult VMState::executeInstruction() {
                 }
             }
             
+            // Populate methods on the instance: find functions named Class::method and attach
+            for (size_t i = 0; i < module_.functions.size(); ++i) {
+                const std::string &fname = module_.functions[i];
+                std::string prefix = className + "::";
+                if (fname.size() > prefix.size() && fname.compare(0, prefix.size(), prefix) == 0) {
+                    std::string method = fname.substr(prefix.size());
+                    if (method == "constructor") continue;
+                    // Allocate function value for this method and store on the instance
+                    uint8_t paramCount = (i < module_.functionParamCounts.size()) ? module_.functionParamCounts[i] : 0;
+                    vm::Function* fn = pool_.allocateFunction(static_cast<uint16_t>(i), paramCount);
+                    if (fn) {
+                        obj->fields[method] = Value::Function(fn);
+                    }
+                }
+            }
+
             // Push object onto stack (it will be 'this' for constructor)
             push(Value::Object(obj));
-            
-            // If constructor exists, call it
-            // Note: Arguments are already on stack before NEW_OBJECT
-            // Stack layout: [arg1, arg2, ..., argN, object(this)]
-            // Constructor will use these arguments
-            
-            // For now, object is on stack ready for use
-            // TODO: Implement actual constructor calling mechanism
+
+            // If constructor exists, call it synchronously
+            // Note: Arguments are already on stack before NEW_OBJECT, and the object was just pushed
+            // Stack layout now: [arg0, arg1, ..., argN-1, object]
+            if (funcIndex != -1) {
+                uint16_t ctorIdx = static_cast<uint16_t>(funcIndex);
+                uint32_t entryPoint = module_.functionEntryPoints[ctorIdx];
+
+                // Determine argument count as number of items below the object
+                size_t total = stack_.size();
+                if (total < 1) {
+                    // Shouldn't happen, object just pushed
+                } else {
+                    size_t argCount = total - 1; // values below object are args
+
+                    // Build call frame with local0 = this, locals[1..] = args
+                    CallFrame frame;
+                    frame.returnPC = pc_;
+                    frame.stackBase = total - (argCount + 1); // position of first arg
+                    frame.functionName = module_.functions[ctorIdx];
+
+                    // Store 'this' as local 0
+                    frame.locals[0] = stack_[frame.stackBase + argCount]; // object
+
+                    // Store args into locals[1..]
+                    for (size_t i = 0; i < argCount; ++i) {
+                        frame.locals[1 + i] = stack_[frame.stackBase + i];
+                    }
+
+                    // Remove receiver and args from stack
+                    stack_.resize(frame.stackBase);
+
+                    // Push call frame and jump to constructor
+                    callStack_.push_back(frame);
+                    pc_ = entryPoint;
+                    
+                    break; // start executing constructor
+                }
+            }
             break;
         }
         

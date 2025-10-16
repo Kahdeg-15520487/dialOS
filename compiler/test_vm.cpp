@@ -106,7 +106,7 @@ public:
     
     // Timer (stubs)
     int timer_setTimeout(int /*ms*/) override { return -1; }
-    int timer_setInterval(int /*ms*/) override { return -1; }
+    int timer_setInterval(const vm::Value& /*callback*/, int /*ms*/) override { return -1; }
     void timer_clearTimeout(int /*id*/) override {}
     void timer_clearInterval(int /*id*/) override {}
     
