@@ -9,13 +9,43 @@ Token Lexer::nextToken() {
         return peeked_;
     }
     
-    skipWhitespace();
+    // Skip whitespace only when not in template mode
+    if (!inTemplate_) {
+        skipWhitespace();
+    }
     
     if (isAtEnd()) {
         return makeToken(TokenType::END_OF_FILE, "");
     }
     
     char c = current();
+    
+    // Template literal handling
+    if (c == '`') {
+        advance();
+        inTemplate_ = !inTemplate_;  // Toggle template mode
+        return makeToken(TokenType::BACKTICK, "`");
+    }
+    
+    // When inside template, handle special cases
+    if (inTemplate_) {
+        if (c == '$' && peek() == '{') {
+            advance(); advance();
+            templateDepth_ = 1;  // Start tracking brace depth
+            inTemplate_ = false;  // Exit template mode for expression
+            return makeToken(TokenType::TEMPLATE_START, "${");
+        }
+        // Scan template text content (preserves spaces)
+        return scanTemplateText();
+    }
+    
+    skipWhitespace();  // Skip whitespace for normal tokens
+    
+    if (isAtEnd()) {
+        return makeToken(TokenType::END_OF_FILE, "");
+    }
+    
+    c = current();
     
     // Numbers
     if (isDigit(c)) {
@@ -32,18 +62,23 @@ Token Lexer::nextToken() {
         return scanString(c);
     }
     
-    // Template literals
-    if (c == '`') {
-        advance();
-        return makeToken(TokenType::BACKTICK, "`");
-    }
-    
     // Single character tokens
     switch (c) {
         case '(': advance(); return makeToken(TokenType::LPAREN, "(");
         case ')': advance(); return makeToken(TokenType::RPAREN, ")");
-        case '{': advance(); return makeToken(TokenType::LBRACE, "{");
-        case '}': advance(); return makeToken(TokenType::RBRACE, "}");
+        case '{': 
+            advance(); 
+            if (templateDepth_ > 0) templateDepth_++;
+            return makeToken(TokenType::LBRACE, "{");
+        case '}': 
+            advance(); 
+            if (templateDepth_ > 0) {
+                templateDepth_--;
+                if (templateDepth_ == 0) {
+                    inTemplate_ = true;  // Re-enter template mode after expression
+                }
+            }
+            return makeToken(TokenType::RBRACE, "}");
         case '[': advance(); return makeToken(TokenType::LBRACKET, "[");
         case ']': advance(); return makeToken(TokenType::RBRACKET, "]");
         case ';': advance(); return makeToken(TokenType::SEMICOLON, ";");
@@ -305,6 +340,28 @@ TokenType Lexer::keywordType(const std::string& word) const {
     if (word == "null") return TokenType::NULL_LIT;
     
     return TokenType::IDENTIFIER;
+}
+
+Token Lexer::scanTemplateText() {
+    int startLine = line_;
+    int startCol = column_;
+    std::string text = "";
+    
+    // Collect characters until we hit ${ or `
+    while (!isAtEnd() && current() != '`' && !(current() == '$' && peek() == '{')) {
+        char c = current();
+        if (c == '\n') {
+            line_++;
+            column_ = 1;
+        } else {
+            column_++;
+        }
+        text += c;
+        pos_++;
+    }
+    
+    // Return the collected text as a TEMPLATE_TEXT token
+    return Token(TokenType::TEMPLATE_TEXT, text, startLine, startCol);
 }
 
 } // namespace compiler

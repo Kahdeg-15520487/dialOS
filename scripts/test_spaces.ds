@@ -1,0 +1,12 @@
+function main(): void {
+    var a: 123;
+    var b: 456;
+    
+    var message: `a: ${a}, b: ${b}`;
+    os.console.println(message);
+    
+    var spaces: `used ${a} bytes over ${b} bytes`;
+    os.console.println(spaces);
+}
+
+main();

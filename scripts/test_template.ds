@@ -1,0 +1,24 @@
+/*
+ * Test template literal formatting with proper spacing
+ */
+
+function main(): void {
+    var heapUsed: os.memory.getUsage();
+    var heapAvailable: os.memory.getAvailable();
+    
+    // This should now preserve spaces properly
+    var message: `used ${heapUsed} bytes over ${heapAvailable} bytes`;
+    
+    os.console.print("Memory status:");
+    os.console.print(message);
+    
+    // Test multiple substitutions with spacing
+    var status: `System has ${heapUsed} used and ${heapAvailable} available`;
+    os.console.print(status);
+    
+    // Test edge cases
+    var simple: `Hello ${heapUsed}!`;
+    os.console.print(simple);
+}
+
+main();

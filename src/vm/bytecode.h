@@ -54,6 +54,7 @@ enum class Opcode : uint8_t {
     
     // String operations
     STR_CONCAT  = 0x46,  // String concatenation
+    TEMPLATE_FORMAT = 0x47,  // Template string formatting (template + args)
     
     // Comparison operations
     EQ          = 0x50,  // Equal (=)

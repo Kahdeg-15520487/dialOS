@@ -830,7 +830,7 @@ std::unique_ptr<Expression> Parser::parseTemplateLiteral() {
     
     consume(TokenType::BACKTICK, "Expected '`'");
     
-    // Simple implementation: alternate between strings and expressions
+    // Parse template parts using the new TEMPLATE_TEXT tokens
     while (!check(TokenType::BACKTICK) && !check(TokenType::END_OF_FILE)) {
         if (match(TokenType::TEMPLATE_START)) {
             TemplateLiteral::Part part;
@@ -838,19 +838,18 @@ std::unique_ptr<Expression> Parser::parseTemplateLiteral() {
             part.expression = parseExpression();
             consume(TokenType::RBRACE, "Expected '}' after template expression");
             tmpl->parts.push_back(std::move(part));
+        } else if (check(TokenType::TEMPLATE_TEXT)) {
+            // Capture the TEMPLATE_TEXT token value before advancing
+            std::string textValue = current_.value;
+            advance();  // Move past the TEMPLATE_TEXT token
+            
+            TemplateLiteral::Part part;
+            part.type = TemplateLiteral::Part::STRING;
+            part.stringValue = textValue;
+            tmpl->parts.push_back(std::move(part));
         } else {
-            // String part - collect until ${ or `
-            std::string str = "";
-            while (!check(TokenType::TEMPLATE_START) && !check(TokenType::BACKTICK) && !check(TokenType::END_OF_FILE)) {
-                str += current_.value;
-                advance();
-            }
-            if (str.length() > 0) {
-                TemplateLiteral::Part part;
-                part.type = TemplateLiteral::Part::STRING;
-                part.stringValue = str;
-                tmpl->parts.push_back(std::move(part));
-            }
+            // Skip any unexpected tokens
+            advance();
         }
     }
     

@@ -80,6 +80,7 @@ enum class TokenType {
     // Template literals
     BACKTICK,       // `
     TEMPLATE_START, // ${
+    TEMPLATE_TEXT,  // text content inside template literals
     
     // Special
     END_OF_FILE,
@@ -100,7 +101,7 @@ struct Token {
 class Lexer {
 public:
     Lexer(const std::string& source) 
-        : source_(source), pos_(0), line_(1), column_(1) {}
+        : source_(source), pos_(0), line_(1), column_(1), inTemplate_(false) {}
     
     Token nextToken();
     Token peekToken();
@@ -116,6 +117,8 @@ private:
     int column_;
     Token peeked_;
     bool hasPeeked_ = false;
+    bool inTemplate_ = false;  // Track if we're inside a template literal
+    int templateDepth_ = 0;    // Track brace nesting depth in template expressions
     
     char current() const;
     char peek(int offset = 1) const;
@@ -128,6 +131,7 @@ private:
     Token scanString(char quote);
     Token scanIdentifierOrKeyword();
     Token scanOperator();
+    Token scanTemplateText();  // Scan text content inside template literals
     
     bool isDigit(char c) const;
     bool isAlpha(char c) const;

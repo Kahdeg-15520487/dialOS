@@ -563,6 +563,40 @@ VMResult VMState::executeInstruction() {
             break;
         }
         
+        case compiler::Opcode::TEMPLATE_FORMAT: {
+            uint8_t argCount = readU8();
+            
+            // Pop template string
+            Value templateVal = pop();
+            if (!templateVal.isString()) {
+                setError("TEMPLATE_FORMAT: template must be string");
+                return VMResult::ERROR;
+            }
+            
+            // Pop arguments (in reverse order due to stack)
+            std::vector<Value> args(argCount);
+            for (int i = argCount - 1; i >= 0; i--) {
+                args[i] = pop();
+            }
+            
+            // Format template string with arguments
+            std::string result = formatTemplate(templateVal.toString(), args);
+            
+            // Intern the result
+            std::string* str = pool_.allocateString(result);
+            if (!str) {
+                // Try garbage collection and retry
+                pool_.garbageCollectStrings();
+                str = pool_.allocateString(result);
+                if (!str) {
+                    setError("Out of memory in template formatting");
+                    return VMResult::OUT_OF_MEMORY;
+                }
+            }
+            push(Value::StringFromPool(str));
+            break;
+        }
+        
         // ===== Comparison Operations =====
         case compiler::Opcode::EQ: {
             Value b = pop();
@@ -2764,6 +2798,55 @@ Value VMState::logical_and(const Value& a, const Value& b) {
 
 Value VMState::logical_or(const Value& a, const Value& b) {
     return Value::Bool(a.isTruthy() || b.isTruthy());
+}
+
+// ===== Template Formatting =====
+
+std::string VMState::formatTemplate(const std::string& template_str, const std::vector<Value>& args) {
+    std::string result;
+    result.reserve(template_str.size() + 100); // Reserve some extra space
+    
+    size_t pos = 0;
+    while (pos < template_str.size()) {
+        size_t placeholder_start = template_str.find("${", pos);
+        
+        if (placeholder_start == std::string::npos) {
+            // No more placeholders, append the rest
+            result.append(template_str, pos, template_str.size() - pos);
+            break;
+        }
+        
+        // Append text before placeholder
+        result.append(template_str, pos, placeholder_start - pos);
+        
+        // Find end of placeholder
+        size_t placeholder_end = template_str.find("}", placeholder_start + 2);
+        if (placeholder_end == std::string::npos) {
+            // Malformed placeholder, append as-is
+            result.append(template_str, placeholder_start, template_str.size() - placeholder_start);
+            break;
+        }
+        
+        // Extract argument index
+        std::string index_str = template_str.substr(placeholder_start + 2, placeholder_end - placeholder_start - 2);
+        try {
+            size_t arg_index = std::stoul(index_str);
+            if (arg_index < args.size()) {
+                // Replace with argument value
+                result.append(args[arg_index].toString());
+            } else {
+                // Invalid index, keep placeholder
+                result.append(template_str, placeholder_start, placeholder_end - placeholder_start + 1);
+            }
+        } catch (const std::exception&) {
+            // Invalid number, keep placeholder
+            result.append(template_str, placeholder_start, placeholder_end - placeholder_start + 1);
+        }
+        
+        pos = placeholder_end + 1;
+    }
+    
+    return result;
 }
 
 } // namespace vm

@@ -537,6 +537,13 @@ std::string BytecodeModule::disassemble() const {
                 ss << "HALT\n";
                 break;
                 
+            case Opcode::TEMPLATE_FORMAT:
+                if (pos < code.size()) {
+                    uint8_t argCount = code[pos++];
+                    ss << "TEMPLATE_FORMAT argc=" << static_cast<int>(argCount) << "\n";
+                }
+                break;
+                
             default:
                 ss << "UNKNOWN(" << std::hex << static_cast<int>(op) << std::dec << ")\n";
                 break;

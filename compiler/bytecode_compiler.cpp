@@ -976,40 +976,37 @@ namespace dialos
                 return;
             }
 
-            // Compile first part
-            if (expr.parts[0].type == TemplateLiteral::Part::STRING)
-            {
-                uint16_t strIdx = module_.addConstant(expr.parts[0].stringValue);
-                Instruction instr(Opcode::PUSH_STR);
-                instr.addOperandU16(strIdx);
-                module_.emit(instr, expr.line);
-            }
-            else
-            {
-                compileExpression(*expr.parts[0].expression);
-                // Convert to string - in a real VM, this would call toString()
-                // For now, assume PUSH_STR handles conversion or we need STR_CONCAT to handle it
-            }
-
-            // Concatenate remaining parts
-            for (size_t i = 1; i < expr.parts.size(); i++)
-            {
-                if (expr.parts[i].type == TemplateLiteral::Part::STRING)
-                {
-                    uint16_t strIdx = module_.addConstant(expr.parts[i].stringValue);
-                    Instruction instr(Opcode::PUSH_STR);
-                    instr.addOperandU16(strIdx);
-                    module_.emit(instr, expr.line);
+            // Build template string with placeholders and collect expressions
+            std::string templateStr;
+            std::vector<std::unique_ptr<Expression>*> expressions;
+            
+            size_t exprIndex = 0;
+            for (const auto& part : expr.parts) {
+                if (part.type == TemplateLiteral::Part::STRING) {
+                    templateStr += part.stringValue;
+                } else {
+                    // Add placeholder for expression
+                    templateStr += "${" + std::to_string(exprIndex) + "}";
+                    expressions.push_back(const_cast<std::unique_ptr<Expression>*>(&part.expression));
+                    exprIndex++;
                 }
-                else
-                {
-                    compileExpression(*expr.parts[i].expression);
-                    // Convert to string
-                }
-
-                // Concatenate with previous result (top two stack values)
-                module_.emit(Instruction(Opcode::STR_CONCAT), expr.line);
             }
+            
+            // Push all expression arguments first
+            for (auto* exprPtr : expressions) {
+                compileExpression(**exprPtr);
+            }
+            
+            // Push template string last (so it's on top of stack)
+            uint16_t templateIdx = module_.addConstant(templateStr);
+            Instruction templateInstr(Opcode::PUSH_STR);
+            templateInstr.addOperandU16(templateIdx);
+            module_.emit(templateInstr, expr.line);
+            
+            // Emit TEMPLATE_FORMAT with argument count
+            Instruction formatInstr(Opcode::TEMPLATE_FORMAT);
+            formatInstr.addOperandU8(static_cast<uint8_t>(expressions.size()));
+            module_.emit(formatInstr, expr.line);
         }
 
         void BytecodeCompiler::error(const std::string &message)

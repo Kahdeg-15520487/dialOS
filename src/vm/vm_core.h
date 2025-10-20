@@ -118,6 +118,9 @@ private:
     void storeGlobal(uint16_t index, const Value& value);
     void setError(const std::string& msg);
     
+    // Template formatting
+    std::string formatTemplate(const std::string& template_str, const std::vector<Value>& args);
+    
     // Arithmetic operations
     Value add(const Value& a, const Value& b);
     Value subtract(const Value& a, const Value& b);

@@ -1,0 +1,6 @@
+var a: 10;
+var b: true;
+var c: "test !";
+os.console.println(`a: ${a}`);
+os.console.println(`a: ${a}, b: ${b}`);
+os.console.println(`a: ${a}, b: ${b}, c: ${c}`);
