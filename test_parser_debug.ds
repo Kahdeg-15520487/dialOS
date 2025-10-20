@@ -1,2 +1,0 @@
-// Test case for binary expression parsing
-var test: 5 + (2 * 3);

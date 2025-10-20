@@ -1,0 +1,16 @@
+function countdown(): void {
+    os.console.println("API Test Suite will start in:");
+    
+    for (var i: 10; i > 0; assign i i - 1) {
+        os.console.println(`${i}...`);
+        os.display.clear(0x0000); // Black background
+        os.display.drawText(80, 100, `Starting in: ${i}`, 0xFFFF, 2);
+        os.system.sleep(1000); // Wait 1 second
+    }
+    
+    os.console.println("Starting now!");
+    os.display.clear(0x0000);
+}
+
+// Start with countdown, then run the test
+countdown();

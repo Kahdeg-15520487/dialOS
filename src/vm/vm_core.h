@@ -65,6 +65,14 @@ public:
     bool isRunning() const { return running_; }
     bool hasError() const { return !error_.empty(); }
     size_t getHeapUsage() const { return pool_.getAllocated(); }
+    // Available heap bytes in the VM ValuePool
+    size_t getHeapAvailable() const { return pool_.getAvailable(); }
+    // Total heap size configured for this VM
+    size_t getHeapSize() const { return pool_.getHeapSize(); }
+    
+    // Sleep state
+    bool isSleeping() const { return sleeping_; }
+    void checkSleepState();  // Check if sleep period has ended
     
     // Reset VM
     void reset();
@@ -96,6 +104,10 @@ private:
     size_t pc_;
     bool running_;
     std::string error_;
+    
+    // Sleep state tracking
+    bool sleeping_;
+    uint64_t sleepUntil_;  // Timestamp when sleep ends
     
     // Instruction execution
     VMResult executeInstruction();

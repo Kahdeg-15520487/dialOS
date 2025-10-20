@@ -312,13 +312,13 @@ namespace dialos
                 return NativeFunctionID::TIMER_CLEAR_INTERVAL;
 
             // Memory functions (full namespace paths)
-            if (name == "memory.getAvailable")
+            if (name == "memory.getAvailable" || name == "os.memory.getAvailable")
                 return NativeFunctionID::MEMORY_GET_AVAILABLE;
-            if (name == "memory.getUsage")
+            if (name == "memory.getUsage" || name == "os.memory.getUsage")
                 return NativeFunctionID::MEMORY_GET_USAGE;
-            if (name == "memory.allocate")
+            if (name == "memory.allocate" || name == "os.memory.allocate")
                 return NativeFunctionID::MEMORY_ALLOCATE;
-            if (name == "memory.free")
+            if (name == "memory.free" || name == "os.memory.free")
                 return NativeFunctionID::MEMORY_FREE;
 
             // Power functions (full namespace paths)

@@ -1,0 +1,4 @@
+// Simple template literal test
+var name: "World";
+var message: `Hello ${name}!`;
+os.console.println(message);

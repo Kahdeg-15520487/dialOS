@@ -32,6 +32,8 @@ public:
   void display_setBrightness(int level) override;
   int display_getWidth() override;
   int display_getHeight() override;
+  void display_setTitle(const std::string& title) override;
+  void display_drawImage(int x, int y, const std::vector<uint8_t>& imageData) override;
 
   // ===== Encoder Operations =====
   bool encoder_getButton() override;
@@ -69,6 +71,7 @@ public:
 
   // ===== Buzzer Operations =====
   void buzzer_beep(int frequency, int duration) override;
+  void buzzer_playMelody(const std::vector<int>& notes) override;
   void buzzer_stop() override;
 
   // ===== RFID Operations =====

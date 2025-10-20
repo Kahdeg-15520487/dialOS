@@ -83,6 +83,35 @@ int ESP32Platform::display_getHeight() {
   return M5Dial.Display.height();
 }
 
+void ESP32Platform::display_setTitle(const std::string& title) {
+  // Draw title at top of screen with background
+  M5Dial.Display.fillRect(0, 0, M5Dial.Display.width(), 20, 0x0000); // Black background
+  M5Dial.Display.setTextSize(1);
+  M5Dial.Display.setTextColor(0xFFFF); // White text
+  M5Dial.Display.setCursor(5, 5);
+  M5Dial.Display.print(title.c_str());
+}
+
+void ESP32Platform::display_drawImage(int x, int y, const std::vector<uint8_t>& imageData) {
+  // For now, implement as a simple bitmap drawing
+  // Assumes imageData is in a simple format: width(2), height(2), RGB565 pixel data
+  if (imageData.size() < 4) return;
+  
+  uint16_t width = (imageData[0] << 8) | imageData[1];
+  uint16_t height = (imageData[2] << 8) | imageData[3];
+  
+  if (imageData.size() < 4 + (width * height * 2)) return; // RGB565 = 2 bytes per pixel
+  
+  // Draw the image pixel by pixel
+  for (int row = 0; row < height; row++) {
+    for (int col = 0; col < width; col++) {
+      int index = 4 + ((row * width + col) * 2);
+      uint16_t color = (imageData[index] << 8) | imageData[index + 1];
+      M5Dial.Display.drawPixel(x + col, y + row, color);
+    }
+  }
+}
+
 // ===== Encoder Operations =====
 bool ESP32Platform::encoder_getButton() {
   return M5Dial.BtnA.isPressed();
@@ -108,7 +137,8 @@ uint32_t ESP32Platform::system_getTime() {
 }
 
 void ESP32Platform::system_sleep(uint32_t ms) {
-  delay(ms);
+  // Sleep is now handled by VM state - this is a no-op
+  // The VM will yield and resume after the specified time
 }
 
 void ESP32Platform::system_yield() {
@@ -116,12 +146,15 @@ void ESP32Platform::system_yield() {
 }
 
 uint32_t ESP32Platform::system_getRTC() {
-  // TODO: Implement BM8563 RTC reading
-  return millis() / 1000; // Return seconds as fallback
+  // M5Dial uses BM8563 RTC - use M5.Rtc if available
+  // For now, use the ESP32's built-in RTC approximation
+  return millis() / 1000; // Return seconds since boot as fallback
 }
 
 void ESP32Platform::system_setRTC(uint32_t timestamp) {
-  // TODO: Implement BM8563 RTC setting
+  // M5Dial uses BM8563 RTC - use M5.Rtc if available
+  // For now, this is a stub since we'd need to track offset from boot time
+  // TODO: Implement proper BM8563 RTC setting with M5.Rtc API
 }
 
 // ===== Touch Operations =====
@@ -136,8 +169,8 @@ int ESP32Platform::touch_getY() {
 }
 
 bool ESP32Platform::touch_isPressed() {
-  // TODO: Fix touch detection - M5Dial.Touch API unclear
-  return false;
+  // M5Dial.Touch.isPressed() or M5Dial.Touch.getDetail().state can be used
+  return M5Dial.Touch.isPressed();
 }
 
 // ===== Memory Operations =====
@@ -205,34 +238,113 @@ void ESP32Platform::buzzer_beep(int frequency, int duration) {
   tone(3, frequency, duration);
 }
 
+void ESP32Platform::buzzer_playMelody(const std::vector<int>& notes) {
+  // Play melody with notes array: frequency1, duration1, frequency2, duration2, ...
+  for (size_t i = 0; i < notes.size(); i += 2) {
+    if (i + 1 < notes.size()) {
+      int frequency = notes[i];
+      int duration = notes[i + 1];
+      
+      if (frequency > 0) {
+        tone(3, frequency, duration);
+      } else {
+        // Rest (silence)
+        noTone(3);
+      }
+      delay(duration);
+      
+      // Small gap between notes
+      noTone(3);
+      delay(50);
+    }
+  }
+}
+
 void ESP32Platform::buzzer_stop() {
   noTone(3);
 }
 
 // ===== RFID Operations =====
 std::string ESP32Platform::rfid_read() {
-  // TODO: Implement WS1850S RFID reader support
-  return "";
+  // M5Dial has WS1850S RFID reader on I2C
+  // WS1850S I2C address is typically 0x24
+  const int RFID_ADDRESS = 0x24;
+  const int UID_LENGTH = 4; // 4 byte UID for most cards
+  
+  Wire.beginTransmission(RFID_ADDRESS);
+  Wire.write(0x01); // Command to read UID
+  if (Wire.endTransmission() != 0) {
+    return ""; // Communication failed
+  }
+  
+  delay(10); // Wait for processing
+  
+  Wire.requestFrom(RFID_ADDRESS, UID_LENGTH);
+  if (Wire.available() < UID_LENGTH) {
+    return ""; // No card present or read failed
+  }
+  
+  std::string uid = "";
+  for (int i = 0; i < UID_LENGTH; i++) {
+    uint8_t byte = Wire.read();
+    if (i > 0) uid += ":";
+    if (byte < 0x10) uid += "0";
+    uid += String(byte, HEX).c_str();
+  }
+  
+  return uid;
 }
 
 bool ESP32Platform::rfid_isPresent() {
-  // TODO: Implement WS1850S RFID reader support
+  // Try to communicate with WS1850S to check if card is present
+  const int RFID_ADDRESS = 0x24;
+  
+  Wire.beginTransmission(RFID_ADDRESS);
+  Wire.write(0x02); // Command to check presence
+  if (Wire.endTransmission() != 0) {
+    return false; // RFID module not responding
+  }
+  
+  delay(5);
+  
+  Wire.requestFrom(RFID_ADDRESS, 1);
+  if (Wire.available()) {
+    uint8_t status = Wire.read();
+    return (status == 0x01); // 0x01 indicates card present
+  }
+  
   return false;
 }
 
 // ===== Power Operations =====
 void ESP32Platform::power_sleep() {
-  // TODO: Implement deep sleep mode
+  // Put M5Dial into deep sleep mode
+  // Wake up sources: button press, touch, or timer
+  M5Dial.Power.deepSleep();
 }
 
 int ESP32Platform::power_getBatteryLevel() {
-  // TODO: Implement battery level reading
-  return 100; // Return full as default
+  // M5Dial has battery monitoring via AXP2101
+  // Read battery voltage and convert to percentage
+  int batteryLevel = M5Dial.Power.getBatteryLevel();
+  if (batteryLevel >= 0) {
+    return batteryLevel; // M5Dial library returns percentage directly
+  }
+  
+  // Fallback: estimate from voltage if available
+  float voltage = M5Dial.Power.getBatteryVoltage() / 1000.0; // Convert mV to V
+  if (voltage > 4.1) return 100;
+  else if (voltage > 4.0) return 90;
+  else if (voltage > 3.9) return 70;
+  else if (voltage > 3.8) return 50;
+  else if (voltage > 3.7) return 30;
+  else if (voltage > 3.6) return 10;
+  else return 5;
 }
 
 bool ESP32Platform::power_isCharging() {
-  // TODO: Implement charging detection
-  return false;
+  // Check if external power is connected and charging
+  return M5Dial.Power.isCharging();
 }
 
 // ===== File Operations (stubs for now) =====

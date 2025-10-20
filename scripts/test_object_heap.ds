@@ -1,0 +1,22 @@
+class Coordinate{
+    x: int;
+    y: int;
+
+    constructor(x:int,y:int){
+        assign this.x x;
+        assign this.y y;
+    }
+
+    toString(): string{
+        return `(${this.x}:${this.y})`;
+    }
+}
+
+os.console.println("lala " + " lolo");
+
+for (var i: 10; i > 0; assign i i - 1) {
+    var p1: Coordinate(80,100);
+    var p2: Coordinate(100,80);
+    os.console.println(`used ${os.memory.getUsage()} bytes over ${os.memory.getAvailable()} bytes`);
+    os.system.sleep(1000); // Wait 1 second
+}

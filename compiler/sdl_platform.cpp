@@ -838,12 +838,19 @@ namespace dialos
 
         int SDLPlatform::memory_getAvailable()
         {
+            // If VM is attached, return the VM ValuePool available bytes
+            if (vm_ != nullptr) {
+                return static_cast<int>(vm_->getHeapAvailable());
+            }
             console_warn("NOT IMPLEMENTED: os.memory.getAvailable - memory tracking missing");
             return 0; // Not implemented - would need to track VM heap
         }
 
         int SDLPlatform::memory_getUsage()
         {
+            if (vm_ != nullptr) {
+                return static_cast<int>(vm_->getHeapUsage());
+            }
             console_warn("NOT IMPLEMENTED: os.memory.getUsage - memory tracking missing");
             return 0; // Not implemented - would need to track VM allocations
         }
@@ -858,7 +865,10 @@ namespace dialos
             return static_cast<uint32_t>(duration.count());
         }
 
-        void SDLPlatform::system_sleep(uint32_t ms) { SDL_Delay(ms); }
+        void SDLPlatform::system_sleep(uint32_t ms) { 
+            // Sleep is now handled by VM state - this is a no-op
+            // The VM will yield and resume after the specified time
+        }
 
         uint32_t SDLPlatform::system_getRTC()
         {
@@ -1162,11 +1172,38 @@ namespace dialos
         }
 
         void SDLPlatform::display_drawImage(
-            int x, int y, const std::vector<uint8_t> & /*imageData*/)
+            int x, int y, const std::vector<uint8_t> &imageData)
         {
-            // TODO: Implement image drawing from raw data
-            console_log("display_drawImage called at (" + std::to_string(x) + "," +
-                        std::to_string(y) + ")");
+            // Implement simple image drawing from raw data
+            // Format: width(2), height(2), RGB565 pixel data
+            if (imageData.size() < 4) return;
+            
+            uint16_t width = (imageData[0] << 8) | imageData[1];
+            uint16_t height = (imageData[2] << 8) | imageData[3];
+            
+            if (imageData.size() < 4 + (width * height * 2)) return; // RGB565 = 2 bytes per pixel
+            
+            // Draw the image pixel by pixel
+            for (int row = 0; row < height; row++) {
+                for (int col = 0; col < width; col++) {
+                    if (!isInCircularDisplay(x + col, y + row)) continue;
+                    
+                    int index = 4 + ((row * width + col) * 2);
+                    uint16_t rgb565 = (imageData[index] << 8) | imageData[index + 1];
+                    
+                    Color color(rgb565);
+                    SDL_SetRenderDrawColor(renderer_, color.r, color.g, color.b, color.a);
+                    
+                    // Scale coordinates for display
+                    int scaledX = DEBUG_PANEL_WIDTH + (x + col) * WINDOW_SCALE;
+                    int scaledY = (y + row) * WINDOW_SCALE;
+                    SDL_Rect pixel = {scaledX, scaledY, WINDOW_SCALE, WINDOW_SCALE};
+                    SDL_RenderFillRect(renderer_, &pixel);
+                }
+            }
+            
+            console_log("display_drawImage: drew " + std::to_string(width) + "x" + 
+                       std::to_string(height) + " image at (" + std::to_string(x) + "," + std::to_string(y) + ")");
         }
 
         // === System Extended Operations ===
@@ -1434,8 +1471,33 @@ namespace dialos
 
         void SDLPlatform::buzzer_playMelody(const std::vector<int> &notes)
         {
-            // TODO: Implement melody playback
-            console_log("buzzer_playMelody: " + std::to_string(notes.size()) + " notes");
+            // Implement melody playback simulation
+            // Notes array format: frequency1, duration1, frequency2, duration2, ...
+            console_log("buzzer_playMelody: playing " + std::to_string(notes.size() / 2) + " notes");
+            
+            for (size_t i = 0; i < notes.size(); i += 2) {
+                if (i + 1 < notes.size()) {
+                    int frequency = notes[i];
+                    int duration = notes[i + 1];
+                    
+                    if (frequency > 0) {
+                        console_log("  Note: " + std::to_string(frequency) + "Hz for " + std::to_string(duration) + "ms");
+                        buzzer_.isPlaying = true;
+                        buzzer_.frequency = frequency;
+                        buzzer_.endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(duration);
+                        
+                        // Simple audio feedback (beep simulation)
+                        // In a real implementation, you'd use SDL_mixer to generate audio
+                        SDL_Delay(duration / 10); // Quick visual feedback
+                    } else {
+                        // Rest (silence)
+                        console_log("  Rest: " + std::to_string(duration) + "ms");
+                        SDL_Delay(duration / 10);
+                    }
+                }
+            }
+            
+            buzzer_.isPlaying = false;
         }
 
         void SDLPlatform::renderDebugPanel()

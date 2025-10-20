@@ -16,7 +16,8 @@ namespace dialos {
 namespace vm {
 
 VMState::VMState(const compiler::BytecodeModule& module, ValuePool& pool, PlatformInterface& platform)
-    : module_(module), pool_(pool), platform_(platform), pc_(module.mainEntryPoint), running_(false) {
+    : module_(module), pool_(pool), platform_(platform), pc_(module.mainEntryPoint), running_(false), 
+      sleeping_(false), sleepUntil_(0) {
     
     // Set VM reference in platform for callback invocation
     platform_.setVM(this);
@@ -108,6 +109,8 @@ VMState::VMState(const compiler::BytecodeModule& module, ValuePool& pool, Platfo
 void VMState::reset() {
     pc_ = module_.mainEntryPoint;
     running_ = true;
+    sleeping_ = false;
+    sleepUntil_ = 0;
     stack_.clear();
     callStack_.clear();
     exceptionHandlers_.clear();
@@ -117,6 +120,15 @@ void VMState::reset() {
     for (auto& pair : globals_) {
         if (pair.first != "os") {
             pair.second = Value::Null();
+        }
+    }
+}
+
+void VMState::checkSleepState() {
+    if (sleeping_) {
+        uint64_t currentTime = platform_.system_getTime();
+        if (currentTime >= sleepUntil_) {
+            sleeping_ = false;
         }
     }
 }
@@ -333,6 +345,12 @@ VMResult VMState::execute(uint32_t maxInstructions) {
         return VMResult::ERROR;
     }
     
+    // Check if we're sleeping
+    checkSleepState();
+    if (sleeping_) {
+        return VMResult::YIELD;
+    }
+    
     uint32_t executed = 0;
     
     while (running_ && executed < maxInstructions && pc_ < code_.size()) {
@@ -340,6 +358,12 @@ VMResult VMState::execute(uint32_t maxInstructions) {
         
         if (result != VMResult::OK) {
             return result;
+        }
+        
+        // Check sleep state after each instruction
+        checkSleepState();
+        if (sleeping_) {
+            return VMResult::YIELD;
         }
         
         executed++;
@@ -1000,7 +1024,13 @@ VMResult VMState::executeInstruction() {
                     Value msVal = pop();
                     Value receiver = pop();
                     
-                    platform_.system_sleep(msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0);
+                    uint32_t sleepMs = msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0;
+                    if (sleepMs > 0) {
+                        // Set sleep state - VM will yield until time is up
+                        uint64_t currentTime = platform_.system_getTime();
+                        sleepUntil_ = currentTime + sleepMs;
+                        sleeping_ = true;
+                    }
                     
                     for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
@@ -1368,9 +1398,27 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::BUZZER_PLAY_MELODY: {
-                    // TODO: Implement melody playback
+                    if (argCount < 1) {
+                        setError("playMelody() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
                     Value receiver = pop();
-                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    Value notesVal = pop();
+                    
+                    // Convert notes array to vector of integers
+                    std::vector<int> notes;
+                    if (notesVal.isArray()) {
+                        Array* arr = notesVal.arrayVal;
+                        for (const Value& v : arr->elements) {
+                            if (v.isInt32()) {
+                                notes.push_back(v.int32Val);
+                            }
+                        }
+                    }
+                    
+                    platform_.buzzer_playMelody(notes);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
                 }
@@ -1543,11 +1591,50 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
-                case NativeFunctionID::DISPLAY_GET_SIZE:
-                case NativeFunctionID::DISPLAY_DRAW_IMAGE: {
-                    // TODO: Implement these functions
+                case NativeFunctionID::DISPLAY_GET_SIZE: {
                     Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    // Create object with width and height
+                    Object* sizeObj = pool_.allocateObject("Size");
+                    if (sizeObj) {
+                        sizeObj->fields["width"] = Value::Int32(platform_.display_getWidth());
+                        sizeObj->fields["height"] = Value::Int32(platform_.display_getHeight());
+                        push(Value::Object(sizeObj));
+                    } else {
+                        push(Value::Null());
+                    }
+                    break;
+                }
+                
+                case NativeFunctionID::DISPLAY_DRAW_IMAGE: {
+                    if (argCount < 3) {
+                        setError("drawImage() requires 3 arguments (x, y, imageData)");
+                        return VMResult::ERROR;
+                    }
+                    Value receiver = pop();
+                    Value imageDataVal = pop();
+                    Value yVal = pop();
+                    Value xVal = pop();
+                    
+                    // Convert image data to byte vector
+                    std::vector<uint8_t> imageData;
+                    if (imageDataVal.isArray()) {
+                        Array* arr = imageDataVal.arrayVal;
+                        for (const Value& v : arr->elements) {
+                            if (v.isInt32()) {
+                                imageData.push_back(static_cast<uint8_t>(v.int32Val));
+                            }
+                        }
+                    }
+                    
+                    platform_.display_drawImage(
+                        xVal.isInt32() ? xVal.int32Val : 0,
+                        yVal.isInt32() ? yVal.int32Val : 0,
+                        imageData
+                    );
+                    
+                    for (uint8_t i = 3; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
                 }
@@ -1564,10 +1651,19 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== Touch Functions =====
                 case NativeFunctionID::TOUCH_GET_POSITION: {
-                    // TODO: Return object with {x, y, pressed}
                     Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    push(Value::Null());
+                    
+                    // Create object with x, y, and pressed state
+                    Object* posObj = pool_.allocateObject("TouchPosition");
+                    if (posObj) {
+                        posObj->fields["x"] = Value::Int32(platform_.touch_getX());
+                        posObj->fields["y"] = Value::Int32(platform_.touch_getY());
+                        posObj->fields["pressed"] = Value::Bool(platform_.touch_isPressed());
+                        push(Value::Object(posObj));
+                    } else {
+                        push(Value::Null());
+                    }
                     break;
                 }
                 

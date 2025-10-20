@@ -281,9 +281,18 @@ std::unique_ptr<ForStatement> Parser::parseForStatement() {
     forStmt->condition = parseExpression();
     consume(TokenType::SEMICOLON, "Expected ';' after for condition");
     
-    // Increment (must be assignment)
+    // Increment (must be assignment, but don't consume the trailing semicolon)
     consume(TokenType::ASSIGN, "Expected 'assign' in for increment");
-    forStmt->increment = parseAssignment();
+    auto assign = std::make_unique<Assignment>();
+    assign->line = current_.line;
+    assign->column = current_.column;
+    assign->target = parseExpression();
+    assign->value = parseExpression();
+    // Don't consume semicolon here - it's optional in for loop context
+    if (check(TokenType::SEMICOLON)) {
+        advance(); // consume optional semicolon
+    }
+    forStmt->increment = std::move(assign);
     
     consume(TokenType::RPAREN, "Expected ')' after for clauses");
     
