@@ -74,6 +74,9 @@ public:
     bool isSleeping() const { return sleeping_; }
     void checkSleepState();  // Check if sleep period has ended
     
+    // Garbage collection
+    void garbageCollect();   // Trigger mark-and-sweep garbage collection
+    
     // Reset VM
     void reset();
     

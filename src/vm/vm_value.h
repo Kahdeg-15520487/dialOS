@@ -168,7 +168,6 @@ public:
         // String interning: check if we already have this string
         for (size_t i = 0; i < strings_.size(); ++i) {
             if (*strings_[i] == str) {
-                stringRefCounts_[i]++; // Increment reference count
                 return strings_[i]; // Reuse existing string
             }
         }
@@ -176,16 +175,13 @@ public:
         // Not found, allocate new string
         size_t size = str.length() + sizeof(std::string);
         if (allocated_ + size > heapSize_) {
-            // Try garbage collection first
-            garbageCollectStrings();
-            if (allocated_ + size > heapSize_) {
-                return nullptr; // Still out of memory
-            }
+            // Allocation will fail - don't try GC here to avoid recursion
+            return nullptr;
         }
         
         auto* s = new std::string(str);
         strings_.push_back(s);
-        stringRefCounts_.push_back(1); // Initialize reference count
+        stringMarked_.push_back(false); // Not marked initially
         allocated_ += size;
         return s;
     }
@@ -193,11 +189,12 @@ public:
     Object* allocateObject(const std::string& className = "Object") {
         size_t size = sizeof(Object);
         if (allocated_ + size > heapSize_) {
-            return nullptr;
+            return nullptr; // Don't trigger GC to avoid recursion
         }
         
         auto* obj = new Object(className);
         objects_.push_back(obj);
+        objectMarked_.push_back(false); // Not marked initially
         allocated_ += size;
         return obj;
     }
@@ -205,11 +202,12 @@ public:
     Array* allocateArray(size_t size = 0) {
         size_t allocSize = sizeof(Array) + size * sizeof(Value);
         if (allocated_ + allocSize > heapSize_) {
-            return nullptr;
+            return nullptr; // Don't trigger GC to avoid recursion
         }
         
         auto* arr = new Array(size);
         arrays_.push_back(arr);
+        arrayMarked_.push_back(false); // Not marked initially
         allocated_ += allocSize;
         return arr;
     }
@@ -217,11 +215,12 @@ public:
     Function* allocateFunction(uint16_t funcIndex, uint8_t paramCount) {
         size_t size = sizeof(Function);
         if (allocated_ + size > heapSize_) {
-            return nullptr;
+            return nullptr; // Don't trigger GC to avoid recursion
         }
         
         auto* fn = new Function(funcIndex, paramCount);
         functions_.push_back(fn);
+        functionMarked_.push_back(false); // Not marked initially
         allocated_ += size;
         return fn;
     }
@@ -230,43 +229,165 @@ public:
     size_t getAvailable() const { return heapSize_ - allocated_; }
     size_t getHeapSize() const { return heapSize_; }
     
-    // Reference counting for strings
-    void releaseString(std::string* str) {
+    void garbageCollect() {
+        // Mark phase - reset all marks
+        for (size_t i = 0; i < strings_.size(); ++i) {
+            stringMarked_[i] = false;
+        }
+        for (size_t i = 0; i < objects_.size(); ++i) {
+            objectMarked_[i] = false;
+        }
+        for (size_t i = 0; i < arrays_.size(); ++i) {
+            arrayMarked_[i] = false;
+        }
+        for (size_t i = 0; i < functions_.size(); ++i) {
+            functionMarked_[i] = false;
+        }
+        
+        // Sweep phase - remove unmarked objects
+        sweepStrings();
+        sweepObjects();
+        sweepArrays();
+        sweepFunctions();
+    }
+    
+    // Mark a string as reachable
+    void markString(std::string* str) {
+        if (!str) return;
         for (size_t i = 0; i < strings_.size(); ++i) {
             if (strings_[i] == str) {
-                if (stringRefCounts_[i] > 0) {
-                    stringRefCounts_[i]--;
-                }
-                return;
+                stringMarked_[i] = true;
+                break;
             }
         }
     }
     
-    void garbageCollectStrings() {
-        // Simple heuristic: reset all reference counts and clean up
-        // This works because we're called at callback boundaries when temporaries should be gone
-        for (size_t i = 0; i < stringRefCounts_.size(); ++i) {
-            stringRefCounts_[i] = 0;  // Reset all reference counts
+    // Mark an object as reachable
+    void markObject(Object* obj) {
+        if (!obj) return;
+        for (size_t i = 0; i < objects_.size(); ++i) {
+            if (objects_[i] == obj) {
+                objectMarked_[i] = true;
+                // Mark object's field values recursively
+                for (const auto& field : obj->fields) {
+                    markValue(field.second);
+                }
+                break;
+            }
         }
-        
-        // Remove all strings with zero reference count (now all of them)
-        for (auto* str : strings_) {
-            size_t size = str->length() + sizeof(std::string);
-            allocated_ -= size;
-            delete str;
+    }
+    
+    // Mark an array as reachable  
+    void markArray(Array* arr) {
+        if (!arr) return;
+        for (size_t i = 0; i < arrays_.size(); ++i) {
+            if (arrays_[i] == arr) {
+                arrayMarked_[i] = true;
+                // Mark array elements recursively
+                for (const auto& element : arr->elements) {
+                    markValue(element);
+                }
+                break;
+            }
         }
-        strings_.clear();
-        stringRefCounts_.clear();
+    }
+    
+    // Mark a function as reachable
+    void markFunction(Function* fn) {
+        if (!fn) return;
+        for (size_t i = 0; i < functions_.size(); ++i) {
+            if (functions_[i] == fn) {
+                functionMarked_[i] = true;
+                break;
+            }
+        }
+    }
+    
+    // Mark a value and its reachable references
+    void markValue(const Value& value) {
+        switch (value.type) {
+            case ValueType::STRING:
+                markString(value.stringVal);
+                break;
+            case ValueType::OBJECT:
+                markObject(value.objVal);
+                break;
+            case ValueType::ARRAY:
+                markArray(value.arrayVal);
+                break;
+            case ValueType::FUNCTION:
+                markFunction(value.functionVal);
+                break;
+            default:
+                // Primitive types don't need marking
+                break;
+        }
     }
     
 private:
     size_t heapSize_;
     size_t allocated_;
     std::vector<std::string*> strings_;
-    std::vector<int> stringRefCounts_;  // Reference counts for strings
+    std::vector<bool> stringMarked_;      // Mark bits for strings
     std::vector<Object*> objects_;
+    std::vector<bool> objectMarked_;      // Mark bits for objects
     std::vector<Array*> arrays_;
+    std::vector<bool> arrayMarked_;       // Mark bits for arrays
     std::vector<Function*> functions_;
+    std::vector<bool> functionMarked_;    // Mark bits for functions
+    
+    // Sweep phase methods
+    void sweepStrings() {
+        for (size_t i = strings_.size(); i > 0; i--) {
+            size_t idx = i - 1;
+            if (!stringMarked_[idx]) {
+                size_t size = strings_[idx]->length() + sizeof(std::string);
+                allocated_ -= size;
+                delete strings_[idx];
+                strings_.erase(strings_.begin() + idx);
+                stringMarked_.erase(stringMarked_.begin() + idx);
+            }
+        }
+    }
+    
+    void sweepObjects() {
+        for (size_t i = objects_.size(); i > 0; i--) {
+            size_t idx = i - 1;
+            if (!objectMarked_[idx]) {
+                size_t size = sizeof(Object);
+                allocated_ -= size;
+                delete objects_[idx];
+                objects_.erase(objects_.begin() + idx);
+                objectMarked_.erase(objectMarked_.begin() + idx);
+            }
+        }
+    }
+    
+    void sweepArrays() {
+        for (size_t i = arrays_.size(); i > 0; i--) {
+            size_t idx = i - 1;
+            if (!arrayMarked_[idx]) {
+                size_t size = sizeof(Array) + arrays_[idx]->elements.size() * sizeof(Value);
+                allocated_ -= size;
+                delete arrays_[idx];
+                arrays_.erase(arrays_.begin() + idx);
+                arrayMarked_.erase(arrayMarked_.begin() + idx);
+            }
+        }
+    }
+    
+    void sweepFunctions() {
+        for (size_t i = functions_.size(); i > 0; i--) {
+            size_t idx = i - 1;
+            if (!functionMarked_[idx]) {
+                size_t size = sizeof(Function);
+                allocated_ -= size;
+                delete functions_[idx];
+                functions_.erase(functions_.begin() + idx);
+                functionMarked_.erase(functionMarked_.begin() + idx);
+            }
+        }
+    }
 };
 
 } // namespace vm
