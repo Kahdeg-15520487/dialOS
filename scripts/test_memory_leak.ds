@@ -1,0 +1,46 @@
+/*
+ * Test script to check memory leak behavior
+ * This script allocates objects in a loop and monitors memory usage
+ */
+
+function main(): void {
+    os.console.println("Testing memory usage with periodic garbage collection");
+    
+    // Initial memory reading
+    var initial: os.memory.getUsage();
+    os.console.println("Initial memory: "+initial+" bytes");
+    
+    // Allocate objects in a loop
+    for (var i: 0; i < 50; assign i i + 1;) {
+        // Create some string objects that should be garbage collected
+        var msg: `Iteration ${i} - creating temporary string objects`;
+        var temp1: `Object A-${i}`;
+        var temp2: `Object B-${i}`;
+        var temp3: `Object C-${i}`;
+        
+        // Check memory every 10 iterations
+        if (i % 10 = 0) {
+            var current: os.memory.getUsage();
+            os.console.print("Iteration ");
+            os.console.print(i);
+            os.console.print(": Memory used = ");
+            os.console.print(current);
+            os.console.print(" bytes (delta: ");
+            os.console.print(current - initial);
+            os.console.println(")");
+        }
+    }
+    
+    // Final memory reading
+    var final: os.memory.getUsage();
+    os.console.println("Final memory: "+final+" bytes");
+    os.console.println("Total growth: "+(final - initial)+" bytes");
+    
+    if (final - initial < 500) {
+        os.console.println("✓ Memory usage looks stable with GC");
+    } else {
+        os.console.println("⚠ Memory usage is still growing significantly");
+    }
+}
+
+main();
