@@ -4,7 +4,7 @@
  * Stack-based virtual machine with cooperative multitasking
  */
 
-#include "vm_core.h"
+#include "vm/vm_core.h"
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -1132,8 +1132,8 @@ VMResult VMState::executeInstruction() {
                         setError("close() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value handleVal = pop();
+                    Value receiver = pop();
                     
                     platform_.file_close(handleVal.isInt32() ? handleVal.int32Val : -1);
                     

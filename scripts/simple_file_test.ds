@@ -1,0 +1,33 @@
+/*
+ * Simple File API Test
+ */
+
+function main(): void {
+    os.console.log("Starting file test...");
+    
+    // Test file creation
+    var handle: os.file.open("hello.txt", "w");
+    os.console.log(`File handle: ${handle}`);
+    
+    if (handle >= 0) {
+        var written: os.file.write(handle, "Hello World!");
+        os.console.log(`Written: ${written} bytes`);
+        os.file.close(handle);
+        os.console.log("File closed");
+        
+        // Test file reading
+        var readHandle: os.file.open("hello.txt", "r");
+        if (readHandle >= 0) {
+            var content: os.file.read(readHandle, 20);
+            os.console.log(`Read content: ${content}`);
+            os.file.close(readHandle);
+        }
+
+        // Test file exist
+        os.console.log(os.file.exist("hello.txt"));
+    }
+    
+    os.console.log("Test complete");
+}
+
+main();

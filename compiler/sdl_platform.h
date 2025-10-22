@@ -13,8 +13,8 @@
 #ifndef DIALOS_SDL_PLATFORM_H
 #define DIALOS_SDL_PLATFORM_H
 
-#include "../src/vm/platform.h"
-#include "../src/vm/vm_value.h"
+#include "vm/platform.h"
+#include "vm/vm_value.h"
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
@@ -24,6 +24,8 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <fstream>
+#include <filesystem>
 
 namespace dialos {
 namespace vm {
@@ -296,6 +298,20 @@ private:
         bool charging;
         std::chrono::steady_clock::time_point lastUpdate;
     } power_;
+    
+    // File system simulation
+    struct FileHandle {
+        std::fstream stream;
+        std::string path;
+        std::string mode;
+        bool isOpen;
+        
+        FileHandle() : isOpen(false) {}
+    };
+    std::map<int, FileHandle> fileHandles_;
+    int nextFileHandle_ = 1;
+    std::string fileSystemRoot_ = "./sdl_filesystem/";  // Local directory for simulated files
+    
     std::vector<std::string> debugMessages_;
     
     // Console logging

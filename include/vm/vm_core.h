@@ -7,9 +7,9 @@
 #ifndef DIALOS_VM_CORE_H
 #define DIALOS_VM_CORE_H
 
-#include "vm_value.h"
-#include "platform.h"
-#include "bytecode.h"
+#include "vm/vm_value.h"
+#include "vm/platform.h"
+#include "vm/bytecode.h"
 #include <vector>
 #include <map>
 #include <string>

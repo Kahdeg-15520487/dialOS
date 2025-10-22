@@ -3,8 +3,8 @@
  */
 
 #include "sdl_platform.h"
-#include "../src/vm/vm_core.h"
-#include "../src/vm/vm_value.h"
+#include "vm/vm_core.h"
+#include "vm/vm_value.h"
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -584,49 +584,169 @@ namespace dialos
 
         bool SDLPlatform::rfid_isPresent() { return rfid_.cardPresent; }
 
-        // === File Operations (Stubs) ===
+        // === File Operations ===
 
         int SDLPlatform::file_open(const std::string &path, const std::string &mode)
         {
-            // TODO: Implement file system simulation
             console_log("File open: " + path + " mode: " + mode);
-            console_warn("NOT IMPLEMENTED: os.file.open - file system simulation missing");
-            return -1; // Not implemented
+            
+            // Create filesystem root if it doesn't exist
+            std::filesystem::create_directories(fileSystemRoot_);
+            
+            // Convert dialOS path to full filesystem path
+            std::string fullPath = fileSystemRoot_ + path;
+            
+            // Create parent directories if they don't exist
+            std::filesystem::path filePath(fullPath);
+            if (filePath.has_parent_path()) {
+                std::filesystem::create_directories(filePath.parent_path());
+            }
+            
+            // Convert mode string to appropriate fstream openmode
+            std::ios_base::openmode openMode;
+            if (mode == "r" || mode == "read") {
+                openMode = std::ios_base::in;
+            } else if (mode == "w" || mode == "write") {
+                openMode = std::ios_base::out | std::ios_base::trunc;
+            } else if (mode == "a" || mode == "append") {
+                openMode = std::ios_base::out | std::ios_base::app;
+            } else {
+                console_error("Invalid file mode: " + mode);
+                return -1;
+            }
+            
+            // Allocate a file handle
+            int handle = nextFileHandle_++;
+            FileHandle& fh = fileHandles_[handle];
+            
+            // Open the file
+            fh.stream.open(fullPath, openMode);
+            if (!fh.stream.is_open()) {
+                console_error("Failed to open file: " + fullPath);
+                fileHandles_.erase(handle);
+                return -1;
+            }
+            
+            fh.path = fullPath;
+            fh.mode = mode;
+            fh.isOpen = true;
+            
+            console_log("File opened successfully, handle: " + std::to_string(handle));
+            return handle;
         }
 
-        std::string SDLPlatform::file_read(int /*handle*/, int /*size*/)
+        std::string SDLPlatform::file_read(int handle, int size)
         {
-            console_warn("NOT IMPLEMENTED: os.file.read - file system simulation missing");
-            return ""; // Not implemented
+            auto it = fileHandles_.find(handle);
+            if (it == fileHandles_.end() || !it->second.isOpen) {
+                console_error("Invalid file handle: " + std::to_string(handle));
+                return "";
+            }
+            
+            FileHandle& fh = it->second;
+            if (fh.mode != "r" && fh.mode != "read") {
+                console_error("File not opened for reading");
+                return "";
+            }
+            
+            std::vector<char> buffer(size);
+            fh.stream.read(buffer.data(), size);
+            
+            std::streamsize bytesRead = fh.stream.gcount();
+            std::string result(buffer.data(), bytesRead);
+            
+            console_log("File read: " + std::to_string(bytesRead) + " bytes");
+            return result;
         }
 
-        int SDLPlatform::file_write(int /*handle*/, const std::string & /*data*/)
+        int SDLPlatform::file_write(int handle, const std::string &data)
         {
-            console_warn("NOT IMPLEMENTED: os.file.write - file system simulation missing");
-            return -1; // Not implemented
+            auto it = fileHandles_.find(handle);
+            if (it == fileHandles_.end() || !it->second.isOpen) {
+                console_error("Invalid file handle: " + std::to_string(handle));
+                return -1;
+            }
+            
+            FileHandle& fh = it->second;
+            if (fh.mode != "w" && fh.mode != "write" && fh.mode != "a" && fh.mode != "append") {
+                console_error("File not opened for writing");
+                return -1;
+            }
+            
+            fh.stream.write(data.c_str(), data.length());
+            fh.stream.flush();  // Ensure data is written immediately
+            
+            if (fh.stream.fail()) {
+                console_error("Failed to write to file");
+                return -1;
+            }
+            
+            console_log("File write: " + std::to_string(data.length()) + " bytes");
+            return static_cast<int>(data.length());
         }
 
-        void SDLPlatform::file_close(int /*handle*/)
+        void SDLPlatform::file_close(int handle)
         {
-            console_warn("NOT IMPLEMENTED: os.file.close - file system simulation missing");
+            auto it = fileHandles_.find(handle);
+            if (it == fileHandles_.end()) {
+                console_warn("Attempt to close invalid file handle: " + std::to_string(handle));
+                return;
+            }
+            
+            FileHandle& fh = it->second;
+            if (fh.isOpen) {
+                fh.stream.close();
+                fh.isOpen = false;
+                console_log("File closed: " + fh.path);
+            }
+            
+            fileHandles_.erase(it);
         }
 
-        bool SDLPlatform::file_exists(const std::string & /*path*/)
+        bool SDLPlatform::file_exists(const std::string &path)
         {
-            console_warn("NOT IMPLEMENTED: os.file.exists - file system simulation missing");
-            return false; // Not implemented
+            std::string fullPath = fileSystemRoot_ + path;
+            bool exists = std::filesystem::exists(fullPath);
+            console_log("File exists check: " + path + " -> " + (exists ? "true" : "false"));
+            return exists;
         }
 
-        bool SDLPlatform::file_delete(const std::string & /*path*/)
+        bool SDLPlatform::file_delete(const std::string &path)
         {
-            console_warn("NOT IMPLEMENTED: os.file.delete - file system simulation missing");
-            return false; // Not implemented
+            std::string fullPath = fileSystemRoot_ + path;
+            
+            if (!std::filesystem::exists(fullPath)) {
+                console_warn("Cannot delete non-existent file: " + path);
+                return false;
+            }
+            
+            try {
+                bool deleted = std::filesystem::remove(fullPath);
+                console_log("File delete: " + path + " -> " + (deleted ? "success" : "failed"));
+                return deleted;
+            } catch (const std::exception& e) {
+                console_error("Error deleting file " + path + ": " + e.what());
+                return false;
+            }
         }
 
-        int SDLPlatform::file_size(const std::string & /*path*/)
+        int SDLPlatform::file_size(const std::string &path)
         {
-            console_warn("NOT IMPLEMENTED: os.file.size - file system simulation missing");
-            return -1; // Not implemented
+            std::string fullPath = fileSystemRoot_ + path;
+            
+            if (!std::filesystem::exists(fullPath)) {
+                console_warn("Cannot get size of non-existent file: " + path);
+                return -1;
+            }
+            
+            try {
+                std::uintmax_t size = std::filesystem::file_size(fullPath);
+                console_log("File size: " + path + " -> " + std::to_string(size) + " bytes");
+                return static_cast<int>(size);
+            } catch (const std::exception& e) {
+                console_error("Error getting file size " + path + ": " + e.what());
+                return -1;
+            }
         }
 
         // === GPIO Operations ===
@@ -1197,34 +1317,82 @@ namespace dialos
 
         std::vector<std::string> SDLPlatform::dir_list(const std::string &path)
         {
-            // TODO: Implement directory listing
+            std::string fullPath = fileSystemRoot_ + path;
             console_log("dir_list: " + path);
-            console_warn("NOT IMPLEMENTED: os.dir.list - directory simulation missing");
-            return {};
+            
+            std::vector<std::string> result;
+            
+            try {
+                if (!std::filesystem::exists(fullPath)) {
+                    console_warn("Directory does not exist: " + path);
+                    return result;
+                }
+                
+                if (!std::filesystem::is_directory(fullPath)) {
+                    console_warn("Path is not a directory: " + path);
+                    return result;
+                }
+                
+                for (const auto& entry : std::filesystem::directory_iterator(fullPath)) {
+                    std::string filename = entry.path().filename().string();
+                    result.push_back(filename);
+                }
+                
+                console_log("Listed " + std::to_string(result.size()) + " entries in " + path);
+            } catch (const std::exception& e) {
+                console_error("Error listing directory " + path + ": " + e.what());
+            }
+            
+            return result;
         }
 
         bool SDLPlatform::dir_create(const std::string &path)
         {
-            // TODO: Implement directory creation
+            std::string fullPath = fileSystemRoot_ + path;
             console_log("dir_create: " + path);
-            console_warn("NOT IMPLEMENTED: os.dir.create - directory simulation missing");
-            return false;
+            
+            try {
+                bool created = std::filesystem::create_directories(fullPath);
+                console_log("Directory create: " + path + " -> " + (created ? "success" : "already exists"));
+                return true;  // Return true if created or already exists
+            } catch (const std::exception& e) {
+                console_error("Error creating directory " + path + ": " + e.what());
+                return false;
+            }
         }
 
         bool SDLPlatform::dir_delete(const std::string &path)
         {
-            // TODO: Implement directory deletion
+            std::string fullPath = fileSystemRoot_ + path;
             console_log("dir_delete: " + path);
-            console_warn("NOT IMPLEMENTED: os.dir.delete - directory simulation missing");
-            return false;
+            
+            try {
+                if (!std::filesystem::exists(fullPath)) {
+                    console_warn("Cannot delete non-existent directory: " + path);
+                    return false;
+                }
+                
+                std::uintmax_t deletedCount = std::filesystem::remove_all(fullPath);
+                console_log("Directory delete: " + path + " -> deleted " + std::to_string(deletedCount) + " items");
+                return deletedCount > 0;
+            } catch (const std::exception& e) {
+                console_error("Error deleting directory " + path + ": " + e.what());
+                return false;
+            }
         }
 
         bool SDLPlatform::dir_exists(const std::string &path)
         {
-            // TODO: Implement directory existence check
-            console_log("dir_exists: " + path);
-            console_warn("NOT IMPLEMENTED: os.dir.exists - directory simulation missing");
-            return false;
+            std::string fullPath = fileSystemRoot_ + path;
+            
+            try {
+                bool exists = std::filesystem::exists(fullPath) && std::filesystem::is_directory(fullPath);
+                console_log("Directory exists check: " + path + " -> " + (exists ? "true" : "false"));
+                return exists;
+            } catch (const std::exception& e) {
+                console_error("Error checking directory existence " + path + ": " + e.what());
+                return false;
+            }
         }
 
         // === App Operations ===

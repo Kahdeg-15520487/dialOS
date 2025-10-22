@@ -1,4 +1,4 @@
-#include "bytecode.h"
+#include "vm/bytecode.h"
 #include <sstream>
 #include <iomanip>
 #include <cstring>

@@ -4,10 +4,10 @@
  * Tests the VM core with bytecode files
  */
 
-#include "vm_core.h"
-#include "vm_value.h"
-#include "platform.h"
-#include "bytecode.h"
+#include "vm/vm_core.h"
+#include "vm/vm_value.h"
+#include "vm/platform.h"
+#include "vm/bytecode.h"
 #include <iostream>
 #include <fstream>
 #include <vector>

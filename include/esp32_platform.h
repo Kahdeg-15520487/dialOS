@@ -1,7 +1,7 @@
 #ifndef ESP32_PLATFORM_H
 #define ESP32_PLATFORM_H
 
-#include "../src/vm/platform.h"
+#include "vm/platform.h"
 #include <vector>
 #include <string>
 
@@ -80,7 +80,7 @@ public:
   int power_getBatteryLevel() override;
   bool power_isCharging() override;
 
-  // ===== File Operations (stubs for now) =====
+  // ===== File Operations =====
   int file_open(const std::string& path, const std::string& mode) override;
   std::string file_read(int handle, int size) override;
   int file_write(int handle, const std::string& data) override;
@@ -88,6 +88,12 @@ public:
   bool file_exists(const std::string& path) override;
   bool file_delete(const std::string& path) override;
   int file_size(const std::string& path) override;
+
+  // ===== Directory Operations =====
+  std::vector<std::string> dir_list(const std::string& path) override;
+  bool dir_create(const std::string& path) override;
+  bool dir_delete(const std::string& path) override;
+  bool dir_exists(const std::string& path) override;
 };
 
 } // namespace vm

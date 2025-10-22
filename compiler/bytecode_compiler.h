@@ -6,7 +6,7 @@
 #define DIALOS_COMPILER_BYTECODE_COMPILER_H
 
 #include "ast.h"
-#include "bytecode.h"
+#include "vm/bytecode.h"
 #include <map>
 #include <set>
 #include <vector>

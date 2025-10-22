@@ -1,0 +1,116 @@
+/*
+ * DialScript File API Test
+ * Tests the newly implemented RAMFS-based file operations
+ */
+
+function main(): void {
+    os.console.println("=== File API Test ===");
+    
+    // Test 1: Write to a file
+    os.console.println("Test 1: Writing to file...");
+    var fileHandle: os.file.open("test.txt", "w");
+    if (fileHandle >= 0) {
+        var bytesWritten: os.file.write(fileHandle, "Hello, dialOS File System!");
+        os.console.println(`Wrote ${bytesWritten} bytes`);
+        os.file.close(fileHandle);
+        os.console.println("✓ Write test passed");
+    } else {
+        os.console.println("✗ Failed to open file for writing");
+        return;
+    }
+    
+    // Test 2: Check if file exists
+    os.console.println("Test 2: Checking file existence...");
+    if (os.file.exists("test.txt")) {
+        os.console.println("✓ File exists test passed");
+    } else {
+        os.console.println("✗ File should exist but doesn't");
+        return;
+    }
+    
+    // Test 3: Get file size
+    os.console.println("Test 3: Getting file size...");
+    var fileSize: os.file.size("test.txt");
+    os.console.println(`File size: ${fileSize} bytes`);
+    if (fileSize > 0) {
+        os.console.println("✓ File size test passed");
+    } else {
+        os.console.println("✗ File size should be > 0");
+    }
+    
+    // Test 4: Read from file
+    os.console.println("Test 4: Reading from file...");
+    var readHandle: os.file.open("test.txt", "r");
+    if (readHandle >= 0) {
+        var content: os.file.read(readHandle, fileSize);
+        os.console.println(`Read content: "${content}"`);
+        os.file.close(readHandle);
+        if (content = "Hello, dialOS File System!") {
+            os.console.println("✓ Read test passed");
+        } else {
+            os.console.println("✗ Read content doesn't match");
+        }
+    } else {
+        os.console.println("✗ Failed to open file for reading");
+    }
+    
+    // Test 5: Append to file
+    os.console.println("Test 5: Appending to file...");
+    var appendHandle: os.file.open("test.txt", "a");
+    if (appendHandle >= 0) {
+        var appendBytes: os.file.write(appendHandle, " Appended text!");
+        os.console.println(`Appended ${appendBytes} bytes`);
+        os.file.close(appendHandle);
+        os.console.println("✓ Append test passed");
+    } else {
+        os.console.println("✗ Failed to open file for appending");
+    }
+    
+    // Test 6: Read appended content
+    os.console.println("Test 6: Reading appended content...");
+    var finalReadHandle: os.file.open("test.txt", "r");
+    if (finalReadHandle >= 0) {
+        var newSize: os.file.size("test.txt");
+        var finalContent: os.file.read(finalReadHandle, newSize);
+        os.console.println(`Final content: "${finalContent}"`);
+        os.file.close(finalReadHandle);
+        if (finalContent = "Hello, dialOS File System! Appended text!") {
+            os.console.println("✓ Append content test passed");
+        } else {
+            os.console.println("✗ Appended content doesn't match");
+        }
+    }
+    
+    // Test 7: Directory operations
+    os.console.println("Test 7: Testing directory operations...");
+    
+    // Create a file in a simulated subdirectory
+    var subFileHandle: os.file.open("subdir/nested.txt", "w");
+    if (subFileHandle >= 0) {
+        os.file.write(subFileHandle, "Nested file content");
+        os.file.close(subFileHandle);
+        os.console.println("✓ Created nested file");
+    }
+    
+    // List root directory
+    var rootFiles: os.dir.list("/");
+    os.console.println(`Root directory has ${rootFiles.length} files`);
+    
+    // Test 8: File deletion
+    os.console.println("Test 8: Deleting file...");
+    if (os.file.delete("test.txt")) {
+        os.console.println("✓ File deleted successfully");
+        if (not os.file.exists("test.txt")) {
+            os.console.println("✓ File no longer exists");
+        } else {
+            os.console.println("✗ File still exists after deletion");
+        }
+    } else {
+        os.console.println("✗ Failed to delete file");
+    }
+    
+    os.console.println("=== File API Test Complete ===");
+}
+
+// Run the test
+main();
