@@ -257,7 +257,7 @@ bool VMState::invokeFunction(const Value& callback, const std::vector<Value>& ar
     }
     
     // Clean up unreferenced strings after callback completes
-    garbageCollect();
+    pool_.garbageCollectStrings();
     
     return !hasError();
 }
@@ -367,11 +367,6 @@ VMResult VMState::execute(uint32_t maxInstructions) {
         }
         
         executed++;
-        
-        // Periodic garbage collection every 100 instructions
-        if (executed % 100 == 0) {
-            garbageCollect();
-        }
     }
     
     if (pc_ >= code_.size()) {
@@ -557,7 +552,7 @@ VMResult VMState::executeInstruction() {
             std::string* str = pool_.allocateString(result);
             if (!str) {
                 // Try garbage collection and retry
-                garbageCollect();
+                pool_.garbageCollectStrings();
                 str = pool_.allocateString(result);
                 if (!str) {
                     setError("Out of memory in string concatenation");
@@ -591,7 +586,7 @@ VMResult VMState::executeInstruction() {
             std::string* str = pool_.allocateString(result);
             if (!str) {
                 // Try garbage collection and retry
-                garbageCollect();
+                pool_.garbageCollectStrings();
                 str = pool_.allocateString(result);
                 if (!str) {
                     setError("Out of memory in template formatting");
@@ -2852,32 +2847,6 @@ std::string VMState::formatTemplate(const std::string& template_str, const std::
     }
     
     return result;
-}
-
-// ===== Garbage Collection =====
-
-void VMState::garbageCollect() {
-    // Mark all reachable values from VM roots
-    
-    // Mark values on the stack
-    for (const auto& value : stack_) {
-        pool_.markValue(value);
-    }
-    
-    // Mark global variables
-    for (const auto& global : globals_) {
-        pool_.markValue(global.second);
-    }
-    
-    // Mark local variables in call frames
-    for (const auto& frame : callStack_) {
-        for (const auto& local : frame.locals) {
-            pool_.markValue(local.second);
-        }
-    }
-    
-    // Now perform the sweep phase
-    pool_.garbageCollect();
 }
 
 } // namespace vm
