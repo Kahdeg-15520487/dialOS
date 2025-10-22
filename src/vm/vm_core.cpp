@@ -4,7 +4,7 @@
  * Stack-based virtual machine with cooperative multitasking
  */
 
-#include "vm/vm_core.h"
+#include "../../include/vm/vm_core.h"
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -702,7 +702,6 @@ VMResult VMState::executeInstruction() {
                     // Pop arguments in reverse order (last arg is on top)
                     Value arg = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop(); // Pop remaining args
-                    Value receiver = pop(); // Pop receiver
                     platform_.console_log(arg.toString());
                     
                     push(Value::Null());
@@ -716,7 +715,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value arg = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     platform_.console_warn(arg.toString());
                     
                     push(Value::Null());
@@ -730,7 +728,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value arg = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     platform_.console_error(arg.toString());
                     
                     push(Value::Null());
@@ -744,7 +741,6 @@ VMResult VMState::executeInstruction() {
                         return VMResult::ERROR;
                     }
                     Value colorVal = pop();
-                    Value receiver = pop();
                     uint32_t color = colorVal.isInt32() ? static_cast<uint32_t>(colorVal.int32Val) : 0;
                     platform_.display_clear(color);
                     
@@ -763,7 +759,6 @@ VMResult VMState::executeInstruction() {
                     Value textVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
-                    Value receiver = pop();
                     
                     platform_.display_drawText(
                         xVal.isInt32() ? xVal.int32Val : 0,
@@ -789,7 +784,6 @@ VMResult VMState::executeInstruction() {
                     Value wVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
-                    Value receiver = pop();
                     
                     platform_.display_drawRect(
                         xVal.isInt32() ? xVal.int32Val : 0,
@@ -818,7 +812,6 @@ VMResult VMState::executeInstruction() {
                     Value yVal = pop();
                     Value xVal = pop();
                     // Then pop receiver (it's below the arguments)
-                    Value receiver = pop();
                     
                     // Debug logging
                     int x = xVal.isInt32() ? xVal.int32Val : 0;
@@ -844,7 +837,6 @@ VMResult VMState::executeInstruction() {
                     Value x2Val = pop();
                     Value y1Val = pop();
                     Value x1Val = pop();
-                    Value receiver = pop();
                     
                     platform_.display_drawLine(
                         x1Val.isInt32() ? x1Val.int32Val : 0,
@@ -867,7 +859,6 @@ VMResult VMState::executeInstruction() {
                     Value colorVal = pop();
                     Value yVal = pop();
                     Value xVal = pop();
-                    Value receiver = pop();
                     
                     platform_.display_drawPixel(
                         xVal.isInt32() ? xVal.int32Val : 0,
@@ -886,7 +877,6 @@ VMResult VMState::executeInstruction() {
                         return VMResult::ERROR;
                     }
                     Value levelVal = pop();
-                    Value receiver = pop();
                     
                     platform_.display_setBrightness(levelVal.isInt32() ? levelVal.int32Val : 128);
                     
@@ -897,7 +887,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::DISPLAY_GET_WIDTH: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.display_getWidth()));
                     break;
@@ -905,7 +894,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::DISPLAY_GET_HEIGHT: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.display_getHeight()));
                     break;
@@ -914,7 +902,6 @@ VMResult VMState::executeInstruction() {
                 // ===== Encoder Functions =====
                 case NativeFunctionID::ENCODER_GET_BUTTON: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Bool(platform_.encoder_getButton()));
                     break;
@@ -922,7 +909,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::ENCODER_GET_DELTA: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.encoder_getDelta()));
                     break;
@@ -930,7 +916,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::ENCODER_GET_POSITION: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.encoder_getPosition()));
                     break;
@@ -938,7 +923,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::ENCODER_RESET: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     platform_.encoder_reset();
                     push(Value::Null());
@@ -952,7 +936,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onTurn() requires a function argument");
@@ -971,7 +954,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onButton() requires a function argument");
@@ -986,7 +968,6 @@ VMResult VMState::executeInstruction() {
                 // ===== System Functions =====
                 case NativeFunctionID::SYSTEM_GET_TIME: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(static_cast<int32_t>(platform_.system_getTime())));
                     break;
@@ -998,7 +979,6 @@ VMResult VMState::executeInstruction() {
                         return VMResult::ERROR;
                     }
                     Value msVal = pop();
-                    Value receiver = pop();
                     
                     platform_.system_sleep(msVal.isInt32() ? static_cast<uint32_t>(msVal.int32Val) : 0);
                     
@@ -1009,7 +989,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::SYSTEM_GET_RTC: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(static_cast<int32_t>(platform_.system_getRTC())));
                     break;
@@ -1021,7 +1000,6 @@ VMResult VMState::executeInstruction() {
                         return VMResult::ERROR;
                     }
                     Value timestampVal = pop();
-                    Value receiver = pop();
                     
                     platform_.system_setRTC(timestampVal.isInt32() ? static_cast<uint32_t>(timestampVal.int32Val) : 0);
                     
@@ -1033,7 +1011,6 @@ VMResult VMState::executeInstruction() {
                 // ===== Touch Functions =====
                 case NativeFunctionID::TOUCH_GET_X: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.touch_getX()));
                     break;
@@ -1041,7 +1018,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::TOUCH_GET_Y: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Int32(platform_.touch_getY()));
                     break;
@@ -1049,7 +1025,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::TOUCH_IS_PRESSED: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Bool(platform_.touch_isPressed()));
                     break;
@@ -1058,7 +1033,6 @@ VMResult VMState::executeInstruction() {
                 // ===== RFID Functions =====
                 case NativeFunctionID::RFID_READ: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::String(platform_.rfid_read()));
                     break;
@@ -1066,7 +1040,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::RFID_IS_PRESENT: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     push(Value::Bool(platform_.rfid_isPresent()));
                     break;
@@ -1080,7 +1053,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value modeVal = pop();
                     Value pathVal = pop();
-                    Value receiver = pop();
                     
                     int handle = platform_.file_open(pathVal.toString(), modeVal.toString());
                     
@@ -1096,7 +1068,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value sizeVal = pop();
                     Value handleVal = pop();
-                    Value receiver = pop();
                     
                     std::string data = platform_.file_read(
                         handleVal.isInt32() ? handleVal.int32Val : -1,
@@ -1115,7 +1086,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value dataVal = pop();
                     Value handleVal = pop();
-                    Value receiver = pop();
                     
                     int written = platform_.file_write(
                         handleVal.isInt32() ? handleVal.int32Val : -1,
@@ -1133,7 +1103,6 @@ VMResult VMState::executeInstruction() {
                         return VMResult::ERROR;
                     }
                     Value handleVal = pop();
-                    Value receiver = pop();
                     
                     platform_.file_close(handleVal.isInt32() ? handleVal.int32Val : -1);
                     
@@ -1147,7 +1116,6 @@ VMResult VMState::executeInstruction() {
                         setError("exists() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value pathVal = pop();
                     
                     bool exists = platform_.file_exists(pathVal.toString());
@@ -1162,7 +1130,6 @@ VMResult VMState::executeInstruction() {
                         setError("delete() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value pathVal = pop();
                     
                     bool deleted = platform_.file_delete(pathVal.toString());
@@ -1177,7 +1144,6 @@ VMResult VMState::executeInstruction() {
                         setError("size() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value pathVal = pop();
                     
                     int size = platform_.file_size(pathVal.toString());
@@ -1193,7 +1159,6 @@ VMResult VMState::executeInstruction() {
                         setError("pinMode() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value modeVal = pop();
                     Value pinVal = pop();
                     
@@ -1212,7 +1177,6 @@ VMResult VMState::executeInstruction() {
                         setError("digitalWrite() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value valueVal = pop();
                     Value pinVal = pop();
                     
@@ -1231,7 +1195,6 @@ VMResult VMState::executeInstruction() {
                         setError("digitalRead() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value pinVal = pop();
                     
                     int value = platform_.gpio_digitalRead(pinVal.isInt32() ? pinVal.int32Val : 0);
@@ -1246,7 +1209,6 @@ VMResult VMState::executeInstruction() {
                         setError("analogWrite() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value valueVal = pop();
                     Value pinVal = pop();
                     
@@ -1265,7 +1227,6 @@ VMResult VMState::executeInstruction() {
                         setError("analogRead() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value pinVal = pop();
                     
                     int value = platform_.gpio_analogRead(pinVal.isInt32() ? pinVal.int32Val : 0);
@@ -1277,7 +1238,6 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== I2C Functions =====
                 case NativeFunctionID::I2C_SCAN: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     std::vector<int> addresses = platform_.i2c_scan();
@@ -1298,7 +1258,6 @@ VMResult VMState::executeInstruction() {
                         setError("write() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value dataVal = pop();
                     Value addressVal = pop();
                     
@@ -1321,7 +1280,6 @@ VMResult VMState::executeInstruction() {
                         setError("read() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value lengthVal = pop();
                     Value addressVal = pop();
                     
@@ -1344,7 +1302,6 @@ VMResult VMState::executeInstruction() {
                         setError("beep() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value durationVal = pop();
                     Value frequencyVal = pop();
                     
@@ -1359,7 +1316,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::BUZZER_STOP: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     platform_.buzzer_stop();
@@ -1369,7 +1325,6 @@ VMResult VMState::executeInstruction() {
                 
                 case NativeFunctionID::BUZZER_PLAY_MELODY: {
                     // TODO: Implement melody playback
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
@@ -1385,7 +1340,6 @@ VMResult VMState::executeInstruction() {
                     // Compiler pushes arguments in order so the top of the stack is the last argument (ms)
                     Value msVal = pop();
                     // After popping arguments, the next value is the receiver
-                    Value receiver = pop();
 
                     int timerId = platform_.timer_setTimeout(msVal.isInt32() ? msVal.int32Val : 0);
 
@@ -1405,7 +1359,6 @@ VMResult VMState::executeInstruction() {
                     // Pop ms (top), then callback, then receiver
                     Value msVal = pop();
                     Value callback = pop();
-                    Value receiver = pop();
 
                     if (!callback.isFunction()) {
                         setError("setInterval() first argument must be a function");
@@ -1429,7 +1382,6 @@ VMResult VMState::executeInstruction() {
 
                     // Pop id (top) then receiver
                     Value idVal = pop();
-                    Value receiver = pop();
 
                     if (funcID == NativeFunctionID::TIMER_CLEAR_TIMEOUT) {
                         platform_.timer_clearTimeout(idVal.isInt32() ? idVal.int32Val : -1);
@@ -1444,7 +1396,6 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== Memory Functions =====
                 case NativeFunctionID::MEMORY_GET_AVAILABLE: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::Int32(platform_.memory_getAvailable()));
@@ -1452,7 +1403,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::MEMORY_GET_USAGE: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::Int32(platform_.memory_getUsage()));
@@ -1464,7 +1414,6 @@ VMResult VMState::executeInstruction() {
                         setError("allocate() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value sizeVal = pop();
                     
                     int handle = platform_.memory_allocate(sizeVal.isInt32() ? sizeVal.int32Val : 0);
@@ -1479,7 +1428,6 @@ VMResult VMState::executeInstruction() {
                         setError("free() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value handleVal = pop();
                     
                     platform_.memory_free(handleVal.isInt32() ? handleVal.int32Val : -1);
@@ -1497,7 +1445,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value arg = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     platform_.console_print(arg.toString());
                     
                     push(Value::Null());
@@ -1511,7 +1458,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value arg = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     platform_.console_println(arg.toString());
                     
                     push(Value::Null());
@@ -1519,7 +1465,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::CONSOLE_CLEAR: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     platform_.console_clear();
@@ -1533,7 +1478,6 @@ VMResult VMState::executeInstruction() {
                         setError("setTitle() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value titleVal = pop();
                     
                     platform_.display_setTitle(titleVal.toString());
@@ -1546,7 +1490,6 @@ VMResult VMState::executeInstruction() {
                 case NativeFunctionID::DISPLAY_GET_SIZE:
                 case NativeFunctionID::DISPLAY_DRAW_IMAGE: {
                     // TODO: Implement these functions
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
@@ -1554,7 +1497,6 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== System Functions =====
                 case NativeFunctionID::SYSTEM_YIELD: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     platform_.system_yield();
@@ -1565,7 +1507,6 @@ VMResult VMState::executeInstruction() {
                 // ===== Touch Functions =====
                 case NativeFunctionID::TOUCH_GET_POSITION: {
                     // TODO: Return object with {x, y, pressed}
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
@@ -1578,7 +1519,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onPress() requires a function argument");
@@ -1597,7 +1537,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onRelease() requires a function argument");
@@ -1616,7 +1555,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onDrag() requires a function argument");
@@ -1634,7 +1572,6 @@ VMResult VMState::executeInstruction() {
                         setError("list() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value pathVal = pop();
                     
                     // TODO: Implement directory listing
@@ -1650,7 +1587,6 @@ VMResult VMState::executeInstruction() {
                         setError("Directory operation requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value pathVal = pop();
                     
                     // TODO: Implement directory operations
@@ -1670,7 +1606,6 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== Power Functions =====
                 case NativeFunctionID::POWER_SLEEP: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     platform_.power_sleep();
@@ -1679,7 +1614,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::POWER_GET_BATTERY_LEVEL: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::Int32(platform_.power_getBatteryLevel()));
@@ -1687,7 +1621,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::POWER_IS_CHARGING: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::Bool(platform_.power_isCharging()));
@@ -1696,7 +1629,6 @@ VMResult VMState::executeInstruction() {
                 
                 // ===== App Functions =====
                 case NativeFunctionID::APP_EXIT: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     platform_.app_exit();
@@ -1705,7 +1637,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::APP_GET_INFO: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::String(platform_.app_getInfo()));
@@ -1719,7 +1650,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onLoad() requires a function argument");
@@ -1739,7 +1669,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onSuspend() requires a function argument");
@@ -1758,7 +1687,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onResume() requires a function argument");
@@ -1777,7 +1705,6 @@ VMResult VMState::executeInstruction() {
                     }
                     Value callback = pop();
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    Value receiver = pop();
                     
                     if (!callback.isFunction()) {
                         setError("onUnload() requires a function argument");
@@ -1792,7 +1719,6 @@ VMResult VMState::executeInstruction() {
                 // ===== Storage Functions =====
                 case NativeFunctionID::STORAGE_GET_MOUNTED: {
                     // TODO: Return array of mounted devices
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     push(Value::Null());
                     break;
@@ -1803,7 +1729,6 @@ VMResult VMState::executeInstruction() {
                         setError("getInfo() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value deviceVal = pop();
                     
                     push(Value::String(platform_.storage_getInfo(deviceVal.toString())));
@@ -1818,7 +1743,6 @@ VMResult VMState::executeInstruction() {
                         setError("attach() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value typeVal = pop();
                     Value portVal = pop();
                     
@@ -1834,7 +1758,6 @@ VMResult VMState::executeInstruction() {
                         setError("read() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value handleVal = pop();
                     
                     push(Value::String(platform_.sensor_read(handleVal.isInt32() ? handleVal.int32Val : -1)));
@@ -1848,7 +1771,6 @@ VMResult VMState::executeInstruction() {
                         setError("detach() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value handleVal = pop();
                     
                     platform_.sensor_detach(handleVal.isInt32() ? handleVal.int32Val : -1);
@@ -1864,7 +1786,6 @@ VMResult VMState::executeInstruction() {
                         setError("connect() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value passwordVal = pop();
                     Value ssidVal = pop();
                     
@@ -1876,7 +1797,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::WIFI_DISCONNECT: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     platform_.wifi_disconnect();
@@ -1885,7 +1805,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::WIFI_GET_STATUS: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::String(platform_.wifi_getStatus()));
@@ -1893,7 +1812,6 @@ VMResult VMState::executeInstruction() {
                 }
                 
                 case NativeFunctionID::WIFI_GET_IP: {
-                    Value receiver = pop();
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
                     push(Value::String(platform_.wifi_getIP()));
@@ -1906,7 +1824,6 @@ VMResult VMState::executeInstruction() {
                         setError("send() requires 2 arguments");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value messageVal = pop();
                     Value appIdVal = pop();
                     
@@ -1922,7 +1839,6 @@ VMResult VMState::executeInstruction() {
                         setError("broadcast() requires 1 argument");
                         return VMResult::ERROR;
                     }
-                    Value receiver = pop();
                     Value messageVal = pop();
                     
                     platform_.ipc_broadcast(messageVal.toString());

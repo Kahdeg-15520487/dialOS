@@ -739,8 +739,7 @@ namespace dialos
                 {
                     // Use full namespace path for native calls
                     funcName = getFullNamespacePath(member);
-                    // Native call: compile object (os.console, etc.)
-                    compileExpression(*member->object);
+                    // Don't compile object for native calls - we use the full path directly
                     isDirectFunctionCall = true; // Will use CALL_NATIVE, not indirect
                 }
                 else

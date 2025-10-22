@@ -1,0 +1,15 @@
+// Test native function call optimization
+function main(): void {
+    os.console.print("Testing file exists...");
+    
+    var exists: os.file.exists("test.txt");
+    if (exists) {
+        os.console.print("File exists!");
+    } else {
+        os.console.print("File does not exist");
+    }
+    
+    os.console.print("Done");
+}
+
+main();
