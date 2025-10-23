@@ -1,0 +1,121 @@
+/*
+ * dialOS App Store Test
+ * Demonstrates cross-platform app management APIs
+ */
+
+os.console.println("=== dialOS App Store Test ===");
+os.console.println("");
+
+// Test 1: List currently installed apps
+os.console.println("Test 1: List installed apps");
+try {
+    var installedApps: os.app.list();
+    os.console.println(`Installed apps: ${installedApps}`);
+    os.console.println("✓ App listing successful");
+} catch (error) {
+    os.console.println(`✗ App listing failed: ${error}`);
+}
+
+os.console.println("");
+
+// Test 2: Download a sample app (simulate app store download)
+os.console.println("Test 2: Download sample app from local server");
+try {
+    // First download a DSB file (simulating app store download)
+    var downloadResult: os.http.download("http://localhost:8080/test_app.dsb", "downloaded_app.dsb");
+    
+    if (downloadResult.status = "success") {
+        os.console.println(`Downloaded app: ${downloadResult.bytes} bytes`);
+        
+        // Test 3: Validate the downloaded DSB file
+        os.console.println("");
+        os.console.println("Test 3: Validate downloaded DSB file");
+        var validationResult: os.app.validate("downloaded_app.dsb");
+        os.console.println(`Validation result: ${validationResult}`);
+        
+        // Test 4: Get metadata from DSB file
+        os.console.println("");
+        os.console.println("Test 4: Extract app metadata");
+        var metadataResult: os.app.getMetadata("downloaded_app.dsb");
+        os.console.println(`Metadata: ${metadataResult}`);
+        
+        // Test 5: Install the app
+        os.console.println("");
+        os.console.println("Test 5: Install downloaded app");
+        var installResult: os.app.install("downloaded_app.dsb", "test-calculator");
+        os.console.println(`Install result: ${installResult}`);
+        
+        // Test 6: List apps again to see the new installation
+        os.console.println("");
+        os.console.println("Test 6: List apps after installation");
+        var updatedApps: os.app.list();
+        os.console.println(`Updated app list: ${updatedApps}`);
+        
+        // Test 7: Try to launch the installed app (would require VM restart)
+        os.console.println("");
+        os.console.println("Test 7: Launch installed app");
+        var launchResult: os.app.launch("test-calculator");
+        os.console.println(`Launch result: ${launchResult}`);
+        
+    } else {
+        os.console.println(`✗ App download failed: ${downloadResult.message}`);
+    }
+    
+} catch (error) {
+    os.console.println(`✗ App store operation failed: ${error}`);
+}
+
+os.console.println("");
+
+// Test 8: Test uninstall functionality
+os.console.println("Test 8: Uninstall test app");
+try {
+    var uninstallResult: os.app.uninstall("test-calculator");
+    os.console.println(`Uninstall result: ${uninstallResult}`);
+    
+    // List apps after uninstall
+    var finalApps: os.app.list();
+    os.console.println(`Final app list: ${finalApps}`);
+    
+} catch (error) {
+    os.console.println(`✗ App uninstall failed: ${error}`);
+}
+
+os.console.println("");
+
+// Test 9: Test with invalid/non-existent files
+os.console.println("Test 9: Error handling tests");
+try {
+    var invalidValidation: os.app.validate("nonexistent.dsb");
+    os.console.println(`Invalid file validation: ${invalidValidation}`);
+    
+    var invalidMetadata: os.app.getMetadata("nonexistent.dsb");
+    os.console.println(`Invalid file metadata: ${invalidMetadata}`);
+    
+    var invalidUninstall: os.app.uninstall("nonexistent-app");
+    os.console.println(`Invalid app uninstall: ${invalidUninstall}`);
+    
+    os.console.println("✓ Error handling tests completed");
+    
+} catch (error) {
+    os.console.println(`✗ Error handling test failed: ${error}`);
+}
+
+os.console.println("");
+os.console.println("=== App Store Test Complete ===");
+
+/*
+ * Expected Output:
+ * - List initially empty app registry
+ * - Download DSB file via HTTP
+ * - Validate DSB file structure
+ * - Extract and display app metadata
+ * - Install app to registry
+ * - Show updated app list
+ * - Demonstrate launch capability
+ * - Uninstall app
+ * - Test error conditions
+ * 
+ * This demonstrates a complete app store workflow that works
+ * identically on both SDL emulator and ESP32 hardware.
+ */

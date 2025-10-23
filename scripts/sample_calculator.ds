@@ -1,0 +1,111 @@
+/*
+ * Simple Calculator App - Sample for App Store Testing
+ * A minimal dialOS application that can be downloaded and installed
+ */
+
+var result: 0;
+var operation: "";
+var operand: 0;
+var displayValue: "0";
+
+function updateDisplay(): void {
+    os.display.clear(_color.black);
+    os.display.drawText(140, 20, "Calculator v1.0", _color.white, 2);
+    os.display.drawText(80, 60, displayValue, _color.green, 3);
+    os.display.drawText(50, 100, "Use encoder to navigate", _color.gray, 1);
+    os.display.drawText(50, 120, "Button to select", _color.gray, 1);
+    os.display.drawText(50, 180, "Long press to exit", _color.red, 1);
+}
+
+function calculate(): int {
+    if (operation = "add") {
+        return result + operand;
+    } else if (operation = "sub") {
+        return result - operand;
+    } else if (operation = "mul") {
+        return result * operand;
+    } else if (operation = "div") {
+        if (operand != 0) {
+            return result / operand;
+        } else {
+            return 0;
+        }
+    }
+    return operand;
+}
+
+// Main application
+os.console.println("Calculator App Started");
+os.display.setTitle("Calculator");
+
+updateDisplay();
+
+var running: true;
+var buttonPressTime: 0;
+
+while (running) {
+    // Check for encoder rotation
+    var delta: os.encoder.getDelta();
+    if (delta != 0) {
+        var newValue: (operand + delta);
+        if (newValue >= 0 and newValue <= 9999) {
+            assign operand newValue;
+            assign displayValue `${operand}`;
+            updateDisplay();
+        }
+    }
+    
+    // Check for button press
+    if (os.encoder.getButton()) {
+        if (buttonPressTime = 0) {
+            assign buttonPressTime os.system.getTime();
+        } else {
+            var pressedTime: os.system.getTime() - buttonPressTime;
+            if (pressedTime > 2000) { // Long press (2 seconds)
+                assign running false;
+                os.console.println("Calculator App Exiting");
+            }
+        }
+    } else {
+        if (buttonPressTime > 0) {
+            var pressedTime: os.system.getTime() - buttonPressTime;
+            if (pressedTime < 2000) { // Short press
+                // Cycle through operations
+                if (operation = "") {
+                    assign operation "add";
+                    assign result operand;
+                    assign operand 0;
+                    assign displayValue `${result} + 0`;
+                } else if (operation = "add") {
+                    assign result calculate();
+                    assign operation "sub";
+                    assign operand 0;
+                    assign displayValue `${result} - 0`;
+                } else if (operation = "sub") {
+                    assign result calculate();
+                    assign operation "mul";
+                    assign operand 0;
+                    assign displayValue `${result} * 0`;
+                } else if (operation = "mul") {
+                    assign result calculate();
+                    assign operation "div";
+                    assign operand 1;
+                    assign displayValue `${result} / 1`;
+                } else {
+                    assign result calculate();
+                    assign operation "";
+                    assign operand result;
+                    assign displayValue `= ${result}`;
+                }
+                updateDisplay();
+            }
+            assign buttonPressTime 0;
+        }
+    }
+    
+    os.system.sleep(50); // 50ms update rate
+}
+
+os.display.clear(_color.black);
+os.display.drawText(60, 120, "Goodbye!", _color.white, 2);
+os.system.sleep(1000);

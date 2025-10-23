@@ -2031,6 +2031,75 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
+                case NativeFunctionID::HTTP_DOWNLOAD: {
+                    if (argCount < 2) {
+                        setError("download() requires 2 arguments (url, filepath)");
+                        return VMResult::ERROR;
+                    }
+                    Value filepathVal = pop();
+                    Value urlVal = pop();
+                    
+                    std::string result = platform_.http_download(urlVal.toString(), filepathVal.toString());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    
+                    // Parse JSON result and convert to DialScript object
+                    Object* resultObj = pool_.allocateObject("HttpDownloadResult");
+                    if (resultObj) {
+                        // Simple JSON parsing for our known format
+                        if (result.find("\"status\":\"success\"") != std::string::npos) {
+                            resultObj->fields["status"] = Value::String("success");
+                            
+                            // Extract bytes value
+                            size_t bytesPos = result.find("\"bytes\":");
+                            if (bytesPos != std::string::npos) {
+                                bytesPos += 8; // skip "bytes":
+                                size_t endPos = result.find(',', bytesPos);
+                                if (endPos == std::string::npos) endPos = result.find('}', bytesPos);
+                                if (endPos != std::string::npos) {
+                                    std::string bytesStr = result.substr(bytesPos, endPos - bytesPos);
+                                    int bytes = std::stoi(bytesStr);
+                                    resultObj->fields["bytes"] = Value::Int32(bytes);
+                                }
+                            }
+                            
+                            // Extract filepath value
+                            size_t pathPos = result.find("\"filepath\":\"");
+                            if (pathPos != std::string::npos) {
+                                pathPos += 12; // skip "filepath":"
+                                size_t endPos = result.find('"', pathPos);
+                                if (endPos != std::string::npos) {
+                                    std::string filepath = result.substr(pathPos, endPos - pathPos);
+                                    std::string* pooledPath = pool_.allocateString(filepath);
+                                    if (pooledPath) {
+                                        resultObj->fields["filepath"] = Value::StringFromPool(pooledPath);
+                                    }
+                                }
+                            }
+                        } else {
+                            resultObj->fields["status"] = Value::String("error");
+                            
+                            // Extract error message
+                            size_t msgPos = result.find("\"message\":\"");
+                            if (msgPos != std::string::npos) {
+                                msgPos += 11; // skip "message":"
+                                size_t endPos = result.find('"', msgPos);
+                                if (endPos != std::string::npos) {
+                                    std::string message = result.substr(msgPos, endPos - msgPos);
+                                    std::string* pooledMsg = pool_.allocateString(message);
+                                    if (pooledMsg) {
+                                        resultObj->fields["message"] = Value::StringFromPool(pooledMsg);
+                                    }
+                                }
+                            }
+                        }
+                        push(Value::Object(resultObj));
+                    } else {
+                        push(Value::Null());
+                    }
+                    break;
+                }
+                
                 // ===== IPC Functions =====
                 case NativeFunctionID::IPC_SEND: {
                     if (argCount < 2) {
@@ -2058,6 +2127,86 @@ VMResult VMState::executeInstruction() {
                     
                     for (uint8_t i = 1; i < argCount; i++) pop();
                     push(Value::Null());
+                    break;
+                }
+                
+                // ===== App Management Functions =====
+                case NativeFunctionID::APP_INSTALL: {
+                    if (argCount < 2) {
+                        setError("install() requires 2 arguments (dsbFilePath, appId)");
+                        return VMResult::ERROR;
+                    }
+                    Value appIdVal = pop();
+                    Value dsbFilePathVal = pop();
+                    
+                    std::string result = platform_.app_install(dsbFilePathVal.toString(), appIdVal.toString());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::String(result));
+                    break;
+                }
+                
+                case NativeFunctionID::APP_UNINSTALL: {
+                    if (argCount < 1) {
+                        setError("uninstall() requires 1 argument (appId)");
+                        return VMResult::ERROR;
+                    }
+                    Value appIdVal = pop();
+                    
+                    std::string result = platform_.app_uninstall(appIdVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::String(result));
+                    break;
+                }
+                
+                case NativeFunctionID::APP_LIST: {
+                    std::string result = platform_.app_list();
+                    
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    push(Value::String(result));
+                    break;
+                }
+                
+                case NativeFunctionID::APP_GET_METADATA: {
+                    if (argCount < 1) {
+                        setError("getMetadata() requires 1 argument (dsbFilePath)");
+                        return VMResult::ERROR;
+                    }
+                    Value dsbFilePathVal = pop();
+                    
+                    std::string result = platform_.app_getMetadata(dsbFilePathVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::String(result));
+                    break;
+                }
+                
+                case NativeFunctionID::APP_LAUNCH: {
+                    if (argCount < 1) {
+                        setError("launch() requires 1 argument (appId)");
+                        return VMResult::ERROR;
+                    }
+                    Value appIdVal = pop();
+                    
+                    std::string result = platform_.app_launch(appIdVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::String(result));
+                    break;
+                }
+                
+                case NativeFunctionID::APP_VALIDATE: {
+                    if (argCount < 1) {
+                        setError("validate() requires 1 argument (dsbFilePath)");
+                        return VMResult::ERROR;
+                    }
+                    Value dsbFilePathVal = pop();
+                    
+                    std::string result = platform_.app_validate(dsbFilePathVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::String(result));
                     break;
                 }
                 

@@ -69,7 +69,9 @@
         "xstddef": "cpp",
         "xtr1common": "cpp",
         "xtree": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "array": "cpp",
+        "string_view": "cpp"
     },
     "cmake.ignoreCMakeListsMissing": true
 }

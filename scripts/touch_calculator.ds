@@ -1,0 +1,364 @@
+/*
+ * Touch Calculator App
+ * A calculator with on-screen touch buttons for the M5 Dial
+ */
+
+// Calculator state
+var display: "0";
+var operation: "";
+var firstNumber: 0.0;
+var secondNumber: 0.0;
+var operatorPending: false;
+var justCalculated: false;
+
+// Button layout (4x5 grid for a calculator)
+// Screen is 240x240, leaving space for display at top
+var buttonWidth: 55;
+var buttonHeight: 35;
+var buttonStartX: 10;
+var buttonStartY: 80;
+var buttonSpacing: 60;
+
+// Button definitions
+class Button {
+    x: int;
+    y: int;
+    width: int;
+    height: int;
+    text: string;
+    value: string;
+    
+    constructor(x: int, y: int, text: string, value: string) {
+        assign this.x x;
+        assign this.y y;
+        assign this.width buttonWidth;
+        assign this.height buttonHeight;
+        assign this.text text;
+        assign this.value value;
+    }
+    
+    draw(): void {
+        // Draw button background
+        os.display.drawRect(this.x, this.y, this.width, this.height, _color.darkgray, true);
+        os.display.drawRect(this.x, this.y, this.width, this.height, _color.white, false);
+        
+        // Draw button text (centered)
+        var textX: this.x + (this.width / 2) - 6;
+        var textY: this.y + (this.height / 2) - 8;
+        os.display.drawText(textX, textY, this.text, _color.white, 2);
+    }
+    
+    isPressed(touchX: int, touchY: int): bool {
+        return (touchX >= this.x and touchX <= (this.x + this.width) and
+                touchY >= this.y and touchY <= (this.y + this.height));
+    }
+}
+
+// Create calculator buttons (4x5 grid)
+var buttons: [];
+
+function setupButtons(): void {
+    // Row 1: Clear, +/-, %, ÷
+    assign buttons[0] Button(buttonStartX + 0 * buttonSpacing, buttonStartY + 0 * 40, "C", "clear");
+    assign buttons[1] Button(buttonStartX + 1 * buttonSpacing, buttonStartY + 0 * 40, "+/-", "negate");
+    assign buttons[2] Button(buttonStartX + 2 * buttonSpacing, buttonStartY + 0 * 40, "%", "percent");
+    assign buttons[3] Button(buttonStartX + 3 * buttonSpacing, buttonStartY + 0 * 40, "÷", "divide");
+    
+    // Row 2: 7, 8, 9, ×
+    assign buttons[4] Button(buttonStartX + 0 * buttonSpacing, buttonStartY + 1 * 40, "7", "7");
+    assign buttons[5] Button(buttonStartX + 1 * buttonSpacing, buttonStartY + 1 * 40, "8", "8");
+    assign buttons[6] Button(buttonStartX + 2 * buttonSpacing, buttonStartY + 1 * 40, "9", "9");
+    assign buttons[7] Button(buttonStartX + 3 * buttonSpacing, buttonStartY + 1 * 40, "×", "multiply");
+    
+    // Row 3: 4, 5, 6, -
+    assign buttons[8] Button(buttonStartX + 0 * buttonSpacing, buttonStartY + 2 * 40, "4", "4");
+    assign buttons[9] Button(buttonStartX + 1 * buttonSpacing, buttonStartY + 2 * 40, "5", "5");
+    assign buttons[10] Button(buttonStartX + 2 * buttonSpacing, buttonStartY + 2 * 40, "6", "6");
+    assign buttons[11] Button(buttonStartX + 3 * buttonSpacing, buttonStartY + 2 * 40, "-", "subtract");
+    
+    // Row 4: 1, 2, 3, +
+    assign buttons[12] Button(buttonStartX + 0 * buttonSpacing, buttonStartY + 3 * 40, "1", "1");
+    assign buttons[13] Button(buttonStartX + 1 * buttonSpacing, buttonStartY + 3 * 40, "2", "2");
+    assign buttons[14] Button(buttonStartX + 2 * buttonSpacing, buttonStartY + 3 * 40, "3", "3");
+    assign buttons[15] Button(buttonStartX + 3 * buttonSpacing, buttonStartY + 3 * 40, "+", "add");
+    
+    // Row 5: 0 (wide), ., =
+    assign buttons[16] Button(buttonStartX + 0 * buttonSpacing, buttonStartY + 4 * 40, "0", "0");
+    assign buttons[17] Button(buttonStartX + 1 * buttonSpacing, buttonStartY + 4 * 40, ".", "decimal");
+    assign buttons[18] Button(buttonStartX + 2 * buttonSpacing, buttonStartY + 4 * 40, "=", "equals");
+    assign buttons[19] Button(buttonStartX + 3 * buttonSpacing, buttonStartY + 4 * 40, "EXIT", "exit");
+}
+
+function drawDisplay(): void {
+    // Clear display area
+    os.display.drawRect(10, 10, 220, 60, _color.black, true);
+    os.display.drawRect(10, 10, 220, 60, _color.gray, false);
+    
+    // Draw display text (right-aligned)
+    var displayText: display;
+    if (display.length > 12) {
+        assign displayText "Error";
+    }
+    
+    var textX: 210 - (displayText.length * 12);
+    os.display.drawText(textX, 35, displayText, _color.green, 3);
+}
+
+function drawCalculator(): void {
+    // Clear screen
+    os.display.clear(_color.black);
+    
+    // Draw title
+    os.display.drawText(70, 0, "Touch Calculator", _color.white, 1);
+    
+    // Draw display
+    drawDisplay();
+    
+    // Draw all buttons
+    for (var i: 0; i < 20; assign i i + 1;) {
+        buttons[i].draw();
+    }
+}
+
+function processDigit(digit: string): void {
+    if (justCalculated) {
+        assign display digit;
+        assign justCalculated false;
+    } else if (display = "0") {
+        assign display digit;
+    } else {
+        assign display display + digit;
+    }
+}
+
+function processOperator(op: string): void {
+    if (operatorPending and not justCalculated) {
+        calculate();
+    }
+    
+    var value: 0.0;
+    // Parse display as float
+    if (display = "0") {
+        assign value 0.0;
+    } else {
+        // Simple float parsing (limited)
+        assign value 0.0;
+        var decimalFound: false;
+        var decimalPlace: 0.1;
+        
+        for (var i: 0; i < display.length; assign i i + 1;) {
+            var char: display[i];
+            if (char = ".") {
+                assign decimalFound true;
+            } else {
+                var digit: 0;
+                if (char = "1") {
+                    assign digit 1;
+                }
+                if (char = "2") {
+                    assign digit 2;
+                }
+                if (char = "3") {
+                    assign digit 3;
+                }
+                if (char = "4") {
+                    assign digit 4;
+                }
+                if (char = "5") {
+                    assign digit 5;
+                }
+                if (char = "6") {
+                    assign digit 6;
+                }
+                if (char = "7") {
+                    assign digit 7;
+                }
+                if (char = "8") {
+                    assign digit 8;
+                }
+                if (char = "9") {
+                    assign digit 9;
+                }
+                
+                if (decimalFound) {
+                    assign value value + (digit * decimalPlace);
+                    assign decimalPlace decimalPlace / 10.0;
+                } else {
+                    assign value value * 10.0 + digit;
+                }
+            }
+        }
+    }
+    
+    assign firstNumber value;
+    assign operation op;
+    assign operatorPending true;
+    assign justCalculated false;
+}
+
+function calculate(): void {
+    if (not operatorPending) {
+        return;
+    }
+    
+    var value: 0.0;
+    // Parse display as float (same logic as above)
+    if (display = "0") {
+        assign value 0.0;
+    } else {
+        assign value 0.0;
+        var decimalFound: false;
+        var decimalPlace: 0.1;
+        
+        for (var i: 0; i < display.length; assign i i + 1;) {
+            var char: display[i];
+            if (char = ".") {
+                assign decimalFound true;
+            } else {
+                var digit: 0;
+                if (char = "1") {
+                    assign digit 1;
+                }
+                if (char = "2") {
+                    assign digit 2;
+                }
+                if (char = "3") {
+                    assign digit 3;
+                }
+                if (char = "4") {
+                    assign digit 4;
+                }
+                if (char = "5") {
+                    assign digit 5;
+                }
+                if (char = "6") {
+                    assign digit 6;
+                }
+                if (char = "7") {
+                    assign digit 7;
+                }
+                if (char = "8") {
+                    assign digit 8;
+                }
+                if (char = "9") {
+                    assign digit 9;
+                }
+                
+                if (decimalFound) {
+                    assign value value + (digit * decimalPlace);
+                    assign decimalPlace decimalPlace / 10.0;
+                } else {
+                    assign value value * 10.0 + digit;
+                }
+            }
+        }
+    }
+    
+    assign secondNumber value;
+    
+    var result: 0.0;
+    if (operation = "add") {
+        assign result firstNumber + secondNumber;
+    } else if (operation = "subtract") {
+        assign result firstNumber - secondNumber;
+    } else if (operation = "multiply") {
+        assign result firstNumber * secondNumber;
+    } else if (operation = "divide") {
+        if (secondNumber != 0.0) {
+            assign result firstNumber / secondNumber;
+        } else {
+            assign display "Error";
+            assign operatorPending false;
+            return;
+        }
+    }
+    
+    // Convert result back to string (simplified)
+    var intResult: result;
+    assign display `${intResult}`;
+    
+    assign operatorPending false;
+    assign justCalculated true;
+}
+
+function handleButtonPress(buttonValue: string): void {
+    if (buttonValue = "0" or buttonValue = "1" or buttonValue = "2" or buttonValue = "3" or
+        buttonValue = "4" or buttonValue = "5" or buttonValue = "6" or buttonValue = "7" or
+        buttonValue = "8" or buttonValue = "9") {
+        processDigit(buttonValue);
+    } else if (buttonValue = "decimal") {
+        if (display.indexOf(".") = -1) {
+            assign display display + ".";
+        }
+    } else if (buttonValue = "add" or buttonValue = "subtract" or 
+               buttonValue = "multiply" or buttonValue = "divide") {
+        processOperator(buttonValue);
+    } else if (buttonValue = "equals") {
+        calculate();
+    } else if (buttonValue = "clear") {
+        assign display "0";
+        assign operation "";
+        assign firstNumber 0.0;
+        assign secondNumber 0.0;
+        assign operatorPending false;
+        assign justCalculated false;
+    } else if (buttonValue = "negate") {
+        if (display != "0") {
+            if (display[0] = "-") {
+                assign display display.substring(1);
+            } else {
+                assign display "-" + display;
+            }
+        }
+    } else if (buttonValue = "exit") {
+        os.app.exit();
+    }
+    
+    drawDisplay();
+}
+
+// Touch event handler
+function onTouch(x: int, y: int): void {
+    // Check which button was pressed
+    for (var i: 0; i < 20; assign i i + 1;) {
+        if (buttons[i].isPressed(x, y)) {
+            // Visual feedback - briefly highlight button
+            os.display.drawRect(buttons[i].x, buttons[i].y, buttons[i].width, buttons[i].height, _color.yellow, false);
+            os.system.sleep(100);
+            
+            handleButtonPress(buttons[i].value);
+            buttons[i].draw(); // Redraw button normally
+            return;
+        }
+    }
+}
+
+// Main application
+os.console.println("Touch Calculator Started");
+os.display.setTitle("Touch Calculator");
+
+// Initialize buttons
+setupButtons();
+
+// Register touch callback
+os.touch.onPress(onTouch);
+
+// Initial draw
+drawCalculator();
+
+// Main event loop
+var running: true;
+while (running) {
+    // Check for encoder button (alternative exit)
+    if (os.encoder.getButton()) {
+        assign running false;
+        os.console.println("Calculator exiting via encoder button");
+    }
+    
+    os.system.yield(); // Let the system process touch events
+}
+
+// Cleanup
+os.display.clear(_color.black);
+os.display.drawText(80, 120, "Goodbye!", _color.white, 2);
+os.system.sleep(1000);

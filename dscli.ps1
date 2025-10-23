@@ -262,13 +262,13 @@ function Invoke-Compiler {
     
     foreach ($line in $compilerOutput) {
         $lineStr = $line.ToString().Trim()
-        if ($lineStr -match "Compilation errors:") {
+        if ($lineStr -match "Compilation errors:|Parse errors:") {
             $hasErrors = $true
             $inErrorSection = $true
             continue
         }
         if ($inErrorSection -and $lineStr -ne "") {
-            if ($lineStr -match "Note:|===|Bytecode") {
+            if ($lineStr -match "Note:|===|Bytecode|^Source:|^Parsing\.\.\.|^$") {
                 $inErrorSection = $false
             }
             elseif ($lineStr -notmatch "System\.Management\.Automation\.") {

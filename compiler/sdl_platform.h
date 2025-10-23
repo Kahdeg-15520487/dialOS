@@ -212,6 +212,15 @@ public:
     // === HTTP Operations ===
     std::string http_get(const std::string& url) override;
     std::string http_post(const std::string& url, const std::string& data) override;
+    std::string http_download(const std::string& url, const std::string& filepath) override;
+    
+    // === App Management Operations ===
+    std::string app_install(const std::string& dsbFilePath, const std::string& appId) override;
+    std::string app_uninstall(const std::string& appId) override;
+    std::string app_list() override;
+    std::string app_getMetadata(const std::string& dsbFilePath) override;
+    std::string app_launch(const std::string& appId) override;
+    std::string app_validate(const std::string& dsbFilePath) override;
     
     // === IPC Operations ===
     bool ipc_send(const std::string& appId, const std::string& message) override;
@@ -313,6 +322,7 @@ private:
     bool parseURL(const std::string& url, std::string& host, std::string& path);
     std::string executeHTTPRequest(const std::string& method, const std::string& host, 
                                    const std::string& path, const std::string& data);
+    std::string executeHTTPDownload(const std::string& host, const std::string& path, const std::string& filepath);
     
     // File system simulation
     struct FileHandle {

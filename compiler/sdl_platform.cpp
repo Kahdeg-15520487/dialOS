@@ -1653,6 +1653,38 @@ namespace dialos
             #endif
         }
 
+        std::string SDLPlatform::http_download(const std::string &url, const std::string &filepath)
+        {
+            console_log("http_download: url=" + url + " filepath=" + filepath);
+            
+            if (!wifiConnected_) {
+                console_warn("HTTP DOWNLOAD failed: WiFi not connected");
+                return "{\"status\":\"error\",\"message\":\"WiFi not connected\"}";
+            }
+            
+            // Use Windows HTTP API for real HTTP download
+            #ifdef _WIN32
+            try {
+                // Parse URL to extract host and path
+                std::string host, path;
+                if (!parseURL(url, host, path)) {
+                    return "{\"status\":\"error\",\"message\":\"Invalid URL format\"}";
+                }
+                
+                // Download file using HTTP GET and save to disk
+                std::string downloadResult = executeHTTPDownload(host, path, filepath);
+                return downloadResult;
+                
+            } catch (const std::exception& e) {
+                console_error("HTTP DOWNLOAD error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+            #else
+            console_warn("HTTP DOWNLOAD not supported on this platform");
+            return "{\"status\":\"error\",\"message\":\"HTTP not supported on this platform\"}";
+            #endif
+        }
+
         // === IPC Operations ===
 
         bool SDLPlatform::ipc_send(const std::string &appId,
@@ -2225,6 +2257,462 @@ namespace dialos
             #else
             throw std::runtime_error("HTTP requests not supported on this platform");
             #endif
+        }
+
+        std::string SDLPlatform::executeHTTPDownload(const std::string& host, const std::string& path, const std::string& filepath)
+        {
+            #ifdef _WIN32
+            try {
+                // Parse host and port
+                std::string hostname = host;
+                int port = 80; // default HTTP port
+                
+                size_t colonPos = host.find(':');
+                if (colonPos != std::string::npos) {
+                    hostname = host.substr(0, colonPos);
+                    std::string portStr = host.substr(colonPos + 1);
+                    port = std::stoi(portStr);
+                }
+                
+                console_log("HTTP download connecting to host: " + hostname + " port: " + std::to_string(port));
+                
+                // Convert strings to wide strings for Windows API
+                std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+                std::wstring wHost = converter.from_bytes(hostname);
+                std::wstring wPath = converter.from_bytes(path);
+                
+                // Initialize WinHTTP
+                HINTERNET hSession = WinHttpOpen(L"dialOS HTTP Client/1.0",
+                                               WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                               WINHTTP_NO_PROXY_NAME,
+                                               WINHTTP_NO_PROXY_BYPASS, 0);
+                
+                if (!hSession) {
+                    throw std::runtime_error("Failed to initialize WinHTTP session");
+                }
+                
+                // Connect to the server with correct port
+                HINTERNET hConnect = WinHttpConnect(hSession, wHost.c_str(),
+                                                  static_cast<INTERNET_PORT>(port), 0);
+                
+                if (!hConnect) {
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to connect to host: " + hostname + ":" + std::to_string(port));
+                }
+                
+                // Create an HTTP request handle for GET
+                HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", wPath.c_str(),
+                                                      NULL, WINHTTP_NO_REFERER,
+                                                      WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                                      WINHTTP_FLAG_REFRESH);
+                
+                if (!hRequest) {
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to create HTTP request");
+                }
+                
+                // Send the request
+                BOOL bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                                                 WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+                
+                if (!bResults) {
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to send HTTP request");
+                }
+                
+                // End the request
+                bResults = WinHttpReceiveResponse(hRequest, NULL);
+                if (!bResults) {
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to receive HTTP response");
+                }
+                
+                // Create filesystem root if it doesn't exist
+                std::filesystem::create_directories(fileSystemRoot_);
+                
+                // Convert dialOS path to full filesystem path
+                std::string fullPath = fileSystemRoot_ + filepath;
+                
+                // Create parent directories if they don't exist
+                std::filesystem::path filePath(fullPath);
+                if (filePath.has_parent_path()) {
+                    std::filesystem::create_directories(filePath.parent_path());
+                }
+                
+                // Open output file for binary write
+                std::ofstream outFile(fullPath, std::ios::binary);
+                if (!outFile.is_open()) {
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to open output file: " + fullPath);
+                }
+                
+                // Read and write data in chunks
+                DWORD dwSize = 0;
+                DWORD dwDownloaded = 0;
+                size_t totalBytes = 0;
+                
+                do {
+                    // Check for available data
+                    if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
+                        outFile.close();
+                        WinHttpCloseHandle(hRequest);
+                        WinHttpCloseHandle(hConnect);
+                        WinHttpCloseHandle(hSession);
+                        throw std::runtime_error("Error in WinHttpQueryDataAvailable");
+                    }
+                    
+                    if (dwSize == 0) break;
+                    
+                    // Allocate buffer for this chunk
+                    std::vector<char> buffer(dwSize);
+                    
+                    // Read the data
+                    if (!WinHttpReadData(hRequest, buffer.data(), dwSize, &dwDownloaded)) {
+                        outFile.close();
+                        WinHttpCloseHandle(hRequest);
+                        WinHttpCloseHandle(hConnect);
+                        WinHttpCloseHandle(hSession);
+                        throw std::runtime_error("Error in WinHttpReadData");
+                    }
+                    
+                    // Write to file
+                    outFile.write(buffer.data(), dwDownloaded);
+                    totalBytes += dwDownloaded;
+                    
+                } while (dwSize > 0);
+                
+                outFile.close();
+                
+                // Clean up
+                WinHttpCloseHandle(hRequest);
+                WinHttpCloseHandle(hConnect);
+                WinHttpCloseHandle(hSession);
+                
+                console_log("HTTP download completed: " + std::to_string(totalBytes) + " bytes written to " + fullPath);
+                return "{\"status\":\"success\",\"bytes\":" + std::to_string(totalBytes) + ",\"filepath\":\"" + filepath + "\"}";
+                
+            } catch (const std::exception& e) {
+                console_error("HTTP download error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+            #else
+            return "{\"status\":\"error\",\"message\":\"HTTP download not supported on this platform\"}";
+            #endif
+        }
+
+        // ===== App Management Operations =====
+        // Cross-platform implementation designed for both SDL and ESP32
+        
+        std::string SDLPlatform::app_install(const std::string& dsbFilePath, const std::string& appId) {
+            try {
+                // Validate DSB file exists and is readable
+                std::string fullPath = fileSystemRoot_ + "/" + dsbFilePath;
+                std::ifstream file(fullPath, std::ios::binary);
+                if (!file.is_open()) {
+                    return "{\"status\":\"error\",\"message\":\"DSB file not found: " + dsbFilePath + "\"}";
+                }
+                
+                // Check if it's a valid DSB file by trying to load metadata
+                file.seekg(0, std::ios::end);
+                size_t fileSize = file.tellg();
+                file.seekg(0, std::ios::beg);
+                
+                if (fileSize < 16) { // Minimum DSB header size
+                    return "{\"status\":\"error\",\"message\":\"Invalid DSB file: too small\"}";
+                }
+                
+                // Create apps directory if it doesn't exist
+                std::string appsDir = fileSystemRoot_ + "/apps";
+                std::string installedDir = appsDir + "/installed";
+                
+                #ifdef _WIN32
+                CreateDirectoryA(appsDir.c_str(), NULL);
+                CreateDirectoryA(installedDir.c_str(), NULL);
+                #else
+                mkdir(appsDir.c_str(), 0755);
+                mkdir(installedDir.c_str(), 0755);
+                #endif
+                
+                // Copy DSB file to installed directory
+                std::string targetPath = installedDir + "/" + appId + ".dsb";
+                std::ofstream target(targetPath, std::ios::binary);
+                if (!target.is_open()) {
+                    return "{\"status\":\"error\",\"message\":\"Failed to create app file\"}";
+                }
+                
+                target << file.rdbuf();
+                file.close();
+                target.close();
+                
+                // Update registry (simple JSON file)
+                std::string registryPath = appsDir + "/registry.json";
+                std::string registryContent = "[]"; // Default empty array
+                
+                // Try to read existing registry
+                std::ifstream registryFile(registryPath);
+                if (registryFile.is_open()) {
+                    std::string line;
+                    registryContent = "";
+                    while (std::getline(registryFile, line)) {
+                        registryContent += line + "\n";
+                    }
+                    registryFile.close();
+                    
+                    // Remove trailing newline and whitespace
+                    registryContent.erase(registryContent.find_last_not_of(" \t\n\r") + 1);
+                }
+                
+                // Simple JSON manipulation (add new app entry)
+                // For ESP32 compatibility, we avoid complex JSON libraries
+                if (registryContent == "[]" || registryContent.empty()) {
+                    registryContent = "[{\"id\":\"" + appId + "\",\"file\":\"" + appId + ".dsb\",\"installed\":\"" + std::to_string(system_getTime()) + "\"}]";
+                } else {
+                    // Remove closing bracket and add new entry
+                    size_t closeBracket = registryContent.find_last_of(']');
+                    if (closeBracket != std::string::npos) {
+                        std::string newEntry = ",{\"id\":\"" + appId + "\",\"file\":\"" + appId + ".dsb\",\"installed\":\"" + std::to_string(system_getTime()) + "\"}]";
+                        registryContent = registryContent.substr(0, closeBracket) + newEntry;
+                    }
+                }
+                
+                // Write updated registry
+                std::ofstream registryOut(registryPath);
+                if (registryOut.is_open()) {
+                    registryOut << registryContent;
+                    registryOut.close();
+                }
+                
+                console_log("App installed: " + appId + " from " + dsbFilePath);
+                return "{\"status\":\"success\",\"appId\":\"" + appId + "\",\"file\":\"" + appId + ".dsb\"}";
+                
+            } catch (const std::exception& e) {
+                console_error("App install error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+        }
+        
+        std::string SDLPlatform::app_uninstall(const std::string& appId) {
+            try {
+                std::string appsDir = fileSystemRoot_ + "/apps";
+                std::string installedDir = appsDir + "/installed";
+                std::string appFilePath = installedDir + "/" + appId + ".dsb";
+                
+                // Check if app exists
+                if (!file_exists(appFilePath)) {
+                    return "{\"status\":\"error\",\"message\":\"App not found: " + appId + "\"}";
+                }
+                
+                // Delete app file
+                #ifdef _WIN32
+                if (!DeleteFileA(appFilePath.c_str())) {
+                    return "{\"status\":\"error\",\"message\":\"Failed to delete app file\"}";
+                }
+                #else
+                if (remove(appFilePath.c_str()) != 0) {
+                    return "{\"status\":\"error\",\"message\":\"Failed to delete app file\"}";
+                }
+                #endif
+                
+                // Update registry (remove app entry)
+                std::string registryPath = appsDir + "/registry.json";
+                std::ifstream registryFile(registryPath);
+                if (registryFile.is_open()) {
+                    std::string registryContent;
+                    std::string line;
+                    while (std::getline(registryFile, line)) {
+                        registryContent += line + "\n";
+                    }
+                    registryFile.close();
+                    
+                    // Simple removal: find and remove the app entry
+                    // This is a simplified implementation for cross-platform compatibility
+                    std::string searchPattern = "\"id\":\"" + appId + "\"";
+                    size_t pos = registryContent.find(searchPattern);
+                    if (pos != std::string::npos) {
+                        // Find the start and end of this JSON object
+                        size_t objStart = registryContent.rfind('{', pos);
+                        size_t objEnd = registryContent.find('}', pos);
+                        if (objStart != std::string::npos && objEnd != std::string::npos) {
+                            // Remove the object and any trailing comma
+                            std::string before = registryContent.substr(0, objStart);
+                            std::string after = registryContent.substr(objEnd + 1);
+                            
+                            // Clean up commas
+                            if (!before.empty() && before.back() == ',') {
+                                before.pop_back();
+                            } else if (!after.empty() && after.front() == ',') {
+                                after = after.substr(1);
+                            }
+                            
+                            registryContent = before + after;
+                        }
+                    }
+                    
+                    // Write updated registry
+                    std::ofstream registryOut(registryPath);
+                    if (registryOut.is_open()) {
+                        registryOut << registryContent;
+                        registryOut.close();
+                    }
+                }
+                
+                console_log("App uninstalled: " + appId);
+                return "{\"status\":\"success\",\"appId\":\"" + appId + "\"}";
+                
+            } catch (const std::exception& e) {
+                console_error("App uninstall error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+        }
+        
+        std::string SDLPlatform::app_list() {
+            try {
+                std::string appsDir = fileSystemRoot_ + "/apps";
+                std::string registryPath = appsDir + "/registry.json";
+                
+                std::ifstream registryFile(registryPath);
+                if (!registryFile.is_open()) {
+                    return "[]"; // Empty list if no registry exists
+                }
+                
+                std::string registryContent;
+                std::string line;
+                while (std::getline(registryFile, line)) {
+                    registryContent += line + "\n";
+                }
+                registryFile.close();
+                
+                // Remove trailing whitespace
+                registryContent.erase(registryContent.find_last_not_of(" \t\n\r") + 1);
+                
+                return registryContent.empty() ? "[]" : registryContent;
+                
+            } catch (const std::exception& e) {
+                console_error("App list error: " + std::string(e.what()));
+                return "[]";
+            }
+        }
+        
+        std::string SDLPlatform::app_getMetadata(const std::string& dsbFilePath) {
+            try {
+                std::string fullPath = fileSystemRoot_ + "/" + dsbFilePath;
+                std::ifstream file(fullPath, std::ios::binary);
+                if (!file.is_open()) {
+                    return "{\"status\":\"error\",\"message\":\"DSB file not found\"}";
+                }
+                
+                // Read file into memory
+                file.seekg(0, std::ios::end);
+                size_t fileSize = file.tellg();
+                file.seekg(0, std::ios::beg);
+                
+                std::vector<uint8_t> data(fileSize);
+                file.read(reinterpret_cast<char*>(data.data()), fileSize);
+                file.close();
+                
+                // Try to deserialize and extract metadata
+                try {
+                    compiler::BytecodeModule module = compiler::BytecodeModule::deserialize(data);
+                    
+                    std::string metadata = "{\"status\":\"success\",";
+                    metadata += "\"appName\":\"" + module.metadata.appName + "\",";
+                    metadata += "\"appVersion\":\"" + module.metadata.appVersion + "\",";
+                    metadata += "\"author\":\"" + module.metadata.author + "\",";
+                    metadata += "\"heapSize\":" + std::to_string(module.metadata.heapSize) + ",";
+                    metadata += "\"version\":" + std::to_string(module.metadata.version) + ",";
+                    metadata += "\"codeSize\":" + std::to_string(module.code.size()) + ",";
+                    metadata += "\"constants\":" + std::to_string(module.constants.size()) + ",";
+                    metadata += "\"functions\":" + std::to_string(module.functions.size()) + "}";
+                    
+                    return metadata;
+                    
+                } catch (const std::exception& e) {
+                    return "{\"status\":\"error\",\"message\":\"Invalid DSB file: " + std::string(e.what()) + "\"}";
+                }
+                
+            } catch (const std::exception& e) {
+                console_error("App metadata error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+        }
+        
+        std::string SDLPlatform::app_launch(const std::string& appId) {
+            try {
+                std::string appsDir = fileSystemRoot_ + "/apps";
+                std::string installedDir = appsDir + "/installed";
+                std::string appFilePath = installedDir + "/" + appId + ".dsb";
+                
+                // Check if app exists
+                if (!file_exists(appFilePath)) {
+                    return "{\"status\":\"error\",\"message\":\"App not found: " + appId + "\"}";
+                }
+                
+                console_log("App launch requested: " + appId + " at " + appFilePath);
+                
+                // For now, just return success - actual VM restart would be handled by the dialOS kernel
+                // In a real implementation, this would:
+                // 1. Save current VM state
+                // 2. Load new DSB file
+                // 3. Initialize new VM with the app
+                return "{\"status\":\"success\",\"appId\":\"" + appId + "\",\"message\":\"Launch requested - VM restart required\"}";
+                
+            } catch (const std::exception& e) {
+                console_error("App launch error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+        }
+        
+        std::string SDLPlatform::app_validate(const std::string& dsbFilePath) {
+            try {
+                std::string fullPath = fileSystemRoot_ + "/" + dsbFilePath;
+                std::ifstream file(fullPath, std::ios::binary);
+                if (!file.is_open()) {
+                    return "{\"status\":\"error\",\"message\":\"DSB file not found\"}";
+                }
+                
+                // Read file into memory
+                file.seekg(0, std::ios::end);
+                size_t fileSize = file.tellg();
+                file.seekg(0, std::ios::beg);
+                
+                if (fileSize < 16) {
+                    return "{\"status\":\"error\",\"message\":\"File too small to be valid DSB\"}";
+                }
+                
+                std::vector<uint8_t> data(fileSize);
+                file.read(reinterpret_cast<char*>(data.data()), fileSize);
+                file.close();
+                
+                // Try to deserialize to validate structure
+                try {
+                    compiler::BytecodeModule module = compiler::BytecodeModule::deserialize(data);
+                    
+                    // Basic validation checks
+                    if (module.metadata.appName.empty()) {
+                        return "{\"status\":\"error\",\"message\":\"Missing app name in metadata\"}";
+                    }
+                    
+                    if (module.code.empty()) {
+                        return "{\"status\":\"error\",\"message\":\"No bytecode found in DSB file\"}";
+                    }
+                    
+                    return "{\"status\":\"success\",\"message\":\"DSB file is valid\",\"size\":" + std::to_string(fileSize) + "}";
+                    
+                } catch (const std::exception& e) {
+                    return "{\"status\":\"error\",\"message\":\"DSB validation failed: " + std::string(e.what()) + "\"}";
+                }
+                
+            } catch (const std::exception& e) {
+                console_error("App validation error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
         }
 
     } // namespace vm

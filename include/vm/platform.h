@@ -156,6 +156,14 @@ namespace dialos
             IPC_SEND = 0x1300,
             IPC_BROADCAST = 0x1301,
 
+            // App Management namespace (0x14xx) - Cross-platform app store APIs
+            APP_INSTALL = 0x1400,           // Install DSB file to app registry
+            APP_UNINSTALL = 0x1401,         // Remove app from registry
+            APP_LIST = 0x1402,              // List installed apps
+            APP_GET_METADATA = 0x1403,      // Get app metadata from DSB file
+            APP_LAUNCH = 0x1404,            // Launch installed app (replace current)
+            APP_VALIDATE = 0x1405,          // Validate DSB file integrity
+
             UNKNOWN = 0xFFFF
         };
 
@@ -380,12 +388,28 @@ namespace dialos
                 return NativeFunctionID::HTTP_GET;
             if (name == "http.post")
                 return NativeFunctionID::HTTP_POST;
+            if (name == "http.download")
+                return NativeFunctionID::HTTP_DOWNLOAD;
 
             // IPC functions (full namespace paths)
             if (name == "ipc.send")
                 return NativeFunctionID::IPC_SEND;
             if (name == "ipc.broadcast")
                 return NativeFunctionID::IPC_BROADCAST;
+
+            // App Management functions (full namespace paths)
+            if (name == "app.install")
+                return NativeFunctionID::APP_INSTALL;
+            if (name == "app.uninstall")
+                return NativeFunctionID::APP_UNINSTALL;
+            if (name == "app.list")
+                return NativeFunctionID::APP_LIST;
+            if (name == "app.getMetadata")
+                return NativeFunctionID::APP_GET_METADATA;
+            if (name == "app.launch")
+                return NativeFunctionID::APP_LAUNCH;
+            if (name == "app.validate")
+                return NativeFunctionID::APP_VALIDATE;
 
             return NativeFunctionID::UNKNOWN;
         }
@@ -592,12 +616,28 @@ namespace dialos
                 return "get";
             case NativeFunctionID::HTTP_POST:
                 return "post";
+            case NativeFunctionID::HTTP_DOWNLOAD:
+                return "download";
 
             // IPC
             case NativeFunctionID::IPC_SEND:
                 return "send";
             case NativeFunctionID::IPC_BROADCAST:
                 return "broadcast";
+
+            // App Management
+            case NativeFunctionID::APP_INSTALL:
+                return "install";
+            case NativeFunctionID::APP_UNINSTALL:
+                return "uninstall";
+            case NativeFunctionID::APP_LIST:
+                return "list";
+            case NativeFunctionID::APP_GET_METADATA:
+                return "getMetadata";
+            case NativeFunctionID::APP_LAUNCH:
+                return "launch";
+            case NativeFunctionID::APP_VALIDATE:
+                return "validate";
 
             default:
                 return "unknown";
@@ -745,10 +785,20 @@ namespace dialos
             // ===== HTTP Operations =====
             virtual std::string http_get(const std::string & /*url*/) { return "{}"; }
             virtual std::string http_post(const std::string & /*url*/, const std::string & /*data*/) { return "{}"; }
+            virtual std::string http_download(const std::string & /*url*/, const std::string & /*filepath*/) { return "{}"; }
 
             // ===== IPC Operations =====
             virtual bool ipc_send(const std::string & /*appId*/, const std::string & /*message*/) { return false; }
             virtual void ipc_broadcast(const std::string & /*message*/) {}
+
+            // ===== App Management Operations =====
+            // Cross-platform app store APIs - designed for both SDL and ESP32
+            virtual std::string app_install(const std::string & /*dsbFilePath*/, const std::string & /*appId*/) { return "{\"status\":\"error\",\"message\":\"Not supported\"}"; }
+            virtual std::string app_uninstall(const std::string & /*appId*/) { return "{\"status\":\"error\",\"message\":\"Not supported\"}"; }
+            virtual std::string app_list() { return "[]"; }
+            virtual std::string app_getMetadata(const std::string & /*dsbFilePath*/) { return "{}"; }
+            virtual std::string app_launch(const std::string & /*appId*/) { return "{\"status\":\"error\",\"message\":\"Not supported\"}"; }
+            virtual std::string app_validate(const std::string & /*dsbFilePath*/) { return "{\"status\":\"error\",\"message\":\"Not supported\"}"; }
 
             // ===== Callback System =====
             /**

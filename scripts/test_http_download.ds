@@ -1,0 +1,73 @@
+
+// Connect to WiFi (simulated)
+var connected: os.wifi.connect("TestNetwork", "password123");
+if (connected) {
+    os.console.println("✓ WiFi connected");
+    
+    // Test 1: Download text file from localhost
+    os.console.println("\nTest 1: Download text file from localhost...");
+    try {
+        var result1: os.http.download("http://localhost:8080/test.txt", "test.txt");
+        os.console.println(`Download status: ${result1.status}`);
+        
+        if (result1.status = "success") {
+            os.console.println(`Downloaded ${result1.bytes} bytes to ${result1.filepath}`);
+            
+            // Check if file exists
+            if (os.file.exists("test.txt")) {
+                var content: os.file.read(os.file.open("test.txt", "r"), 100);
+                os.console.println(`Downloaded content: "${content}"`);
+                os.console.println("✓ Text file download successful");
+            } else {
+                os.console.println("✗ Downloaded file not found");
+            }
+        } else {
+            os.console.println(`✗ Download failed: ${result1.message}`);
+        }
+    } catch (error) {
+        os.console.println(`✗ Text download failed: ${error}`);
+    }
+    
+    // Test 2: Download from external URL (httpbin for JSON)
+    os.console.println("\nTest 2: Download JSON from httpbin.org...");
+    try {
+        var result2: os.http.download("http://httpbin.org/json", "downloaded_json.json");
+        os.console.println(`Download status: ${result2.status}`);
+        
+        if (result2.status = "success") {
+            os.console.println(`Downloaded ${result2.bytes} bytes to ${result2.filepath}`);
+            
+            if (os.file.exists("downloaded_json.json")) {
+                var jsonSize: os.file.size("downloaded_json.json");
+                os.console.println(`Downloaded JSON file size: ${jsonSize} bytes`);
+                os.console.println("✓ JSON file download successful");
+            } else {
+                os.console.println("✗ Downloaded JSON file not found");
+            }
+        } else {
+            os.console.println(`✗ Download failed: ${result2.message}`);
+        }
+    } catch (error) {
+        os.console.println(`✗ JSON download failed: ${error}`);
+    }
+    
+    // Test 3: Test with invalid URL
+    os.console.println("\nTest 3: Download from invalid URL...");
+    try {
+        var result3: os.http.download("http://nonexistent.example.com/file.txt", "invalid_download.txt");
+        os.console.println(`Download status: ${result3.status}`);
+        
+        if (result3.status = "success") {
+            os.console.println(`Unexpected success: ${result3.bytes} bytes to ${result3.filepath}`);
+        } else {
+            os.console.println(`✓ Invalid URL correctly failed: ${result3.message}`);
+        }
+    } catch (error) {
+        os.console.println(`✓ Invalid URL correctly failed: ${error}`);
+    }
+    
+} else {
+    os.console.println("✗ WiFi connection failed");
+}
+
+os.console.println("\n=== HTTP Download Test Complete ===");
