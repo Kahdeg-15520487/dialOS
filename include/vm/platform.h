@@ -145,10 +145,16 @@ namespace dialos
             WIFI_DISCONNECT = 0x1101,
             WIFI_GET_STATUS = 0x1102,
             WIFI_GET_IP = 0x1103,
+            WIFI_SCAN = 0x1104,
 
-            // IPC namespace (0x12xx)
-            IPC_SEND = 0x1200,
-            IPC_BROADCAST = 0x1201,
+            // HTTP namespace (0x12xx)
+            HTTP_GET = 0x1200,
+            HTTP_POST = 0x1201,
+            HTTP_DOWNLOAD = 0x1202,
+
+            // IPC namespace (0x13xx)
+            IPC_SEND = 0x1300,
+            IPC_BROADCAST = 0x1301,
 
             UNKNOWN = 0xFFFF
         };
@@ -366,6 +372,14 @@ namespace dialos
                 return NativeFunctionID::WIFI_GET_STATUS;
             if (name == "wifi.getIP")
                 return NativeFunctionID::WIFI_GET_IP;
+            if (name == "wifi.scan")
+                return NativeFunctionID::WIFI_SCAN;
+
+            // HTTP functions (full namespace paths)
+            if (name == "http.get")
+                return NativeFunctionID::HTTP_GET;
+            if (name == "http.post")
+                return NativeFunctionID::HTTP_POST;
 
             // IPC functions (full namespace paths)
             if (name == "ipc.send")
@@ -570,6 +584,14 @@ namespace dialos
                 return "getStatus";
             case NativeFunctionID::WIFI_GET_IP:
                 return "getIP";
+            case NativeFunctionID::WIFI_SCAN:
+                return "scan";
+
+            // HTTP
+            case NativeFunctionID::HTTP_GET:
+                return "get";
+            case NativeFunctionID::HTTP_POST:
+                return "post";
 
             // IPC
             case NativeFunctionID::IPC_SEND:
@@ -718,6 +740,11 @@ namespace dialos
             virtual void wifi_disconnect() {}
             virtual std::string wifi_getStatus() { return "{}"; }
             virtual std::string wifi_getIP() { return ""; }
+            virtual std::string wifi_scan() { return "[]"; }
+
+            // ===== HTTP Operations =====
+            virtual std::string http_get(const std::string & /*url*/) { return "{}"; }
+            virtual std::string http_post(const std::string & /*url*/, const std::string & /*data*/) { return "{}"; }
 
             // ===== IPC Operations =====
             virtual bool ipc_send(const std::string & /*appId*/, const std::string & /*message*/) { return false; }

@@ -1955,14 +1955,79 @@ VMResult VMState::executeInstruction() {
                 case NativeFunctionID::WIFI_GET_STATUS: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
-                    push(Value::String(platform_.wifi_getStatus()));
+                    std::string status = platform_.wifi_getStatus();
+                    std::string* pooledStr = pool_.allocateString(status);
+                    if (pooledStr) {
+                        push(Value::StringFromPool(pooledStr));
+                    } else {
+                        push(Value::Null());
+                    }
                     break;
                 }
                 
                 case NativeFunctionID::WIFI_GET_IP: {
                     for (uint8_t i = 0; i < argCount; i++) pop();
                     
-                    push(Value::String(platform_.wifi_getIP()));
+                    std::string ip = platform_.wifi_getIP();
+                    std::string* pooledStr = pool_.allocateString(ip);
+                    if (pooledStr) {
+                        push(Value::StringFromPool(pooledStr));
+                    } else {
+                        push(Value::Null());
+                    }
+                    break;
+                }
+                
+                case NativeFunctionID::WIFI_SCAN: {
+                    for (uint8_t i = 0; i < argCount; i++) pop();
+                    
+                    std::string scanResults = platform_.wifi_scan();
+                    std::string* pooledStr = pool_.allocateString(scanResults);
+                    if (pooledStr) {
+                        push(Value::StringFromPool(pooledStr));
+                    } else {
+                        push(Value::Null());
+                    }
+                    break;
+                }
+                
+                // ===== HTTP Functions =====
+                case NativeFunctionID::HTTP_GET: {
+                    if (argCount < 1) {
+                        setError("get() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value urlVal = pop();
+                    
+                    std::string response = platform_.http_get(urlVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    std::string* pooledStr = pool_.allocateString(response);
+                    if (pooledStr) {
+                        push(Value::StringFromPool(pooledStr));
+                    } else {
+                        push(Value::Null());
+                    }
+                    break;
+                }
+                
+                case NativeFunctionID::HTTP_POST: {
+                    if (argCount < 2) {
+                        setError("post() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value dataVal = pop();
+                    Value urlVal = pop();
+                    
+                    std::string response = platform_.http_post(urlVal.toString(), dataVal.toString());
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    std::string* pooledStr = pool_.allocateString(response);
+                    if (pooledStr) {
+                        push(Value::StringFromPool(pooledStr));
+                    } else {
+                        push(Value::Null());
+                    }
                     break;
                 }
                 
@@ -2308,6 +2373,13 @@ VMResult VMState::executeInstruction() {
                 // Handle array properties
                 if (fieldName == "length") {
                     push(Value::Int32(static_cast<int32_t>(obj.arrayVal->elements.size())));
+                } else {
+                    push(Value::Null());
+                }
+            } else if (obj.isString() && obj.stringVal) {
+                // Handle string properties
+                if (fieldName == "length") {
+                    push(Value::Int32(static_cast<int32_t>(obj.stringVal->length())));
                 } else {
                     push(Value::Null());
                 }

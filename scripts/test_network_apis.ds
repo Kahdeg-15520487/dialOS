@@ -1,0 +1,72 @@
+/*
+ * Network API Test Script
+ * Tests WiFi and HTTP functionality in dialOS
+ */
+
+function main(): void {
+    os.console.println("=== Network API Test ===");
+    
+    // Test 1: WiFi Scan
+    os.console.println("Test 1: WiFi AP scan...");
+    var scanResults: os.wifi.scan();
+    os.console.println(`Scan results: ${scanResults}`);
+    os.console.println("✓ WiFi scan completed");
+    
+    // Test 2: WiFi Connection
+    os.console.println("\nTest 2: WiFi operations...");
+    
+    // Check initial WiFi status
+    var status: os.wifi.getStatus();
+    os.console.println(`Initial WiFi status: ${status}`);
+    
+    // Attempt to connect to WiFi
+    var connected: os.wifi.connect("TestNetwork", "password123");
+    if (connected) {
+        os.console.println("✓ WiFi connection successful");
+        
+        // Get IP address
+        var ip: os.wifi.getIP();
+        os.console.println(`IP Address: ${ip}`);
+        
+        // Get updated status
+        var newStatus: os.wifi.getStatus();
+        os.console.println(`Connected status: ${newStatus}`);
+    } else {
+        os.console.println("✗ WiFi connection failed (expected in simulator)");
+    }
+    
+    // Test 3: HTTP GET Request
+    os.console.println("\nTest 3: HTTP GET request...");
+    try {
+        var getResponse: os.http.get("https://api.github.com/users/octocat");
+        os.console.println(`GET Response: ${getResponse}`);
+        os.console.println("✓ HTTP GET completed");
+    } catch (error) {
+        os.console.println(`✗ HTTP GET failed: ${error}`);
+    }
+    
+    // Test 4: HTTP POST Request
+    os.console.println("\nTest 4: HTTP POST request...");
+    try {
+        var postData: "{\"message\":\"Hello from dialOS!\"}";
+        var postResponse: os.http.post("https://httpbin.org/post", postData);
+        os.console.println(`POST Response: ${postResponse}`);
+        os.console.println("✓ HTTP POST completed");
+    } catch (error) {
+        os.console.println(`✗ HTTP POST failed: ${error}`);
+    }
+    
+    // Test 5: WiFi Disconnection
+    os.console.println("\nTest 5: WiFi disconnection...");
+    os.wifi.disconnect();
+    
+    var finalStatus: os.wifi.getStatus();
+    os.console.println(`Final WiFi status: ${finalStatus}`);
+    os.console.println("✓ WiFi disconnection completed");
+    
+    os.console.println("\n=== Network API Tests Completed ===");
+    os.console.println("Note: Actual network functionality requires real hardware platform");
+}
+
+// Start the test
+main();

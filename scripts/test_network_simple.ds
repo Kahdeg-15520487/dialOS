@@ -1,0 +1,51 @@
+var status: os.wifi.getStatus();
+os.console.println(`Initial WiFi status: ${status}`);
+
+// Attempt to connect to WiFi
+var connected: os.wifi.connect("TestNetwork", "password123");
+if (connected) {
+    os.console.println("✓ WiFi connection successful");
+    
+    // Get IP address
+    var ip: os.wifi.getIP();
+    os.console.println(`IP Address: ${ip}`);
+    
+    // Get updated status
+    var newStatus: os.wifi.getStatus();
+    os.console.println(`Connected status: ${newStatus}`);
+} else {
+    os.console.println("✗ WiFi connection failed (expected in simulator)");
+}
+
+// Test 3: HTTP GET Request - Multiple attempts
+os.console.println("\nTest 3: HTTP GET request...");
+
+// Try localhost first
+os.console.println("Trying localhost:8080...");
+try {
+    var getResponse1: os.http.get("http://localhost:8080/test.txt");
+    os.console.println(`Localhost Response: ${getResponse1}`);
+    os.console.println("✓ Localhost HTTP GET completed");
+} catch (error) {
+    os.console.println(`✗ Localhost HTTP GET failed: ${error}`);
+}
+
+// Try 127.0.0.1 instead
+os.console.println("\nTrying 127.0.0.1:8080...");
+try {
+    var getResponse2: os.http.get("http://127.0.0.1:8080/test.txt");
+    os.console.println(`127.0.0.1 Response: ${getResponse2}`);
+    os.console.println("✓ 127.0.0.1 HTTP GET completed");
+} catch (error) {
+    os.console.println(`✗ 127.0.0.1 HTTP GET failed: ${error}`);
+}
+
+// Try a known working endpoint
+os.console.println("\nTrying external endpoint (httpbin.org)...");
+try {
+    var getResponse3: os.http.get("http://httpbin.org/get");
+    os.console.println(`External Response length: ${getResponse3.length} chars`);
+    os.console.println("✓ External HTTP GET completed");
+} catch (error) {
+    os.console.println(`✗ External HTTP GET failed: ${error}`);
+}

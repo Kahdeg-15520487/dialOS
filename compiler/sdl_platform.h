@@ -207,6 +207,11 @@ public:
     void wifi_disconnect() override;
     std::string wifi_getStatus() override;
     std::string wifi_getIP() override;
+    std::string wifi_scan() override;
+    
+    // === HTTP Operations ===
+    std::string http_get(const std::string& url) override;
+    std::string http_post(const std::string& url, const std::string& data) override;
     
     // === IPC Operations ===
     bool ipc_send(const std::string& appId, const std::string& message) override;
@@ -298,6 +303,16 @@ private:
         bool charging;
         std::chrono::steady_clock::time_point lastUpdate;
     } power_;
+    
+    // WiFi simulation state
+    bool wifiConnected_ = false;
+    std::string wifiSSID_;
+    std::string wifiIP_;
+    
+    // HTTP helper functions
+    bool parseURL(const std::string& url, std::string& host, std::string& path);
+    std::string executeHTTPRequest(const std::string& method, const std::string& host, 
+                                   const std::string& path, const std::string& data);
     
     // File system simulation
     struct FileHandle {

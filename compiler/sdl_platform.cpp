@@ -13,6 +13,17 @@
 #include <fstream>
 #include <filesystem>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winhttp.h>
+#pragma comment(lib, "winhttp.lib")
+#include <codecvt>
+#include <locale>
+#undef min
+#undef max
+#endif
+
 namespace dialos
 {
     namespace vm
@@ -1496,22 +1507,151 @@ namespace dialos
         // === WiFi Operations ===
 
         bool SDLPlatform::wifi_connect(const std::string &ssid,
-                                       const std::string & /*password*/)
+                                       const std::string &password)
         {
-            // TODO: Implement WiFi simulation
             console_log("wifi_connect: ssid=" + ssid);
-            console_warn("NOT IMPLEMENTED: os.wifi.connect - WiFi simulation missing");
-            return false; // Not implemented
+            
+            // Fake WiFi connection - always succeeds in simulator
+            wifiConnected_ = true;
+            wifiSSID_ = ssid;
+            wifiIP_ = "192.168.1.42";  // Fake IP address
+            
+            console_log("WiFi connected to '" + ssid + "' (simulated)");
+            return true;
         }
 
-        void SDLPlatform::wifi_disconnect() { console_log("wifi_disconnect"); }
+        void SDLPlatform::wifi_disconnect() { 
+            console_log("wifi_disconnect");
+            wifiConnected_ = false;
+            wifiSSID_ = "";
+            wifiIP_ = "";
+            console_log("WiFi disconnected (simulated)");
+        }
 
         std::string SDLPlatform::wifi_getStatus()
         {
-            return "{\"status\":\"disconnected\"}";
+            if (wifiConnected_) {
+                return "{\"status\":\"connected\",\"ssid\":\"" + wifiSSID_ + "\",\"signal\":-45,\"quality\":85}";
+            } else {
+                return "{\"status\":\"disconnected\"}";
+            }
         }
 
-        std::string SDLPlatform::wifi_getIP() { return ""; }
+        std::string SDLPlatform::wifi_getIP() { 
+            return wifiConnected_ ? wifiIP_ : ""; 
+        }
+
+        std::string SDLPlatform::wifi_scan()
+        {
+            console_log("wifi_scan: scanning for access points");
+            
+            // Simulate WiFi AP scan with fake access points
+            std::string scanResults = R"([
+                {
+                    "ssid": "HomeNetwork",
+                    "bssid": "aa:bb:cc:dd:ee:ff",
+                    "signal": -42,
+                    "channel": 6,
+                    "security": "WPA2",
+                    "quality": 85
+                },
+                {
+                    "ssid": "OfficeWiFi",
+                    "bssid": "11:22:33:44:55:66",
+                    "signal": -55,
+                    "channel": 11,
+                    "security": "WPA3",
+                    "quality": 72
+                },
+                {
+                    "ssid": "CafeGuest",
+                    "bssid": "77:88:99:aa:bb:cc",
+                    "signal": -68,
+                    "channel": 1,
+                    "security": "Open",
+                    "quality": 45
+                },
+                {
+                    "ssid": "AndroidAP",
+                    "bssid": "dd:ee:ff:00:11:22",
+                    "signal": -72,
+                    "channel": 3,
+                    "security": "WPA2",
+                    "quality": 38
+                }
+            ])";
+            
+            console_log("WiFi scan completed: found 4 access points (simulated)");
+            return scanResults;
+        }
+
+        // === HTTP Operations ===
+
+        std::string SDLPlatform::http_get(const std::string &url)
+        {
+            console_log("http_get: url=" + url);
+            
+            if (!wifiConnected_) {
+                console_warn("HTTP GET failed: WiFi not connected");
+                return "{\"status\":\"error\",\"message\":\"WiFi not connected\"}";
+            }
+            
+            // Use Windows HTTP API for real HTTP requests
+            #ifdef _WIN32
+            try {
+                // Parse URL to extract host and path
+                std::string host, path;
+                if (!parseURL(url, host, path)) {
+                    return "{\"status\":\"error\",\"message\":\"Invalid URL format\"}";
+                }
+                
+                // Execute HTTP GET request
+                std::string response = executeHTTPRequest("GET", host, path, "");
+                console_log("HTTP GET completed: " + std::to_string(response.length()) + " bytes received");
+                return response;
+                
+            } catch (const std::exception& e) {
+                console_error("HTTP GET error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+            #else
+            console_warn("HTTP GET not supported on this platform");
+            return "{\"status\":\"error\",\"message\":\"HTTP not supported on this platform\"}";
+            #endif
+        }
+
+        std::string SDLPlatform::http_post(const std::string &url, const std::string &data)
+        {
+            console_log("http_post: url=" + url + " data_length=" + std::to_string(data.length()));
+            
+            if (!wifiConnected_) {
+                console_warn("HTTP POST failed: WiFi not connected");
+                return "{\"status\":\"error\",\"message\":\"WiFi not connected\"}";
+            }
+            
+            // Use Windows HTTP API for real HTTP requests
+            #ifdef _WIN32
+            try {
+                // Parse URL to extract host and path
+                std::string host, path;
+                if (!parseURL(url, host, path)) {
+                    return "{\"status\":\"error\",\"message\":\"Invalid URL format\"}";
+                }
+                
+                // Execute HTTP POST request
+                std::string response = executeHTTPRequest("POST", host, path, data);
+                console_log("HTTP POST completed: " + std::to_string(response.length()) + " bytes received");
+                return response;
+                
+            } catch (const std::exception& e) {
+                console_error("HTTP POST error: " + std::string(e.what()));
+                return "{\"status\":\"error\",\"message\":\"" + std::string(e.what()) + "\"}";
+            }
+            #else
+            console_warn("HTTP POST not supported on this platform");
+            return "{\"status\":\"error\",\"message\":\"HTTP not supported on this platform\"}";
+            #endif
+        }
 
         // === IPC Operations ===
 
@@ -1929,6 +2069,162 @@ namespace dialos
                 Color scrollColor(150, 150, 150);
                 renderText(x + width - 20, y, "^", scrollColor, 10);
             }
+        }
+
+        // === HTTP Helper Functions ===
+        
+        bool SDLPlatform::parseURL(const std::string& url, std::string& host, std::string& path)
+        {
+            // Simple URL parser for http://host:port/path format
+            const std::string prefix = "http://";
+            const std::string httpsPrefix = "https://";
+            
+            std::string workingUrl = url;
+            
+            // Remove protocol prefix
+            if (workingUrl.find(prefix) == 0) {
+                workingUrl = workingUrl.substr(prefix.length());
+            } else if (workingUrl.find(httpsPrefix) == 0) {
+                workingUrl = workingUrl.substr(httpsPrefix.length());
+            }
+            
+            // Find first slash to separate host from path
+            size_t slashPos = workingUrl.find('/');
+            if (slashPos == std::string::npos) {
+                host = workingUrl;
+                path = "/";
+            } else {
+                host = workingUrl.substr(0, slashPos);
+                path = workingUrl.substr(slashPos);
+            }
+            
+            return !host.empty();
+        }
+        
+        std::string SDLPlatform::executeHTTPRequest(const std::string& method, const std::string& host, 
+                                                    const std::string& path, const std::string& data)
+        {
+            #ifdef _WIN32
+            try {
+                // Parse host and port
+                std::string hostname = host;
+                int port = 80; // default HTTP port
+                
+                size_t colonPos = host.find(':');
+                if (colonPos != std::string::npos) {
+                    hostname = host.substr(0, colonPos);
+                    std::string portStr = host.substr(colonPos + 1);
+                    port = std::stoi(portStr);
+                }
+                
+                console_log("HTTP connecting to host: " + hostname + " port: " + std::to_string(port));
+                
+                // Convert strings to wide strings for Windows API
+                std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+                std::wstring wHost = converter.from_bytes(hostname);
+                std::wstring wPath = converter.from_bytes(path);
+                std::wstring wMethod = converter.from_bytes(method);
+                
+                // Initialize WinHTTP
+                HINTERNET hSession = WinHttpOpen(L"dialOS HTTP Client/1.0",
+                                               WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                               WINHTTP_NO_PROXY_NAME,
+                                               WINHTTP_NO_PROXY_BYPASS, 0);
+                
+                if (!hSession) {
+                    throw std::runtime_error("Failed to initialize WinHTTP session");
+                }
+                
+                // Connect to the server with correct port
+                HINTERNET hConnect = WinHttpConnect(hSession, wHost.c_str(),
+                                                  static_cast<INTERNET_PORT>(port), 0);
+                
+                if (!hConnect) {
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to connect to host: " + host);
+                }
+                
+                // Create HTTP request
+                HINTERNET hRequest = WinHttpOpenRequest(hConnect, wMethod.c_str(),
+                                                      wPath.c_str(), NULL, WINHTTP_NO_REFERER,
+                                                      WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+                
+                if (!hRequest) {
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to create HTTP request");
+                }
+                
+                // Send the request
+                BOOL bResults = FALSE;
+                if (method == "POST" && !data.empty()) {
+                    std::string headers = "Content-Type: application/json\r\n";
+                    std::wstring wHeaders = converter.from_bytes(headers);
+                    
+                    bResults = WinHttpSendRequest(hRequest, wHeaders.c_str(), wHeaders.length(),
+                                                (LPVOID)data.c_str(), data.length(),
+                                                data.length(), 0);
+                } else {
+                    bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                                                WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+                }
+                
+                if (!bResults) {
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to send HTTP request");
+                }
+                
+                // Receive response
+                bResults = WinHttpReceiveResponse(hRequest, NULL);
+                if (!bResults) {
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    throw std::runtime_error("Failed to receive HTTP response");
+                }
+                
+                // Read response data
+                std::string response;
+                DWORD dwSize = 0;
+                DWORD dwDownloaded = 0;
+                
+                do {
+                    // Check for available data
+                    dwSize = 0;
+                    if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) {
+                        throw std::runtime_error("Error in WinHttpQueryDataAvailable");
+                    }
+                    
+                    if (dwSize == 0) break;
+                    
+                    // Allocate space for the buffer
+                    std::vector<char> buffer(dwSize + 1);
+                    
+                    // Read the data
+                    if (!WinHttpReadData(hRequest, buffer.data(), dwSize, &dwDownloaded)) {
+                        throw std::runtime_error("Error in WinHttpReadData");
+                    }
+                    
+                    buffer[dwDownloaded] = '\0';
+                    response.append(buffer.data(), dwDownloaded);
+                    
+                } while (dwSize > 0);
+                
+                // Clean up
+                WinHttpCloseHandle(hRequest);
+                WinHttpCloseHandle(hConnect);
+                WinHttpCloseHandle(hSession);
+                
+                return response;
+                
+            } catch (const std::exception& e) {
+                throw; // Re-throw the exception to be handled by caller
+            }
+            #else
+            throw std::runtime_error("HTTP requests not supported on this platform");
+            #endif
         }
 
     } // namespace vm
