@@ -2,9 +2,12 @@
 #include "Encoder.h"
 #include "kernel/kernel.h"
 #include "kernel/system.h"
+#include "kernel/ramfs.h"
+#include "kernel/task.h"
 #include <Arduino.h>
 #include <M5Dial.h>
 #include <Wire.h>
+#include <vector>
 
 using namespace dialos::vm;
 
@@ -347,31 +350,206 @@ bool ESP32Platform::power_isCharging() {
   return M5Dial.Power.isCharging();
 }
 
-// ===== File Operations (stubs for now) =====
+// ===== File Operations using RAMFS =====
 int ESP32Platform::file_open(const std::string& path, const std::string& mode) {
-  // TODO: Implement using RAMFS or future filesystem
-  return -1;
+  // Convert string mode to RAMFS FileMode
+  dialOS::FileMode fileMode;
+  if (mode == "r" || mode == "read") {
+    fileMode = dialOS::FileMode::READ;
+  } else if (mode == "w" || mode == "write") {
+    fileMode = dialOS::FileMode::WRITE;
+  } else if (mode == "a" || mode == "append") {
+    fileMode = dialOS::FileMode::APPEND;
+  } else {
+    // Invalid mode
+    return -1;
+  }
+  
+  // Get current task ID (using 0 as default for now - could be improved)
+  uint32_t taskId = 0;
+  auto* kernel = &dialOS::Kernel::instance();
+  if (kernel && kernel->getScheduler() && kernel->getScheduler()->getCurrentTask()) {
+    taskId = kernel->getScheduler()->getCurrentTask()->getId();
+  }
+  
+  // Use RAMFS to open the file
+  auto* ramfs = kernel->getRamFS();
+  if (!ramfs) {
+    return -1;
+  }
+  
+  return ramfs->open(path.c_str(), fileMode, taskId);
 }
 
 std::string ESP32Platform::file_read(int handle, int size) {
-  return "";
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (!ramfs) {
+    return "";
+  }
+  
+  // Allocate buffer for reading
+  std::vector<char> buffer(size);
+  size_t bytesRead = ramfs->read(handle, buffer.data(), size);
+  
+  // Convert to string (ensure null termination)
+  return std::string(buffer.data(), bytesRead);
 }
 
 int ESP32Platform::file_write(int handle, const std::string& data) {
-  return -1;
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (!ramfs) {
+    return -1;
+  }
+  
+  size_t bytesWritten = ramfs->write(handle, data.c_str(), data.length());
+  return static_cast<int>(bytesWritten);
 }
 
 void ESP32Platform::file_close(int handle) {
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (ramfs) {
+    ramfs->close(handle);
+  }
 }
 
 bool ESP32Platform::file_exists(const std::string& path) {
-  return false;
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (!ramfs) {
+    return false;
+  }
+  
+  return ramfs->exists(path.c_str());
 }
 
 bool ESP32Platform::file_delete(const std::string& path) {
-  return false;
+  // Get current task ID
+  uint32_t taskId = 0;
+  auto* kernel = &dialOS::Kernel::instance();
+  if (kernel && kernel->getScheduler() && kernel->getScheduler()->getCurrentTask()) {
+    taskId = kernel->getScheduler()->getCurrentTask()->getId();
+  }
+  
+  auto* ramfs = kernel->getRamFS();
+  if (!ramfs) {
+    return false;
+  }
+  
+  return ramfs->remove(path.c_str(), taskId);
 }
 
 int ESP32Platform::file_size(const std::string& path) {
-  return -1;
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (!ramfs) {
+    return -1;
+  }
+  
+  return static_cast<int>(ramfs->getSize(path.c_str()));
+}
+
+// ===== Directory Operations =====
+std::vector<std::string> ESP32Platform::dir_list(const std::string& path) {
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (!ramfs) {
+    return {};
+  }
+  
+  // RAMFS is a flat file system, so we'll simulate directory behavior
+  // For now, if path is "/" or empty, list all files
+  // Later we could implement path prefix filtering
+  
+  const size_t MAX_FILES = 64;
+  char* fileList[MAX_FILES];
+  
+  int fileCount = ramfs->listFiles(fileList, MAX_FILES);
+  
+  std::vector<std::string> result;
+  for (int i = 0; i < fileCount; i++) {
+    if (path.empty() || path == "/" || path == ".") {
+      // Root directory - add all files
+      result.push_back(std::string(fileList[i]));
+    } else {
+      // Check if file starts with the path prefix
+      std::string fileName(fileList[i]);
+      if (fileName.find(path) == 0) {
+        // Extract the part after the path
+        std::string remainder = fileName.substr(path.length());
+        if (!remainder.empty() && remainder[0] == '/') {
+          remainder = remainder.substr(1); // Remove leading slash
+        }
+        
+        // Only add if there's no further '/' (i.e., it's directly in this directory)
+        if (!remainder.empty() && remainder.find('/') == std::string::npos) {
+          result.push_back(remainder);
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
+bool ESP32Platform::dir_create(const std::string& path) {
+  // RAMFS is a flat file system, so directories don't really exist
+  // We'll simulate this by creating a hidden marker file
+  // For simplicity, we'll just return true (directories are virtual)
+  return true;
+}
+
+bool ESP32Platform::dir_delete(const std::string& path) {
+  // For RAMFS, we could delete all files that start with the path prefix
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (!ramfs) {
+    return false;
+  }
+  
+  // Get current task ID
+  uint32_t taskId = 0;
+  auto* kernel = &dialOS::Kernel::instance();
+  if (kernel && kernel->getScheduler() && kernel->getScheduler()->getCurrentTask()) {
+    taskId = kernel->getScheduler()->getCurrentTask()->getId();
+  }
+  
+  // List all files and delete those that start with the path
+  const size_t MAX_FILES = 64;
+  char* fileList[MAX_FILES];
+  int fileCount = ramfs->listFiles(fileList, MAX_FILES);
+  
+  bool deletedAny = false;
+  for (int i = 0; i < fileCount; i++) {
+    std::string fileName(fileList[i]);
+    if (fileName.find(path) == 0) {
+      if (ramfs->remove(fileName.c_str(), taskId)) {
+        deletedAny = true;
+      }
+    }
+  }
+  
+  return deletedAny;
+}
+
+bool ESP32Platform::dir_exists(const std::string& path) {
+  // For RAMFS, we'll check if any files start with the path prefix
+  auto* ramfs = dialOS::Kernel::instance().getRamFS();
+  if (!ramfs) {
+    return false;
+  }
+  
+  // Root directory always exists
+  if (path.empty() || path == "/" || path == ".") {
+    return true;
+  }
+  
+  // Check if any files start with this path
+  const size_t MAX_FILES = 64;
+  char* fileList[MAX_FILES];
+  int fileCount = ramfs->listFiles(fileList, MAX_FILES);
+  
+  for (int i = 0; i < fileCount; i++) {
+    std::string fileName(fileList[i]);
+    if (fileName.find(path) == 0) {
+      return true;
+    }
+  }
+  
+  return false;
 }

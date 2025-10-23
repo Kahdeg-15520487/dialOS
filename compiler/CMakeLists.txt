@@ -38,14 +38,14 @@ add_library(dialscript_parser STATIC ${PARSER_SOURCES})
 add_library(dialscript_vm STATIC ${VM_SOURCES})
 target_include_directories(dialscript_vm PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/vm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 target_link_libraries(dialscript_vm dialscript_parser)
 
 # Include directory for the library
 target_include_directories(dialscript_parser PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/vm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
 # Test executable

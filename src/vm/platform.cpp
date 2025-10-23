@@ -4,9 +4,9 @@
  * Implements callback system for event-driven programming
  */
 
-#include "platform.h"
-#include "vm_value.h"
-#include "vm_core.h"
+#include "vm/platform.h"
+#include "vm/vm_value.h"
+#include "vm/vm_core.h"
 #include <map>
 #include <sstream>
 #include <iomanip>

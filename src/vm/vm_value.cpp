@@ -2,7 +2,7 @@
  * dialScript VM Value System Implementation
  */
 
-#include "vm_value.h"
+#include "vm/vm_value.h"
 #include <sstream>
 #include <cmath>
 

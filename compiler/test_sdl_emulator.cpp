@@ -4,10 +4,10 @@
  * Complete M5 Dial hardware emulation using SDL2
  */
 
-#include "vm_core.h"
-#include "vm_value.h"
+#include "vm/vm_core.h"
+#include "vm/vm_value.h"
 #include "sdl_platform.h"
-#include "bytecode.h"
+#include "vm/bytecode.h"
 #include <iostream>
 #include <fstream>
 #include <vector>

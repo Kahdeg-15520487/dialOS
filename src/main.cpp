@@ -9,8 +9,8 @@
 #include <M5Dial.h>
 
 // VM includes
-#include "../src/vm/platform.h"
-#include "../src/vm/vm_core.h"
+#include "vm/platform.h"
+#include "vm/vm_core.h"
 #include "esp32_platform.h"
 
 
