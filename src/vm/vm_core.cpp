@@ -1707,9 +1707,24 @@ VMResult VMState::executeInstruction() {
                     }
                     Value pathVal = pop();
                     
-                    // TODO: Implement directory listing
+                    // Get directory listing from platform
+                    std::vector<std::string> files = platform_.dir_list(pathVal.toString());
+                    
+                    // Convert to DialScript array
+                    Array* filesArray = pool_.allocateArray();
+                    if (filesArray) {
+                        for (const std::string& filename : files) {
+                            std::string* pooledStr = pool_.allocateString(filename);
+                            if (pooledStr) {
+                                filesArray->elements.push_back(Value::StringFromPool(pooledStr));
+                            }
+                        }
+                        push(Value::Array(filesArray));
+                    } else {
+                        push(Value::Null());
+                    }
+                    
                     for (uint8_t i = 1; i < argCount; i++) pop();
-                    push(Value::Null());
                     break;
                 }
                 
@@ -2282,22 +2297,31 @@ VMResult VMState::executeInstruction() {
             uint16_t fieldIndex = readU16();
             Value obj = pop();
             
-            if (!obj.isObject() || !obj.objVal) {
-                setError("GET_FIELD on non-object");
-                return VMResult::ERROR;
-            }
-            
             if (fieldIndex >= module_.constants.size()) {
                 setError("Invalid field name index");
                 return VMResult::ERROR;
             }
             
             const std::string& fieldName = module_.constants[fieldIndex];
-            auto it = obj.objVal->fields.find(fieldName);
-            if (it != obj.objVal->fields.end()) {
-                push(it->second);
+            
+            if (obj.isArray() && obj.arrayVal) {
+                // Handle array properties
+                if (fieldName == "length") {
+                    push(Value::Int32(static_cast<int32_t>(obj.arrayVal->elements.size())));
+                } else {
+                    push(Value::Null());
+                }
+            } else if (obj.isObject() && obj.objVal) {
+                // Handle object properties
+                auto it = obj.objVal->fields.find(fieldName);
+                if (it != obj.objVal->fields.end()) {
+                    push(it->second);
+                } else {
+                    push(Value::Null());
+                }
             } else {
-                push(Value::Null());
+                setError("GET_FIELD on non-object");
+                return VMResult::ERROR;
             }
             break;
         }

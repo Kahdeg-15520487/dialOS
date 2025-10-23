@@ -1,0 +1,13 @@
+
+// Function with one argument
+function double(x: int): int {
+    
+    var msg: `${x} * 2 = ${x*2}`;
+    os.console.println(msg);
+    return x * 2;
+}
+
+var before: os.memory.getUsage();
+var doubled: double(5);
+os.console.println("Double of 5: " + doubled);
+var after: os.memory.getUsage();

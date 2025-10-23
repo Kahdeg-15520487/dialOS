@@ -1,0 +1,7 @@
+// List root directory
+var rootFiles: os.dir.list("/");
+if (rootFiles != null) {
+    os.console.println(`Root directory has ${rootFiles.length} files`);
+} else {
+    os.console.println("Note: Directory listing not available or empty");
+}

@@ -1,0 +1,58 @@
+/*
+ * Array Test Script
+ * Tests basic array functionality in DialScript
+ */
+
+function main(): void {
+    os.console.println("=== Array Test ===");
+    
+    // Test 1: Create simple array
+    os.console.println("Test 1: Creating simple array...");
+    var numbers: [1, 2, 3, 4, 5];
+    os.console.println(`Array created with ${numbers.length} elements`);
+    os.console.println("✓ Simple array test passed");
+    
+    // Test 2: Access array elements
+    os.console.println("Test 2: Accessing array elements...");
+    os.console.println(`First element: ${numbers[0]}`);
+    os.console.println(`Last element: ${numbers[numbers.length - 1]}`);
+    os.console.println("✓ Array access test passed");
+    
+    // Test 3: String array
+    os.console.println("Test 3: Creating string array...");
+    var names: ["Alice", "Bob", "Charlie"];
+    os.console.println(`String array has ${names.length} elements`);
+    for (var i: 0; i < names.length; assign i i + 1;) {
+        os.console.println(`Name ${i}: ${names[i]}`);
+    }
+    os.console.println("✓ String array test passed");
+    
+    // Test 4: Mixed array
+    os.console.println("Test 4: Creating mixed array...");
+    var mixed: [42, "hello", true, null];
+    os.console.println(`Mixed array has ${mixed.length} elements`);
+    for (var i: 0; i < mixed.length; assign i i + 1;) {
+        os.console.println(`Element ${i}: ${mixed[i]}`);
+    }
+    os.console.println("✓ Mixed array test passed");
+    
+    // Test 5: Empty array
+    os.console.println("Test 5: Creating empty array...");
+    var empty: [];
+    os.console.println(`Empty array has ${empty.length} elements`);
+    os.console.println("✓ Empty array test passed");
+    
+    // Test 6: Null check for arrays
+    os.console.println("Test 6: Testing null array handling...");
+    var maybeArray: null;
+    if (maybeArray = null) {
+        os.console.println("Array is null - this is expected");
+    } else {
+        os.console.println(`Array has ${maybeArray.length} elements`);
+    }
+    os.console.println("✓ Null array test passed");
+    
+    os.console.println("=== All Array Tests Completed ===");
+}
+
+main();
