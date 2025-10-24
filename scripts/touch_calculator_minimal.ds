@@ -1,0 +1,220 @@
+/*
+ * Minimal Touch Calculator - Testing Memory Issues
+ * Simplified version to isolate memory problems
+ */
+
+// Calculator state - using integers instead of strings where possible
+var displayValue: 0;
+var operation: 0; // 0=none, 1=add, 2=sub, 3=mul, 4=div
+var firstNumber: 0;
+var operatorPending: false;
+
+// Button layout
+var buttonWidth: 40;
+var buttonHeight: 25;
+var buttonStartX: 25;
+var buttonStartY: 70;
+var buttonSpacingX: 47;
+var buttonSpacingY: 30;
+
+// Simple button class
+class Button {
+    x: int;
+    y: int;
+    width: int;
+    height: int;
+    text: string;
+    value: int; // Using int instead of string
+    
+    constructor(x: int, y: int, text: string, value: int) {
+        assign this.x x;
+        assign this.y y;
+        assign this.width buttonWidth;
+        assign this.height buttonHeight;
+        assign this.text text;
+        assign this.value value;
+    }
+    
+    draw(): void {
+        os.display.drawRect(this.x, this.y, this.width, this.height, _color.darkgray, true);
+        os.display.drawRect(this.x, this.y, this.width, this.height, _color.white, false);
+        var textX: this.x + (this.width / 2) - 4;
+        var textY: this.y + (this.height / 2) - 6;
+        os.display.drawText(textX, textY, this.text, _color.white, 1);
+    }
+    
+    isPressed(touchX: int, touchY: int): bool {
+        return (touchX >= this.x and touchX <= (this.x + this.width) and
+                touchY >= this.y and touchY <= (this.y + this.height));
+    }
+}
+
+// Create just a few buttons for testing
+var btn1: Button(0, 0, "", 0);
+var btn2: Button(0, 0, "", 0);
+var btn3: Button(0, 0, "", 0);
+var btnAdd: Button(0, 0, "", 0);
+var btnEquals: Button(0, 0, "", 0);
+var btnClear: Button(0, 0, "", 0);
+
+function setupButtons(): void {
+    assign btn1 Button(buttonStartX + 0 * buttonSpacingX, buttonStartY + 0 * buttonSpacingY, "1", 1);
+    assign btn2 Button(buttonStartX + 1 * buttonSpacingX, buttonStartY + 0 * buttonSpacingY, "2", 2);
+    assign btn3 Button(buttonStartX + 2 * buttonSpacingX, buttonStartY + 0 * buttonSpacingY, "3", 3);
+    assign btnAdd Button(buttonStartX + 3 * buttonSpacingX, buttonStartY + 0 * buttonSpacingY, "+", 10);
+    assign btnEquals Button(buttonStartX + 0 * buttonSpacingX, buttonStartY + 1 * buttonSpacingY, "=", 20);
+    assign btnClear Button(buttonStartX + 1 * buttonSpacingX, buttonStartY + 1 * buttonSpacingY, "C", 30);
+}
+
+function drawDisplay(): void {
+    os.display.drawRect(20, 15, 200, 45, _color.black, true);
+    os.display.drawRect(20, 15, 200, 45, _color.gray, false);
+    
+    // Convert displayValue to string for display - minimal string operations
+    var displayText: displayValue;
+    var textX: 200 - (displayText.length * 10);
+    os.display.drawText(textX, 32, displayText, _color.green, 2);
+}
+
+function drawCalculator(): void {
+    os.display.clear(_color.black);
+    os.display.drawText(85, 5, "Calculator", _color.white, 1);
+    drawDisplay();
+    
+    btn1.draw();
+    btn2.draw();
+    btn3.draw();
+    btnAdd.draw();
+    btnEquals.draw();
+    btnClear.draw();
+}
+
+function processDigit(digit: int): void {
+    // Simple integer operations - no string concatenation
+    if (displayValue = 0) {
+        assign displayValue digit;
+    } else if (displayValue < 1000) { // Prevent overflow
+        assign displayValue displayValue * 10 + digit;
+    }
+}
+
+function processAdd(): void {
+    assign firstNumber displayValue;
+    assign operation 1;
+    assign operatorPending true;
+    assign displayValue 0;
+}
+
+function processEquals(): void {
+    if (operatorPending and operation = 1) {
+        assign displayValue firstNumber + displayValue;
+        assign operatorPending false;
+        assign operation 0;
+    }
+}
+
+function processClear(): void {
+    assign displayValue 0;
+    assign firstNumber 0;
+    assign operation 0;
+    assign operatorPending false;
+}
+
+function handleButtonPress(buttonValue: int): void {
+    os.console.print("Button pressed ");
+    os.console.println(int);
+    
+    if (buttonValue = 1 or buttonValue = 2 or buttonValue = 3) {
+        processDigit(buttonValue);
+    } else if (buttonValue = 10) {
+        processAdd();
+    } else if (buttonValue = 20) {
+        processEquals();
+    } else if (buttonValue = 30) {
+        processClear();
+    }
+    
+    drawDisplay();
+}
+
+function onTouch(x: int, y: int): void {
+    os.console.println("Touch detected");
+    
+    // Check memory usage on each touch
+    var memUsage: os.memory.getUsage();
+    os.console.println("Memory usage:");
+    os.console.println(memUsage);
+    
+    // Simple button checks without complex loops
+    if (btn1.isPressed(x, y)) {
+        os.console.println("Button 1 pressed");
+        handleButtonPress(btn1.value);
+        return;
+    }
+    
+    if (btn2.isPressed(x, y)) {
+        os.console.println("Button 2 pressed");
+        handleButtonPress(btn2.value);
+        return;
+    }
+    
+    if (btn3.isPressed(x, y)) {
+        os.console.println("Button 3 pressed");
+        handleButtonPress(btn3.value);
+        return;
+    }
+    
+    if (btnAdd.isPressed(x, y)) {
+        os.console.println("Add button pressed");
+        handleButtonPress(btnAdd.value);
+        return;
+    }
+    
+    if (btnEquals.isPressed(x, y)) {
+        os.console.println("Equals button pressed");
+        handleButtonPress(btnEquals.value);
+        return;
+    }
+    
+    if (btnClear.isPressed(x, y)) {
+        os.console.println("Clear button pressed");
+        handleButtonPress(btnClear.value);
+        return;
+    }
+}
+
+// Main application
+os.console.println("Minimal Touch Calculator Started");
+os.display.setTitle("Minimal Calculator");
+
+setupButtons();
+os.touch.onPress(onTouch);
+drawCalculator();
+
+// Check initial memory
+var initialMem: os.memory.getUsage();
+os.console.println("Initial memory:");
+os.console.println(initialMem);
+
+// Simple event loop
+var running: true;
+while (running) {
+    if (os.encoder.getButton()) {
+        assign running false;
+        os.console.println("Calculator exiting");
+    }
+    
+    os.system.yield();
+}
+
+// Final memory check
+var finalMem: os.memory.getUsage();
+os.console.println("Final memory:");
+os.console.println(finalMem);
+os.console.println("Memory delta calculation:");
+var delta: finalMem - initialMem;
+os.console.println(delta);
+
+os.display.clear(_color.black);
+os.display.drawText(80, 120, "Goodbye!", _color.white, 2);
+os.system.sleep(1000);

@@ -181,7 +181,8 @@ function processDigit(digit: string): void {
     } else if (display = "0") {
         assign display digit;
     } else {
-        assign display display + digit;
+        // Use template string instead of string concatenation
+        assign display `${display}${digit}`;
     }
 }
 
