@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>dialOS GUI Designer (Prototype)</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <header>
+        <h1>dialOS GUI Designer — Prototype</h1>
+        <div class="toolbar">
+            <button id="exportBtn">Export JSON</button>
+            <button id="exportDsBtn">Export DialScript (.ds)</button>
+            <button id="importBtn">Import JSON</button>
+            <input id="importFile" type="file" accept="application/json" hidden />
+        </div>
+    </header>
+    <main>
+        <aside class="palette">
+            <h3>Palette</h3>
+            <div class="widget" draggable="true" data-type="label">Label</div>
+            <div class="widget" draggable="true" data-type="button">Button</div>
+            <div class="widget" draggable="true" data-type="input">Input</div>
+            <div class="widget" draggable="true" data-type="circle">Circle</div>
+        </aside>
+
+        <section class="canvas-wrap">
+            <div id="canvas" class="canvas" tabindex="0"></div>
+
+            <div class="preview-panel">
+                <h4>240×240 Circular Preview</h4>
+                <div class="circular-preview">
+                    <canvas id="previewCanvas" width="240" height="240"></canvas>
+                </div>
+                <small>Preview is a scaled/clipped view of the canvas for the dial display.</small>
+            </div>
+        </section>
+
+        <aside class="properties">
+            <h3>Properties</h3>
+            <div id="noSelection">Select an element on the canvas to edit properties.</div>
+            <div id="props" style="display:none">
+                <label>ID: <input id="prop-id" type="text" /></label>
+                <label>Type: <input id="prop-type" type="text" disabled /></label>
+                <label>Text: <input id="prop-text" type="text" /></label>
+                <label>X: <input id="prop-x" type="number" /></label>
+                <label>Y: <input id="prop-y" type="number" /></label>
+                <label>Width: <input id="prop-w" type="number" /></label>
+                <label>Height: <input id="prop-h" type="number" /></label>
+                <div class="prop-actions">
+                    <button id="deleteBtn">Delete</button>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <footer>
+        <small>Open this file in a browser (no server required). Exported JSON is compatible with the designer and can be used as a starting point for app layout.</small>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
