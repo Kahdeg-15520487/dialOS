@@ -1009,7 +1009,7 @@ uint32_t Parser::getColorConstant(const std::string& name) const {
     // Basic colors
     if (name == "black") return 0x0000;
     if (name == "white") return 0xFFFF;
-    if (name == "red") return 0xF800;
+    if (name == "red") return 0xE8E4;
     if (name == "green") return 0x07E0;
     if (name == "blue") return 0x001F;
     if (name == "yellow") return 0xFFE0;

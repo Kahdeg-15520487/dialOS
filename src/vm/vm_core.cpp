@@ -2541,6 +2541,21 @@ VMResult VMState::executeInstruction() {
                     push(Value::Null());
                 }
             } else {
+                // Log a human-readable value type to aid debugging
+                std::string typeName;
+                switch (obj.type) {
+                    case vm::ValueType::NULL_VAL: typeName = "null"; break;
+                    case vm::ValueType::BOOL: typeName = "bool"; break;
+                    case vm::ValueType::INT32: typeName = "int32"; break;
+                    case vm::ValueType::FLOAT32: typeName = "float32"; break;
+                    case vm::ValueType::STRING: typeName = "string"; break;
+                    case vm::ValueType::OBJECT: typeName = "object"; break;
+                    case vm::ValueType::ARRAY: typeName = "array"; break;
+                    case vm::ValueType::FUNCTION: typeName = "function"; break;
+                    case vm::ValueType::NATIVE_FN: typeName = "native_fn"; break;
+                    default: typeName = std::string("unknown(") + std::to_string(static_cast<int>(obj.type)) + ")"; break;
+                }
+                platform_.console_log(std::string("GET_FIELD on non-object; type: ") + typeName);
                 setError("GET_FIELD on non-object");
                 return VMResult::ERROR;
             }

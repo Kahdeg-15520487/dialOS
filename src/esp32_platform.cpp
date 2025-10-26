@@ -40,6 +40,7 @@ void ESP32Platform::console_error(const std::string &message) {
 // ===== Display Operations =====
 void ESP32Platform::display_clear(uint32_t color) {
   M5Dial.Display.fillScreen(color);
+  console_log("Display cleared: " + std::to_string(color));
 }
 
 void ESP32Platform::display_drawText(int x, int y, const std::string &text, uint32_t color,
@@ -142,6 +143,7 @@ uint32_t ESP32Platform::system_getTime() {
 void ESP32Platform::system_sleep(uint32_t ms) {
   // Sleep is now handled by VM state - this is a no-op
   // The VM will yield and resume after the specified time
+  delay(ms);
 }
 
 void ESP32Platform::system_yield() {
@@ -173,7 +175,8 @@ int ESP32Platform::touch_getY() {
 
 bool ESP32Platform::touch_isPressed() {
   // M5Dial.Touch.isPressed() or M5Dial.Touch.getDetail().state can be used
-  return M5Dial.Touch.isPressed();
+  // return M5Dial.Touch.isPressed();
+  return false;
 }
 
 // ===== Memory Operations =====

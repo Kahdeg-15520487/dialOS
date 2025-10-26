@@ -425,7 +425,7 @@ void setup() {
   //                                     2048, TaskPriority::NORMAL);
   
   // Create VM task(s) for applets
-  Task *vmTask = createVMTask("hello_world");
+  Task *vmTask = createVMTask("test_colors");
 
   if (task1 && task2 && vmTask) {
     Serial.println("Kernel tasks created");
