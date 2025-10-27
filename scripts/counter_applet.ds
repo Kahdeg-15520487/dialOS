@@ -1,4 +1,8 @@
-// Simple counter applet for dialOS
+// Repeating counter applet for dialOS
 var count: 0;
-assign count count + 1;
-os.console.println(count);
+
+while (true) {
+    assign count count + 1;
+    os.display.drawText(120,120, count, _color.red,1);
+    os.system.sleep(500);
+}

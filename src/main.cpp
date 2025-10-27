@@ -7,6 +7,7 @@
 #include "vm_applet_data.h"
 #include <Arduino.h>
 #include <M5Dial.h>
+#include <map>
 
 // VM includes
 #include "vm/platform.h"
@@ -20,6 +21,7 @@ using namespace dialos::vm;
 // Global variables for encoder interaction
 int encoderValue = 0;
 bool kernelEnabled = false;
+bool systemInitialized = false; // Flag to signal when system is ready for VM tasks
 
 // Applet registry is now auto-generated in vm_applet_data.h
 
@@ -31,7 +33,6 @@ void memoryTestTask(byte taskId, void *param) {
   static int currentStep = 0;
   static bool allocating = true;
 
-  TaskScheduler *scheduler = Kernel::instance().getScheduler();
   MemoryManager *mem = Kernel::instance().getMemoryManager();
   SystemServices *sys = Kernel::instance().getSystemServices();
 
@@ -40,7 +41,7 @@ void memoryTestTask(byte taskId, void *param) {
     sys->log(LogLevel::INFO,
              "Memory Test: Starting allocation/deallocation cycle");
     initialized = true;
-    scheduler->sleepTask(taskId, 500);
+    TaskScheduler::sleepMs(500);
     return;
   }
 
@@ -107,7 +108,7 @@ void memoryTestTask(byte taskId, void *param) {
   }
 
   // Sleep for 500ms before next action
-  scheduler->sleepTask(taskId, 500);
+  TaskScheduler::sleepMs(500);
 }
 
 void memoryGaugeTask(byte taskId, void *param) {
@@ -163,26 +164,41 @@ void memoryGaugeTask(byte taskId, void *param) {
 }
 
 void displayTask(byte taskId, void *param) {
-  static int counter = 0;
+  // Wait for system to be ready
+  while (!systemInitialized) {
+    delay(100); // Use regular delay before system is ready
+  }
+  
+  int counter = 0;
+  
+  while (true) { // FreeRTOS tasks run in infinite loops
+    // Update display
+    M5Dial.Display.setTextSize(2);
+    M5Dial.Display.setTextColor(TFT_GREEN, TFT_BLACK);
+    M5Dial.Display.setCursor(40, 80);
+    M5Dial.Display.printf("dialOS\n\tTask: %d", counter++);
 
-  TaskScheduler *scheduler = Kernel::instance().getScheduler();
-
-  // Update display
-  M5Dial.Display.setTextSize(2);
-  M5Dial.Display.setTextColor(TFT_GREEN, TFT_BLACK);
-  M5Dial.Display.setCursor(40, 80);
-  M5Dial.Display.printf("dialOS\n\tTask: %d", counter++);
-
-  // Sleep for 1 second before next update
-  scheduler->sleepTask(taskId, 1000);
+    // Sleep for 1 second before next update
+    TaskScheduler::sleepMs(1000);
+  }
 }
 
 void encoderTask(byte taskId, void *param) {
-  int newValue = get_encoder();
-  if (newValue != encoderValue) {
-    encoderValue = newValue;
-    Serial.print("Encoder: ");
-    Serial.println(encoderValue);
+  // Wait for system to be ready
+  while (!systemInitialized) {
+    delay(100); // Use regular delay before system is ready
+  }
+  
+  while (true) { // FreeRTOS tasks run in infinite loops
+    int newValue = get_encoder();
+    if (newValue != encoderValue) {
+      encoderValue = newValue;
+      Serial.print("Encoder: ");
+      Serial.println(encoderValue);
+    }
+    
+    // Small delay to prevent busy waiting
+    TaskScheduler::sleepMs(50);
   }
 }
 
@@ -234,22 +250,38 @@ void ramfsTestTask(byte taskId, void *param) {
   testRun = true;
 }
 
+// VM task state structure to avoid static variable conflicts
+struct VMTaskState {
+  dialos::vm::VMState *vmState = nullptr;
+  dialos::vm::ValuePool *pool = nullptr;
+  ESP32Platform *platform = nullptr;
+  dialos::compiler::BytecodeModule *module = nullptr;
+  int executionCount = 0;
+  bool initialized = false;
+  bool hasFinished = false;
+};
+
 // Generalized VM task for running any applet
 // param should be a pointer to VMApplet from the registry
 void vmAppletTask(byte taskId, void *param) {
-  static dialos::vm::VMState *vmState = nullptr;
-  static dialos::vm::ValuePool *pool = nullptr;
-  static ESP32Platform *platform = nullptr;
-  static dialos::compiler::BytecodeModule *module = nullptr;
-  static int executionCount = 0;
-  static bool initialized = false;
-  static bool hasFinished = false;
-
-  TaskScheduler *scheduler = Kernel::instance().getScheduler();
+  // Wait for system initialization to complete
+  while (!systemInitialized) {
+    delay(100); // Use regular delay before system is ready
+  }
+  
+  // Get or create per-task state
+  static std::map<byte, VMTaskState*> taskStates;
+  
+  if (taskStates.find(taskId) == taskStates.end()) {
+    taskStates[taskId] = new VMTaskState();
+  }
+  
+  VMTaskState* state = taskStates[taskId];
   SystemServices *sys = Kernel::instance().getSystemServices();
 
   // Prevent re-execution after finishing for one-shot applets
-  if (hasFinished) {
+  if (state->hasFinished) {
+    TaskScheduler::sleepMs(1000); // Sleep if finished
     return;
   }
 
@@ -261,83 +293,108 @@ void vmAppletTask(byte taskId, void *param) {
   }
 
   // Initialize platform (shared across all applets)
-  if (!platform) {
-    platform = new ESP32Platform();
+  if (!state->platform) {
+    state->platform = new ESP32Platform();
   }
 
   // Initialize VM on first run
-  if (!initialized) {
-    sys->logf(LogLevel::INFO, "Loading applet: %s (%d bytes)", applet->name,
+  if (!state->initialized) {
+    sys->logf(LogLevel::INFO, "Starting VM task for applet: %s (%d bytes)", applet->name,
               applet->bytecodeSize);
 
     // Deserialize bytecode
     std::vector<uint8_t> bytecode(applet->bytecode,
                                   applet->bytecode + applet->bytecodeSize);
-    module = new dialos::compiler::BytecodeModule();
+    state->module = new dialos::compiler::BytecodeModule();
     try {
-      *module = dialos::compiler::BytecodeModule::deserialize(bytecode);
+      *state->module = dialos::compiler::BytecodeModule::deserialize(bytecode);
       sys->logf(LogLevel::INFO, "Applet '%s' loaded successfully",
                 applet->name);
     } catch (const std::exception &e) {
       sys->logf(LogLevel::ERROR, "Failed to load applet '%s': %s",
                 applet->name, e.what());
-      delete module;
-      module = nullptr;
+      delete state->module;
+      state->module = nullptr;
       return;
     }
 
     // Create value pool and VM state
-    pool = new dialos::vm::ValuePool(module->metadata.heapSize);
-    vmState = new dialos::vm::VMState(*module, *pool, *platform);
-    vmState->reset();
+    state->pool = new dialos::vm::ValuePool(state->module->metadata.heapSize);
+    state->vmState = new dialos::vm::VMState(*state->module, *state->pool, *state->platform);
+    state->vmState->reset();
     sys->logf(LogLevel::INFO, "VM initialized for '%s', heap: %d bytes",
-              applet->name, module->metadata.heapSize);
+              applet->name, state->module->metadata.heapSize);
     // Invoke app.onLoad callback if registered so the app can perform startup setup
     // (e.g., register encoders, timers). Use an empty args vector.
-    platform->invokeCallback("app.onLoad", std::vector<dialos::vm::Value>());
-    platform->console_log("Invoked app.onLoad callback if registered");
-    initialized = true;
-  } else {
-    // Reset VM for repeated execution
-    vmState->reset();
+    state->platform->invokeCallback("app.onLoad", std::vector<dialos::vm::Value>());
+    state->platform->console_log("Invoked app.onLoad callback if registered");
+    state->initialized = true;
   }
-
-  // Execute VM (up to 1000 instructions per task tick)
-  dialos::vm::VMResult result = vmState->execute(1000);
-
-  // Handle execution result
-  if (result == dialos::vm::VMResult::FINISHED) {
-    executionCount++;
-
-    // Handle repeat or one-shot execution
-    if (applet->repeat && applet->executeInterval > 0) {
-      vmState->reset();
-      scheduler->sleepTask(taskId, applet->executeInterval);
-    } else if (!applet->repeat) {
-      sys->logf(LogLevel::INFO, "Applet '%s' finished",
-                applet->name);
-      hasFinished = true;
-      // Sleep forever to prevent re-execution
-      scheduler->sleepTask(taskId, 0xFFFFFFFF);
-    } else {
-      // repeat=true but interval=0, run continuously
-      vmState->reset();
+  
+  // FreeRTOS tasks run in infinite loops
+  while (true) {
+    // Prevent re-execution after finishing for one-shot applets
+    if (state->hasFinished) {
+      TaskScheduler::sleepMs(1000); // Sleep if finished
+      continue;
     }
-  } else if (result == dialos::vm::VMResult::ERROR) {
-    const char *errMsg = vmState->getError().c_str();
-    sys->logf(LogLevel::ERROR, "VM error in '%s': %s", applet->name,
-              errMsg && *errMsg ? errMsg : "Unknown error");
-    // Sleep and retry
-    scheduler->sleepTask(taskId, 5000);
-  } else if (result == dialos::vm::VMResult::OUT_OF_MEMORY) {
-    sys->logf(LogLevel::ERROR, "Applet '%s' out of memory", applet->name);
-    vmState->reset();
-    scheduler->sleepTask(taskId, 5000);
-  } else if (result == dialos::vm::VMResult::YIELD) {
-    // VM yielded, continue soon
-    scheduler->sleepTask(taskId, 10);
+    
+    if (!state->initialized) {
+      // Should not happen, but safety check
+      TaskScheduler::sleepMs(100);
+      continue;
+    }
+    
+    // Reset VM for repeated execution (except first time)
+    // Only reset for applets that are designed to repeat
+    if (state->executionCount > 0 && applet->repeat) {
+      state->vmState->reset();
+    }
+
+    // Execute VM (up to 1000 instructions per task tick)
+    dialos::vm::VMResult result = state->vmState->execute(1000);
+
+    // Handle execution result
+    if (result == dialos::vm::VMResult::FINISHED) {
+      state->executionCount++;
+
+      // Handle repeat or one-shot execution
+      if (applet->repeat && applet->executeInterval > 0) {
+        // For repeating applets with intervals, reset and wait
+        state->vmState->reset();
+        TaskScheduler::sleepMs(applet->executeInterval);
+      } else if (!applet->repeat) {
+        // One-shot applet finished - don't reset, just mark as finished
+        sys->logf(LogLevel::INFO, "Applet '%s' finished (task %d)",
+                  applet->name, taskId);
+        state->hasFinished = true;
+        // Sleep for a while before checking again
+        TaskScheduler::sleepMs(1000);
+      } else {
+        // repeat=true but interval=0, run continuously with reset
+        state->vmState->reset();
+        // Small delay to prevent busy loop
+        TaskScheduler::sleepMs(10);
+      }
+    } else if (result == dialos::vm::VMResult::ERROR) {
+      const char *errMsg = state->vmState->getError().c_str();
+      sys->logf(LogLevel::ERROR, "VM error in '%s' (task %d): %s", applet->name, taskId,
+                errMsg && *errMsg ? errMsg : "Unknown error");
+      // Sleep and retry
+      TaskScheduler::sleepMs(5000);
+    } else if (result == dialos::vm::VMResult::OUT_OF_MEMORY) {
+      sys->logf(LogLevel::ERROR, "Applet '%s' (task %d) out of memory", applet->name, taskId);
+      state->vmState->reset();
+      TaskScheduler::sleepMs(5000);
+    } else if (result == dialos::vm::VMResult::YIELD) {
+      // VM yielded, continue soon
+      TaskScheduler::sleepMs(10);
+    }
+    // VMResult::OK - continue executing immediately next tick with small delay
+    else {
+      TaskScheduler::sleepMs(1);
+    }
   }
-  // VMResult::OK - continue executing immediately next tick
 }
 
 // Helper function to create a VM task for an applet by name
@@ -347,9 +404,9 @@ Task *createVMTask(const char *appletName) {
 
   // Find applet in registry
   VMApplet *applet = nullptr;
-  for (int i = 0; i < APPLET_REGISTRY_SIZE; i++) {
-    if (strcmp(APPLET_REGISTRY[i].name, appletName) == 0) {
-      applet = &APPLET_REGISTRY[i];
+  for (int i = 0; i < BUILTIN_APPLET_REGISTRY_SIZE; i++) {
+    if (strcmp(BUILTIN_APPLET_REGISTRY[i].name, appletName) == 0) {
+      applet = &BUILTIN_APPLET_REGISTRY[i];
       break;
     }
   }
@@ -425,9 +482,13 @@ void setup() {
   //                                     2048, TaskPriority::NORMAL);
   
   // Create VM task(s) for applets
-  Task *vmTask = createVMTask("test_colors");
+  Task *vmTask1 = createVMTask("hello_world");
+  Task *vmTask2 = createVMTask("counter_applet");
 
-  if (task1 && task2 && vmTask) {
+  if (task1 && task2 
+    && vmTask1
+    && vmTask2
+  ) {
     Serial.println("Kernel tasks created");
   }
 
@@ -450,6 +511,10 @@ void setup() {
   delay(1000);
   M5Dial.Display.fillScreen(TFT_BLACK);
 
+  // Signal that system initialization is complete
+  systemInitialized = true;
+  Serial.println("System initialization complete - VM tasks can now start");
+
   Serial.println("=================================\n");
 }
 
@@ -457,10 +522,7 @@ void loop() {
   // Update M5Dial state
   M5Dial.update();
 
-  if (kernelEnabled) {
-    // Run kernel scheduler
-    Kernel::instance().getScheduler()->schedule();
-  } else {
+  if (!kernelEnabled) {
     // Fallback: simple display update
     int newEncoderValue = get_encoder();
     if (newEncoderValue != encoderValue) {
@@ -471,5 +533,7 @@ void loop() {
     }
   }
 
-  delay(10);
+  // FreeRTOS handles task scheduling automatically
+  // Just a small delay to prevent busy waiting
+  delay(1);
 }

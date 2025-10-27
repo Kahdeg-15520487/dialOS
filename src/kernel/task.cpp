@@ -9,26 +9,84 @@ uint32_t Task::nextId = 1;
 Task::Task(const char* taskName, void (*function)(byte, void*), void* param, 
            size_t stack, TaskPriority prio)
     : id(nextId++)
-    , state(TaskState::READY)
     , priority(prio)
+    , taskHandle(nullptr)
     , taskFunction(function)
     , parameter(param)
-    , stackSize(stack)
-    , wakeTime(0) {
+    , stackSize(stack) {
     
     strncpy(name, taskName, sizeof(name) - 1);
     name[sizeof(name) - 1] = '\0';
+    
+    // Create FreeRTOS task
+    BaseType_t result = xTaskCreate(
+        taskWrapper,                    // Task function
+        taskName,                       // Task name
+        stackSize / sizeof(StackType_t), // Stack size in words
+        this,                           // Task parameters (this Task object)
+        static_cast<UBaseType_t>(priority), // Priority
+        &taskHandle                     // Task handle
+    );
+    
+    if (result != pdPASS) {
+        taskHandle = nullptr;
+        Kernel::instance().getSystemServices()->logf(LogLevel::ERROR, 
+            "Failed to create FreeRTOS task: %s", taskName);
+    }
 }
 
 Task::~Task() {
-    // Cleanup if needed
+    if (taskHandle) {
+        vTaskDelete(taskHandle);
+        taskHandle = nullptr;
+    }
+}
+
+void Task::suspend() {
+    if (taskHandle) {
+        vTaskSuspend(taskHandle);
+    }
+}
+
+void Task::resume() {
+    if (taskHandle) {
+        vTaskResume(taskHandle);
+    }
+}
+
+void Task::terminate() {
+    if (taskHandle) {
+        vTaskDelete(taskHandle);
+        taskHandle = nullptr;
+    }
+}
+
+bool Task::isRunning() const {
+    if (!taskHandle) return false;
+    
+    eTaskState state = eTaskGetState(taskHandle);
+    return (state == eRunning || state == eReady);
+}
+
+void Task::taskWrapper(void* param) {
+    Task* task = static_cast<Task*>(param);
+    if (!task || !task->taskFunction) {
+        vTaskDelete(nullptr); // Delete self
+        return;
+    }
+    
+    // Call the task function once - it should handle its own loop if needed
+    task->taskFunction(static_cast<byte>(task->id), task->parameter);
+    
+    // If the task function returns (shouldn't happen with infinite loops),
+    // delete the task
+    vTaskDelete(nullptr);
 }
 
 // TaskScheduler implementation
 
 TaskScheduler::TaskScheduler()
-    : currentTask(nullptr)
-    , taskCount(0) {
+    : taskCount(0) {
     
     for (size_t i = 0; i < MAX_TASKS; i++) {
         tasks[i] = nullptr;
@@ -44,7 +102,7 @@ TaskScheduler::~TaskScheduler() {
 }
 
 bool TaskScheduler::init() {
-    // Scheduler is ready
+    // FreeRTOS scheduler is already running
     return true;
 }
 
@@ -61,8 +119,9 @@ Task* TaskScheduler::createTask(const char* name, void (*function)(byte, void*),
     }
     
     Task* task = new Task(name, function, param, stackSize, priority);
-    if (!task) {
-        Kernel::instance().getSystemServices()->log(LogLevel::ERROR, "Failed to allocate task");
+    if (!task || !task->getHandle()) {
+        Kernel::instance().getSystemServices()->log(LogLevel::ERROR, "Failed to create task");
+        if (task) delete task;
         return nullptr;
     }
     
@@ -73,7 +132,7 @@ Task* TaskScheduler::createTask(const char* name, void (*function)(byte, void*),
             taskCount++;
             
             Kernel::instance().getSystemServices()->logf(LogLevel::INFO, 
-                "Task created: %s (ID: %lu)", task->getName(), task->getId());
+                "FreeRTOS task created: %s (ID: %lu)", task->getName(), task->getId());
             
             return task;
         }
@@ -87,7 +146,7 @@ bool TaskScheduler::destroyTask(uint32_t taskId) {
     for (size_t i = 0; i < MAX_TASKS; i++) {
         if (tasks[i] && tasks[i]->getId() == taskId) {
             Kernel::instance().getSystemServices()->logf(LogLevel::INFO, 
-                "Destroying task: %s", tasks[i]->getName());
+                "Destroying FreeRTOS task: %s", tasks[i]->getName());
             
             delete tasks[i];
             tasks[i] = nullptr;
@@ -100,8 +159,8 @@ bool TaskScheduler::destroyTask(uint32_t taskId) {
 
 bool TaskScheduler::freezeTask(uint32_t taskId) {
     Task* task = getTask(taskId);
-    if (task && task->getState() == TaskState::RUNNING) {
-        task->setState(TaskState::FROZEN);
+    if (task && task->isRunning()) {
+        task->suspend();
         return true;
     }
     return false;
@@ -109,55 +168,32 @@ bool TaskScheduler::freezeTask(uint32_t taskId) {
 
 bool TaskScheduler::resumeTask(uint32_t taskId) {
     Task* task = getTask(taskId);
-    if (task && task->getState() == TaskState::FROZEN) {
-        task->setState(TaskState::READY);
-        return true;
-    }
-    return false;
-}
-
-bool TaskScheduler::sleepTask(uint32_t taskId, unsigned long ms) {
-    Task* task = getTask(taskId);
     if (task) {
-        task->setState(TaskState::SLEEPING);
-        task->setSleepUntil(millis() + ms);
+        task->resume();
         return true;
     }
     return false;
 }
 
-void TaskScheduler::schedule() {
-    // Wake sleeping tasks
-    unsigned long now = millis();
-    for (size_t i = 0; i < MAX_TASKS; i++) {
-        if (tasks[i] && tasks[i]->getState() == TaskState::SLEEPING) {
-            if (now >= tasks[i]->getWakeTime()) {
-                tasks[i]->setState(TaskState::READY);
-            }
-        }
+void TaskScheduler::sleepMs(unsigned long ms) {
+    // Safety check: ensure we're running in a task context
+    if (xTaskGetCurrentTaskHandle() == NULL) {
+        // Not in a task context, use regular delay
+        delay(ms);
+        return;
     }
     
-    // Set current task back to READY before selecting next
-    if (currentTask && currentTask->getState() == TaskState::RUNNING) {
-        currentTask->setState(TaskState::READY);
-    }
-    
-    // Select next task to run
-    Task* nextTask = selectNextTask();
-    if (nextTask) {
-        currentTask = nextTask;
-        currentTask->setState(TaskState::RUNNING);
-        
-        // Execute current task
-        currentTask->getFunction()(currentTask->getId(), currentTask->getParameter());
+    // Use FreeRTOS delay for proper task switching
+    if (ms > 0) {
+        vTaskDelay(pdMS_TO_TICKS(ms));
+    } else {
+        // For zero delay, just yield
+        taskYIELD();
     }
 }
 
 void TaskScheduler::yield() {
-    // Current task yields, allow scheduler to pick next task
-    if (currentTask) {
-        currentTask->setState(TaskState::READY);
-    }
+    taskYIELD();
 }
 
 Task* TaskScheduler::getTask(uint32_t taskId) {
@@ -169,42 +205,23 @@ Task* TaskScheduler::getTask(uint32_t taskId) {
     return nullptr;
 }
 
-Task* TaskScheduler::selectNextTask() {
-    Task* selected = nullptr;
-    TaskPriority highestPriority = TaskPriority::LOW_PRIORITY;
+uint32_t TaskScheduler::getCurrentTaskId() const {
+    TaskHandle_t currentHandle = xTaskGetCurrentTaskHandle();
+    if (!currentHandle) return 0;
     
-    // Simple priority-based scheduling with round-robin for same priority
-    static size_t lastTaskIndex = 0;
-    
-    // Start from next task after last scheduled
-    for (size_t offset = 0; offset < MAX_TASKS; offset++) {
-        size_t i = (lastTaskIndex + 1 + offset) % MAX_TASKS;
-        
-        if (tasks[i] && tasks[i]->getState() == TaskState::READY) {
-            if (!selected || tasks[i]->getPriority() <= highestPriority) {
-                selected = tasks[i];
-                highestPriority = tasks[i]->getPriority();
-                lastTaskIndex = i;
-                break;  // Found a task, use it
-            }
+    // Find the task with matching handle
+    for (size_t i = 0; i < MAX_TASKS; i++) {
+        if (tasks[i] && tasks[i]->getHandle() == currentHandle) {
+            return tasks[i]->getId();
         }
     }
     
-    return selected;
+    // Return 0 if not found (could be a system task or untracked task)
+    return 0;
 }
 
-void TaskScheduler::switchTask(Task* nextTask) {
-    if (currentTask) {
-        // Save current task state if needed
-        if (currentTask->getState() == TaskState::RUNNING) {
-            currentTask->setState(TaskState::READY);
-        }
-    }
-    
-    currentTask = nextTask;
-    if (currentTask) {
-        currentTask->setState(TaskState::RUNNING);
-    }
+uint32_t TaskScheduler::getFreeHeapSize() {
+    return xPortGetFreeHeapSize();
 }
 
 } // namespace dialOS

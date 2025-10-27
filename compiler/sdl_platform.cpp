@@ -34,7 +34,7 @@ const uint8_t GPIO_OUTPUT = 1;
 const uint8_t GPIO_INPUT_PULLUP = 2;
 
 SDLPlatform::SDLPlatform()
-    : window_(nullptr), renderer_(nullptr), font_(nullptr), initialized_(false),
+    : window_(nullptr), renderer_(nullptr), font_(nullptr), fontPath_(""), initialized_(false),
       shouldQuit_(false), backgroundColor_(0x000000FF), brightness_(255),
       encoder_{false, false, 0, 0, std::chrono::steady_clock::now()},
       touch_{false, false, 0, 0, std::chrono::steady_clock::now()},
@@ -107,6 +107,8 @@ bool SDLPlatform::initialize(const std::string &title) {
   for (int i = 0; fontPaths[i] != nullptr; i++) {
     font_ = TTF_OpenFont(fontPaths[i], 14);
     if (font_) {
+      fontPath_ = fontPaths[i]; // Store the font path for dynamic loading
+      fontCache_[14] = font_; // Cache the default size font
       std::cout << "Loaded font: " << fontPaths[i] << std::endl;
       break;
     }
@@ -134,10 +136,14 @@ bool SDLPlatform::initialize(const std::string &title) {
 }
 
 void SDLPlatform::cleanup() {
-  if (font_) {
-    TTF_CloseFont(font_);
-    font_ = nullptr;
+  // Clean up font cache
+  for (auto& fontPair : fontCache_) {
+    if (fontPair.second) {
+      TTF_CloseFont(fontPair.second);
+    }
   }
+  fontCache_.clear();
+  font_ = nullptr;
 
   if (renderer_) {
     SDL_DestroyRenderer(renderer_);
@@ -154,6 +160,29 @@ void SDLPlatform::cleanup() {
   SDL_Quit();
 
   initialized_ = false;
+}
+
+TTF_Font* SDLPlatform::getFontOfSize(int size) {
+  // Clamp size to reasonable range
+  size = std::max(8, std::min(72, size));
+  
+  // Check if we already have this size cached
+  auto it = fontCache_.find(size);
+  if (it != fontCache_.end() && it->second != nullptr) {
+    return it->second;
+  }
+  
+  // Load a new font of the specified size
+  if (!fontPath_.empty()) {
+    TTF_Font* newFont = TTF_OpenFont(fontPath_.c_str(), size);
+    if (newFont) {
+      fontCache_[size] = newFont;
+      return newFont;
+    }
+  }
+  
+  // Fallback to default font if loading failed
+  return font_;
 }
 
 bool SDLPlatform::pollEvents() {
@@ -1071,11 +1100,13 @@ void SDLPlatform::updateInputs() {
 
 void SDLPlatform::renderText(int x, int y, const std::string &text,
                              const Color &color, int size) {
-  if (!font_)
+  // Get font of appropriate size
+  TTF_Font* textFont = getFontOfSize(size);
+  if (!textFont)
     return;
 
   SDL_Surface *surface =
-      TTF_RenderText_Solid(font_, text.c_str(), color.toSDL());
+      TTF_RenderText_Solid(textFont, text.c_str(), color.toSDL());
   if (!surface)
     return;
 

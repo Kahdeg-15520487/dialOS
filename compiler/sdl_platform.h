@@ -241,6 +241,9 @@ public:
     void captureOutput(const std::string& output) { outputLog_.addText(output); }
     
 private:
+    // Internal helpers
+    TTF_Font* getFontOfSize(int size);
+    
     // Internal helpers (private static)
     static std::string getSourceContextFromFile(const std::string &sourceFile, uint32_t errorLine, int contextLines = 5);
     static std::string locateSourceForBytecode(const std::string &bytecodePath);
@@ -248,6 +251,8 @@ private:
     SDL_Window* window_;
     SDL_Renderer* renderer_;
     TTF_Font* font_;
+    std::map<int, TTF_Font*> fontCache_; // Cache fonts by size
+    std::string fontPath_; // Store the path of the loaded font
     bool initialized_;
     bool shouldQuit_;
     

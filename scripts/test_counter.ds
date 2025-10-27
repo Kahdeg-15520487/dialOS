@@ -1,0 +1,9 @@
+// Simple counter test that repeats every 2 seconds
+var counter: 0;
+
+os.display.clear(0x0000);
+os.display.drawText(60, 100, `Count: ${counter}`, 0xFFFF, 2);
+os.console.println(`Counter: ${counter}`);
+
+assign counter counter + 1;
+os.system.sleep(2000);

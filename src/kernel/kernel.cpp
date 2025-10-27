@@ -84,12 +84,9 @@ void Kernel::run() {
         return;
     }
     
-    // Main kernel loop - run scheduler
-    while (true) {
-        scheduler->schedule();
-        systemServices->feedWatchdog();
-        yield();  // Arduino yield for background tasks
-    }
+    // With FreeRTOS, the scheduler runs automatically
+    // This method is no longer needed but kept for compatibility
+    Serial.println("Kernel: FreeRTOS scheduler is running tasks automatically");
 }
 
 } // namespace dialOS

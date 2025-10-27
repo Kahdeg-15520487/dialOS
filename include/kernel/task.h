@@ -2,28 +2,21 @@
 #define DIALOS_TASK_H
 
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 namespace dialOS {
 
-// Task states
-enum class TaskState {
-    READY,      // Ready to run
-    RUNNING,    // Currently executing
-    FROZEN,     // Suspended (preserves state)
-    SLEEPING,   // Sleeping for specified time
-    TERMINATED  // Finished execution
-};
-
-// Task priority levels
+// Task priority levels mapped to FreeRTOS priorities
 enum class TaskPriority {
-    SYSTEM = 0,         // System tasks (highest)
-    HIGH_PRIORITY = 1,  // High priority
+    SYSTEM = 4,         // System tasks (highest)
+    HIGH_PRIORITY = 3,  // High priority
     NORMAL = 2,         // Normal priority
-    LOW_PRIORITY = 3    // Low priority (lowest)
+    LOW_PRIORITY = 1    // Low priority (lowest)
 };
 
 /**
- * @brief Task Control Block - represents a single task
+ * @brief Task Control Block - represents a FreeRTOS task
  */
 class Task {
 public:
@@ -34,38 +27,38 @@ public:
     // Task information
     const char* getName() const { return name; }
     uint32_t getId() const { return id; }
-    TaskState getState() const { return state; }
     TaskPriority getPriority() const { return priority; }
+    TaskHandle_t getHandle() const { return taskHandle; }
     
-    // State management
-    void setState(TaskState newState) { state = newState; }
-    void setSleepUntil(unsigned long time) { wakeTime = time; }
-    unsigned long getWakeTime() const { return wakeTime; }
+    // Task control
+    void suspend();
+    void resume();
+    void terminate();
+    bool isRunning() const;
     
     // Memory management
     size_t getStackSize() const { return stackSize; }
     void* getParameter() const { return parameter; }
     
-    // Execution
-    void (*getFunction())(byte, void*) { return taskFunction; }
+    // Static task wrapper for FreeRTOS
+    static void taskWrapper(void* param);
     
 private:
     static uint32_t nextId;
     
     uint32_t id;
     char name[32];
-    TaskState state;
     TaskPriority priority;
+    TaskHandle_t taskHandle;
     
     void (*taskFunction)(byte, void*);
     void* parameter;
     
     size_t stackSize;
-    unsigned long wakeTime;  // For sleeping tasks
 };
 
 /**
- * @brief Cooperative task scheduler
+ * @brief FreeRTOS-based task scheduler
  */
 class TaskScheduler {
 public:
@@ -83,26 +76,26 @@ public:
     // Task control
     bool freezeTask(uint32_t taskId);
     bool resumeTask(uint32_t taskId);
-    bool sleepTask(uint32_t taskId, unsigned long ms);
     
-    // Scheduler operations
-    void schedule();  // Select next task to run
-    void yield();     // Current task yields CPU
+    // Sleep utility (for use within tasks)
+    static void sleepMs(unsigned long ms);
+    static void yield();
     
     // Task queries
-    Task* getCurrentTask() { return currentTask; }
     Task* getTask(uint32_t taskId);
     size_t getTaskCount() const { return taskCount; }
+    
+    // Current task info
+    uint32_t getCurrentTaskId() const;
+    
+    // System info
+    static uint32_t getFreeHeapSize();
     
 private:
     static const size_t MAX_TASKS = 16;
     
     Task* tasks[MAX_TASKS];
-    Task* currentTask;
     size_t taskCount;
-    
-    Task* selectNextTask();
-    void switchTask(Task* nextTask);
 };
 
 } // namespace dialOS

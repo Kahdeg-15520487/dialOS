@@ -1,0 +1,6 @@
+var y: 120;
+var test: "hello world!";
+os.display.drawText(120,y, test, _color.red,1);
+os.display.drawText(120,y+20, test, _color.red,2);
+os.display.drawText(120,y+40, test, _color.red,3);
+os.display.drawText(120,y+60, test, _color.red,4);

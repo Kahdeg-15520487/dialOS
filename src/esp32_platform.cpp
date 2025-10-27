@@ -371,8 +371,8 @@ int ESP32Platform::file_open(const std::string& path, const std::string& mode) {
   // Get current task ID (using 0 as default for now - could be improved)
   uint32_t taskId = 0;
   auto* kernel = &dialOS::Kernel::instance();
-  if (kernel && kernel->getScheduler() && kernel->getScheduler()->getCurrentTask()) {
-    taskId = kernel->getScheduler()->getCurrentTask()->getId();
+  if (kernel && kernel->getScheduler()) {
+    taskId = kernel->getScheduler()->getCurrentTaskId();
   }
   
   // Use RAMFS to open the file
@@ -428,8 +428,8 @@ bool ESP32Platform::file_delete(const std::string& path) {
   // Get current task ID
   uint32_t taskId = 0;
   auto* kernel = &dialOS::Kernel::instance();
-  if (kernel && kernel->getScheduler() && kernel->getScheduler()->getCurrentTask()) {
-    taskId = kernel->getScheduler()->getCurrentTask()->getId();
+  if (kernel && kernel->getScheduler()) {
+    taskId = kernel->getScheduler()->getCurrentTaskId();
   }
   
   auto* ramfs = kernel->getRamFS();
@@ -508,8 +508,8 @@ bool ESP32Platform::dir_delete(const std::string& path) {
   // Get current task ID
   uint32_t taskId = 0;
   auto* kernel = &dialOS::Kernel::instance();
-  if (kernel && kernel->getScheduler() && kernel->getScheduler()->getCurrentTask()) {
-    taskId = kernel->getScheduler()->getCurrentTask()->getId();
+  if (kernel && kernel->getScheduler()) {
+    taskId = kernel->getScheduler()->getCurrentTaskId();
   }
   
   // List all files and delete those that start with the path
