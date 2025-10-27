@@ -33,4 +33,4 @@ Next steps / ideas to discuss:
 If you want, I can:
 - Add JSON->ds converter that maps our widgets to DialScript code
 - Integrate preview that simulates the 240x240 circular display (clip canvas to circle)
-- Add an export template for `vm_applet_data.h` or similar project artifacts
+- Add an export template for `vm_builtin_applets.h` or similar project artifacts

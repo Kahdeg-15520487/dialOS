@@ -4,7 +4,7 @@
 #include "kernel/ramfs.h"
 #include "kernel/system.h"
 #include "kernel/task.h"
-#include "vm_applet_data.h"
+#include "vm_builtin_applets.h"
 #include <Arduino.h>
 #include <M5Dial.h>
 #include <map>
@@ -23,7 +23,7 @@ int encoderValue = 0;
 bool kernelEnabled = false;
 bool systemInitialized = false; // Flag to signal when system is ready for VM tasks
 
-// Applet registry is now auto-generated in vm_applet_data.h
+// Applet registry is now auto-generated in vm_builtin_applets.h
 
 void memoryTestTask(byte taskId, void *param) {
   static bool initialized = false;
