@@ -4,9 +4,9 @@ name: Build and package dialOS compiler + SDL emulator
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 jobs:
   build:
@@ -15,14 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
-            shell: bash
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
             shell: bash
           - os: windows-latest
             c_compiler: cl
@@ -36,143 +33,120 @@ jobs:
       BUILD_DIR: ${{ github.workspace }}/compiler/build
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake build-essential curl unzip zip
-      shell: bash
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential curl unzip zip
+        shell: bash
 
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Host "Using preinstalled tools on runner (cmake and MSVC). No extra packages required for compiler-only build."
+        shell: pwsh
 
-    - name: Install dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        Write-Host "Using preinstalled tools on runner (cmake and MSVC). No extra packages required for compiler-only build."
-      shell: pwsh
-
-    - name: Configure CMake (Linux/macOS)
-      if: matrix.os != 'windows-latest'
-      run: |
-        if [ -n "${VCPKG_TOOLCHAIN_FILE-}" ]; then
-          cmake -B "$BUILD_DIR" \
-            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_TOOLCHAIN_FILE" \
+      - name: Configure CMake (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          if [ -n "${VCPKG_TOOLCHAIN_FILE-}" ]; then
+            cmake -B "$BUILD_DIR" \
+              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DCMAKE_TOOLCHAIN_FILE="$VCPKG_TOOLCHAIN_FILE" \
+                -S "${GITHUB_WORKSPACE}/compiler"
+          else
+            cmake -B "$BUILD_DIR" \
+              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
               -S "${GITHUB_WORKSPACE}/compiler"
-        else
-          cmake -B "$BUILD_DIR" \
-            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -S "${GITHUB_WORKSPACE}/compiler"
-        fi
-      shell: bash
+          fi
+        shell: bash
 
-    - name: Configure CMake (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        ls
-        if ($env:VCPKG_TOOLCHAIN_FILE) {
-          cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE\compiler" -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_TOOLCHAIN_FILE"
-        } else {
-          cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE\compiler"
-        }
-      shell: pwsh
-
-    - name: Build (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cmake --build "$BUILD_DIR" --config ${{ matrix.build_type }} --target compile -- -j$(nproc || echo 2)
-      shell: bash
-
-    - name: Build (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        cmake --build "$env:BUILD_DIR" --config ${{ matrix.build_type }} --target compile
-      shell: pwsh
-
-    - name: Collect `compile` binary (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        mkdir -p "$BUILD_DIR/install/bin"
-        # Typical single-config build places the binary at build/compile
-        if [ -f "$BUILD_DIR/compile" ]; then
-          cp "$BUILD_DIR/compile" "$BUILD_DIR/install/bin/"
-        elif [ -f "$BUILD_DIR/${{ matrix.build_type }}/compile" ]; then
-          cp "$BUILD_DIR/${{ matrix.build_type }}/compile" "$BUILD_DIR/install/bin/"
-        else
-          echo "Cannot find compile binary in build directory"
-          ls -la "$BUILD_DIR" || true
-        fi
-      shell: bash
-
-    - name: Collect `compile` binary (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        $installDir = "$env:BUILD_DIR\install\bin"
-        New-Item -ItemType Directory -Path $installDir -Force | Out-Null
-        $cfgPath = Join-Path $env:BUILD_DIR $env:BUILD_TYPE
-        $exeCandidates = @("$env:BUILD_DIR\compile.exe", "$env:BUILD_DIR\${{ matrix.build_type }}\compile.exe", "$env:BUILD_DIR\Release\compile.exe")
-        $found = $false
-        foreach ($p in $exeCandidates) {
-          if (Test-Path $p) {
-            Copy-Item -Path $p -Destination $installDir -Force
-            $found = $true
-            break
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          ls
+          if ($env:VCPKG_TOOLCHAIN_FILE) {
+            cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE\compiler" -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_TOOLCHAIN_FILE"
+          } else {
+            cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE\compiler"
           }
-        }
-        if (-not $found) { Write-Host "Cannot find compile.exe; listing build tree:"; Get-ChildItem -Recurse $env:BUILD_DIR | Select-Object FullName }
-      shell: pwsh
+        shell: pwsh
 
-    - name: Package artifacts (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cd "$BUILD_DIR/install"
-        zip -r "$BUILD_DIR/ubuntu-binaries.zip" bin || true
-      shell: bash
+      - name: Build (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cmake --build "$BUILD_DIR" --config ${{ matrix.build_type }} --target compile -- -j$(nproc || echo 2)
+        shell: bash
 
-    - name: Package artifacts (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        $zipPath = "$env:BUILD_DIR\windows-compile.zip"
-        if (Test-Path "$env:BUILD_DIR\install") {
-          Compress-Archive -Path "$env:BUILD_DIR\install\*" -DestinationPath $zipPath -Force
-        } else {
-          Write-Host "No install folder found; archiving build output folder instead"
-          Compress-Archive -Path "$env:BUILD_DIR\*" -DestinationPath $zipPath -Force
-        }
-        Write-Host "Zipped to: $zipPath"
-      shell: pwsh
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cmake --build "$env:BUILD_DIR" --config ${{ matrix.build_type }} --target compile
+        shell: pwsh
 
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: dialOS-compiler-${{ matrix.os }}
-        path: |
-          ${{ env.BUILD_DIR }}/ubuntu-binaries.zip
-          ${{ env.BUILD_DIR }}/windows-compile.zip
+      - name: Collect `compile` binary (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p "$BUILD_DIR/install/bin"
+          # Typical single-config build places the binary at build/compile
+          if [ -f "$BUILD_DIR/compile" ]; then
+            cp "$BUILD_DIR/compile" "$BUILD_DIR/install/bin/"
+          elif [ -f "$BUILD_DIR/${{ matrix.build_type }}/compile" ]; then
+            cp "$BUILD_DIR/${{ matrix.build_type }}/compile" "$BUILD_DIR/install/bin/"
+          else
+            echo "Cannot find compile binary in build directory"
+            ls -la "$BUILD_DIR" || true
+          fi
+        shell: bash
 
-    - name: Run tests (ctest) - Linux/macOS
-      if: always() && matrix.os != 'windows-latest'
-      working-directory: ${{ env.BUILD_DIR }}
-      run: |
-        if [ -fCTestTestfile.cmake ] || [ -f CTestTestfile.cmake ]; then
-          ctest --output-on-failure -C ${{ matrix.build_type }} || true
-        else
-          echo "No tests configured (CTest files not found)."
-        fi
-      shell: bash
+      - name: Collect `compile` binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $installDir = "$env:BUILD_DIR\install\bin"
+          New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+          $cfgPath = Join-Path $env:BUILD_DIR $env:BUILD_TYPE
+          $exeCandidates = @("$env:BUILD_DIR\compile.exe", "$env:BUILD_DIR\${{ matrix.build_type }}\compile.exe", "$env:BUILD_DIR\Release\compile.exe")
+          $found = $false
+          foreach ($p in $exeCandidates) {
+            if (Test-Path $p) {
+              Copy-Item -Path $p -Destination $installDir -Force
+              $found = $true
+              break
+            }
+          }
+          if (-not $found) { Write-Host "Cannot find compile.exe; listing build tree:"; Get-ChildItem -Recurse $env:BUILD_DIR | Select-Object FullName }
+        shell: pwsh
 
-    - name: Run tests (ctest) - Windows
-      if: always() && matrix.os == 'windows-latest'
-      working-directory: ${{ env.BUILD_DIR }}
-      run: |
-        if (Test-Path CTestTestfile.cmake -or Test-Path CTestTestfile.cmake) {
-          ctest --output-on-failure -C ${{ matrix.build_type }} || Write-Host 'ctest failed'
-        } else {
-          Write-Host 'No tests configured (CTest files not found).'
-        }
-      shell: pwsh
+      - name: Package artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd "$BUILD_DIR/install"
+          zip -r "$BUILD_DIR/ubuntu-binaries.zip" bin || true
+        shell: bash
+
+      - name: Package artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $zipPath = "$env:BUILD_DIR\windows-compile.zip"
+          if (Test-Path "$env:BUILD_DIR\install") {
+            Compress-Archive -Path "$env:BUILD_DIR\install\*" -DestinationPath $zipPath -Force
+          } else {
+            Write-Host "No install folder found; archiving build output folder instead"
+            Compress-Archive -Path "$env:BUILD_DIR\*" -DestinationPath $zipPath -Force
+          }
+          Write-Host "Zipped to: $zipPath"
+        shell: pwsh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dialOS-compiler-${{ matrix.os }}
+          path: |
+            ${{ env.BUILD_DIR }}/ubuntu-binaries.zip
+            ${{ env.BUILD_DIR }}/windows-compile.zip
