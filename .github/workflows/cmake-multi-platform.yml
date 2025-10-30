@@ -73,8 +73,8 @@ jobs:
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
       run: |
+        ls
         if ($env:VCPKG_TOOLCHAIN_FILE) {
-          ls
           cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE" -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_TOOLCHAIN_FILE"
         } else {
           cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE"
