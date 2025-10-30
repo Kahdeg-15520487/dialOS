@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2025-10-30T00:00:00Z",
+  "lastUpdated": "2025-10-30",
+  "applets": [
+    {
+      "id": "hello-world",
+      "name": "Hello World",
+      "version": "1.0.0",
+      "description": "A tiny hello-world applet that demonstrates display and input.",
+      "author": "dialOS core",
+      "tags": ["example","demo"],
+      "icon": "https://via.placeholder.com/96x96.png?text=HW",
+      "url": "https://example.com/applets/hello_world.dsb"
+    },
+    {
+      "id": "touch-calc",
+      "name": "Touch Calculator",
+      "version": "2.1.0",
+      "description": "Simple touch-friendly calculator applet.",
+      "author": "contrib",
+      "tags": ["utility","calculator"],
+      "icon": "https://via.placeholder.com/96x96.png?text=TC",
+      "url": "https://example.com/applets/touch_calculator_v2.dsb"
+    }
+  ]
+}
