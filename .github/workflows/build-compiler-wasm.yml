@@ -7,7 +7,7 @@ on:
       - "compiler/**"
       - "include/vm/**"
       - "src/vm/**"
-      - ".github/workflows/cmake-multi-platform.yml"
+      - ".github/workflows/build-compiler-wasm.yml"
   workflow_dispatch:
 
 env:
