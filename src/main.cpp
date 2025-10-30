@@ -10,10 +10,10 @@
 #include <map>
 
 // VM includes
+#include "applet_manager.h"
+#include "esp32_platform.h"
 #include "vm/platform.h"
 #include "vm/vm_core.h"
-#include "esp32_platform.h"
-
 
 using namespace dialOS;
 using namespace dialos::vm;
@@ -21,7 +21,8 @@ using namespace dialos::vm;
 // Global variables for encoder interaction
 int encoderValue = 0;
 bool kernelEnabled = false;
-bool systemInitialized = false; // Flag to signal when system is ready for VM tasks
+bool systemInitialized =
+    false; // Flag to signal when system is ready for VM tasks
 
 // Applet registry is now auto-generated in vm_builtin_applets.h
 
@@ -168,9 +169,9 @@ void displayTask(byte taskId, void *param) {
   while (!systemInitialized) {
     delay(100); // Use regular delay before system is ready
   }
-  
+
   int counter = 0;
-  
+
   while (true) { // FreeRTOS tasks run in infinite loops
     // Update display
     M5Dial.Display.setTextSize(2);
@@ -188,7 +189,7 @@ void encoderTask(byte taskId, void *param) {
   while (!systemInitialized) {
     delay(100); // Use regular delay before system is ready
   }
-  
+
   while (true) { // FreeRTOS tasks run in infinite loops
     int newValue = get_encoder();
     if (newValue != encoderValue) {
@@ -196,7 +197,7 @@ void encoderTask(byte taskId, void *param) {
       Serial.print("Encoder: ");
       Serial.println(encoderValue);
     }
-    
+
     // Small delay to prevent busy waiting
     TaskScheduler::sleepMs(50);
   }
@@ -246,192 +247,47 @@ void ramfsTestTask(byte taskId, void *param) {
             stats.totalSize, stats.totalSize + stats.freeSpace,
             stats.totalFiles, stats.maxFiles);
 
+  // NEW: Directory tests (RamFS has a flat namespace -> simulate directories by path prefixes)
+  const char *dirPath = "/testdir";
+
+  // Create a file inside the "directory" (this will create an entry with the path prefix)
+  char dirFilePath[96];
+  snprintf(dirFilePath, sizeof(dirFilePath), "%s/dirfile.txt", dirPath);
+  int dfd = ramfs->open(dirFilePath, FileMode::WRITE, 0);
+  if (dfd >= 0) {
+    const char *dmsg = "File inside directory";
+    size_t dw = ramfs->write(dfd, dmsg, strlen(dmsg));
+    ramfs->close(dfd);
+    sys->logf(LogLevel::INFO, "Wrote %d bytes to %s", dw, dirFilePath);
+  } else {
+    sys->logf(LogLevel::ERROR, "Failed to create %s", dirFilePath);
+  }
+
+  // Read back the directory file
+  dfd = ramfs->open(dirFilePath, FileMode::READ, 0);
+  if (dfd >= 0) {
+    char buf[80] = {0};
+    size_t br = ramfs->read(dfd, buf, sizeof(buf) - 1);
+    ramfs->close(dfd);
+    sys->logf(LogLevel::INFO, "Read %d bytes from %s: %s", br, dirFilePath, buf);
+  } else {
+    sys->logf(LogLevel::ERROR, "Failed to open %s for reading", dirFilePath);
+  }
+
+  // Verify existence of the file (and note directory semantics)
+  bool fileExists = ramfs->exists(dirFilePath);
+  sys->logf(LogLevel::INFO,
+            "Exists: %s -> %s (note: RamFS uses flat namespace; directories are simulated by path prefixes)",
+            dirFilePath, fileExists ? "yes" : "no");
+
+  // Re-check filesystem stats to observe changes
+  stats = ramfs->getStats();
+  sys->logf(LogLevel::INFO, "After dir test - RamFS: %d/%d bytes used, %d/%d files",
+            stats.totalSize, stats.totalSize + stats.freeSpace,
+            stats.totalFiles, stats.maxFiles);
+
   sys->log(LogLevel::INFO, "=== RamFS Test Complete ===");
   testRun = true;
-}
-
-// VM task state structure to avoid static variable conflicts
-struct VMTaskState {
-  dialos::vm::VMState *vmState = nullptr;
-  dialos::vm::ValuePool *pool = nullptr;
-  ESP32Platform *platform = nullptr;
-  dialos::compiler::BytecodeModule *module = nullptr;
-  int executionCount = 0;
-  bool initialized = false;
-  bool hasFinished = false;
-};
-
-// Generalized VM task for running any applet
-// param should be a pointer to VMApplet from the registry
-void vmAppletTask(byte taskId, void *param) {
-  // Wait for system initialization to complete
-  while (!systemInitialized) {
-    delay(100); // Use regular delay before system is ready
-  }
-  
-  // Get or create per-task state
-  static std::map<byte, VMTaskState*> taskStates;
-  
-  if (taskStates.find(taskId) == taskStates.end()) {
-    taskStates[taskId] = new VMTaskState();
-  }
-  
-  VMTaskState* state = taskStates[taskId];
-  SystemServices *sys = Kernel::instance().getSystemServices();
-
-  // Prevent re-execution after finishing for one-shot applets
-  if (state->hasFinished) {
-    TaskScheduler::sleepMs(1000); // Sleep if finished
-    return;
-  }
-
-  // Get applet descriptor
-  VMApplet *applet = (VMApplet *)param;
-  if (!applet) {
-    sys->log(LogLevel::ERROR, "VM task started with null applet");
-    return;
-  }
-
-  // Initialize platform (shared across all applets)
-  if (!state->platform) {
-    state->platform = new ESP32Platform();
-  }
-
-  // Initialize VM on first run
-  if (!state->initialized) {
-    sys->logf(LogLevel::INFO, "Starting VM task for applet: %s (%d bytes)", applet->name,
-              applet->bytecodeSize);
-
-    // Deserialize bytecode
-    std::vector<uint8_t> bytecode(applet->bytecode,
-                                  applet->bytecode + applet->bytecodeSize);
-    state->module = new dialos::compiler::BytecodeModule();
-    try {
-      *state->module = dialos::compiler::BytecodeModule::deserialize(bytecode);
-      sys->logf(LogLevel::INFO, "Applet '%s' loaded successfully",
-                applet->name);
-    } catch (const std::exception &e) {
-      sys->logf(LogLevel::ERROR, "Failed to load applet '%s': %s",
-                applet->name, e.what());
-      delete state->module;
-      state->module = nullptr;
-      return;
-    }
-
-    // Create value pool and VM state
-    state->pool = new dialos::vm::ValuePool(state->module->metadata.heapSize);
-    state->vmState = new dialos::vm::VMState(*state->module, *state->pool, *state->platform);
-    state->vmState->reset();
-    sys->logf(LogLevel::INFO, "VM initialized for '%s', heap: %d bytes",
-              applet->name, state->module->metadata.heapSize);
-    // Invoke app.onLoad callback if registered so the app can perform startup setup
-    // (e.g., register encoders, timers). Use an empty args vector.
-    state->platform->invokeCallback("app.onLoad", std::vector<dialos::vm::Value>());
-    state->platform->console_log("Invoked app.onLoad callback if registered");
-    state->initialized = true;
-  }
-  
-  // FreeRTOS tasks run in infinite loops
-  while (true) {
-    // Prevent re-execution after finishing for one-shot applets
-    if (state->hasFinished) {
-      TaskScheduler::sleepMs(1000); // Sleep if finished
-      continue;
-    }
-    
-    if (!state->initialized) {
-      // Should not happen, but safety check
-      TaskScheduler::sleepMs(100);
-      continue;
-    }
-    
-    // Reset VM for repeated execution (except first time)
-    // Only reset for applets that are designed to repeat
-    if (state->executionCount > 0 && applet->repeat) {
-      state->vmState->reset();
-    }
-
-    // Execute VM (up to 1000 instructions per task tick)
-    dialos::vm::VMResult result = state->vmState->execute(1000);
-
-    // Handle execution result
-    if (result == dialos::vm::VMResult::FINISHED) {
-      state->executionCount++;
-
-      // Handle repeat or one-shot execution
-      if (applet->repeat && applet->executeInterval > 0) {
-        // For repeating applets with intervals, reset and wait
-        state->vmState->reset();
-        TaskScheduler::sleepMs(applet->executeInterval);
-      } else if (!applet->repeat) {
-        // One-shot applet finished - don't reset, just mark as finished
-        sys->logf(LogLevel::INFO, "Applet '%s' finished (task %d)",
-                  applet->name, taskId);
-        state->hasFinished = true;
-        // Sleep for a while before checking again
-        TaskScheduler::sleepMs(1000);
-      } else {
-        // repeat=true but interval=0, run continuously with reset
-        state->vmState->reset();
-        // Small delay to prevent busy loop
-        TaskScheduler::sleepMs(10);
-      }
-    } else if (result == dialos::vm::VMResult::ERROR) {
-      const char *errMsg = state->vmState->getError().c_str();
-      sys->logf(LogLevel::ERROR, "VM error in '%s' (task %d): %s", applet->name, taskId,
-                errMsg && *errMsg ? errMsg : "Unknown error");
-      // Sleep and retry
-      TaskScheduler::sleepMs(5000);
-    } else if (result == dialos::vm::VMResult::OUT_OF_MEMORY) {
-      sys->logf(LogLevel::ERROR, "Applet '%s' (task %d) out of memory", applet->name, taskId);
-      state->vmState->reset();
-      TaskScheduler::sleepMs(5000);
-    } else if (result == dialos::vm::VMResult::YIELD) {
-      // VM yielded, continue soon
-      TaskScheduler::sleepMs(10);
-    }
-    // VMResult::OK - continue executing immediately next tick with small delay
-    else {
-      TaskScheduler::sleepMs(1);
-    }
-  }
-}
-
-// Helper function to create a VM task for an applet by name
-Task *createVMTask(const char *appletName) {
-  TaskScheduler *scheduler = Kernel::instance().getScheduler();
-  SystemServices *sys = Kernel::instance().getSystemServices();
-
-  // Find applet in registry
-  VMApplet *applet = nullptr;
-  for (int i = 0; i < BUILTIN_APPLET_REGISTRY_SIZE; i++) {
-    if (strcmp(BUILTIN_APPLET_REGISTRY[i].name, appletName) == 0) {
-      applet = &BUILTIN_APPLET_REGISTRY[i];
-      break;
-    }
-  }
-
-  if (!applet) {
-    sys->logf(LogLevel::ERROR, "Applet '%s' not found in registry",
-              appletName);
-    return nullptr;
-  }
-
-  // Create task with applet-specific name
-  char taskName[32];
-  snprintf(taskName, sizeof(taskName), "VM_%s", applet->name);
-
-  Task *task = scheduler->createTask(taskName, vmAppletTask, (void *)applet,
-                                     16384, TaskPriority::NORMAL);
-
-  if (task) {
-    sys->logf(LogLevel::INFO, "Created VM task for applet: %s", applet->name);
-  } else {
-    sys->logf(LogLevel::ERROR, "Failed to create task for applet: %s",
-              applet->name);
-  }
-
-  return task;
 }
 
 void setup() {
@@ -473,21 +329,21 @@ void setup() {
                                       TaskPriority::NORMAL);
   Task *task2 = scheduler->createTask("Encoder", encoderTask, nullptr, 2048,
                                       TaskPriority::HIGH_PRIORITY);
-  // Task *task3 = scheduler->createTask("RamFS_Test", ramfsTestTask, nullptr,
-  //                                     4096, TaskPriority::NORMAL);
+  Task *task3 = scheduler->createTask("RamFS_Test", ramfsTestTask, nullptr,
+                                      4096, TaskPriority::NORMAL);
   // Task *task4 = scheduler->createTask("MemoryGauge", memoryGaugeTask,
   // nullptr,
   //                                     2048, TaskPriority::LOW_PRIORITY);
   // Task *task5 = scheduler->createTask("MemoryTest", memoryTestTask, nullptr,
   //                                     2048, TaskPriority::NORMAL);
-  
-  // Create VM task(s) for applets
-  Task *vmTask1 = createVMTask("hello_world");
-  Task *vmTask2 = createVMTask("counter_applet");
 
-  if (task1 && task2 
-    && vmTask1
-    && vmTask2
+  // Create VM task(s) for applets
+  // Task *vmTask1 = createVMTask("hello_world");
+  // Task *vmTask2 = createVMTask("counter_applet");
+
+  if (task1 && task2 && task3
+      // && vmTask1
+      // && vmTask2
   ) {
     Serial.println("Kernel tasks created");
   }

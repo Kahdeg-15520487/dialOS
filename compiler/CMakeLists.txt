@@ -61,7 +61,8 @@ add_executable(compile compile.cpp)
 target_link_libraries(compile dialscript_parser)
 
 # If building with Emscripten, add a small JS API wrapper and export functions for the wasm build
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Emscripten")
+# if(CMAKE_CXX_COMPILER_ID STREQUAL "Emscripten")
+if(EMSCRIPTEN)
     message(STATUS "Emscripten detected: adding JS API wrapper and linker flags for wasm export")
     target_sources(compile PRIVATE js_api.cpp)
     # Export the APIs and enable modularized output
