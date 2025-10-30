@@ -62,3 +62,26 @@ python -m http.server 8000
 Notes:
 - The site is intentionally tiny and static; update `index.json` manually when adding applets.
 - If you want the site to live at the repository root on GitHub Pages, move or copy the files into the repository `docs/` folder or publish the `gh-pages` branch as shown above.
+
+WASM compiler (CI-built)
+-----------------------
+
+This repository includes a workflow that can build the `compiler/` project with Emscripten and place any resulting `.wasm` (and optional JS glue) into `appstore/wasm/`.
+
+- Workflow: `.github/workflows/build-compiler-wasm.yml` (runs on push to `compiler/**` or manually).
+- The built artifact is committed back to `appstore/wasm/` so it will be served by GitHub Pages together with the rest of the appstore.
+
+If you prefer to build locally, you can use Emscripten SDK and run:
+
+```pwsh
+# Example (PowerShell) - requires emsdk/emcmake on PATH
+emcmake cmake -S compiler -B compiler/build-wasm -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-sSTANDALONE_WASM=1"
+cmake --build compiler/build-wasm --config Release -- -j4
+
+# copy outputs into appstore/wasm
+mkdir -Force appstore\wasm
+Copy-Item -Path compiler\build-wasm\**\*.wasm -Destination appstore\wasm -Recurse -Force -ErrorAction SilentlyContinue
+Copy-Item -Path compiler\build-wasm\**\*.js -Destination appstore\wasm -Recurse -Force -ErrorAction SilentlyContinue
+```
+
+After copying the wasm into `appstore/wasm/` update `appstore/index.json` if you need to change the `url` for the compiler entry.

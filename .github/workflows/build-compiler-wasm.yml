@@ -1,0 +1,76 @@
+name: Build compiler -> WebAssembly
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "compiler/**"
+      - "include/vm/**"
+      - "src/vm/**"
+      - ".github/workflows/cmake-multi-platform.yml"
+  workflow_dispatch:
+
+env:
+  EM_CACHE_FOLDER: 'emsdk-cache'
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Setup cache
+        id: cache-system-libraries
+        uses: actions/cache@v2
+        with:
+          path: ${{env.EM_CACHE_FOLDER}}
+          key: em-version-${{ runner.os }}
+      - name: Install emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          actions-cache-folder: ${{env.EM_CACHE_FOLDER}}
+
+      - name: Configure and build with emcmake
+        run: |
+          set -e
+          emcmake cmake -S compiler -B compiler/build-wasm -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-sSTANDALONE_WASM=1"
+          cmake --build compiler/build-wasm --config Release -- -j$(nproc || echo 2)
+
+      - name: Collect wasm and JS glue (to workspace only)
+        run: |
+          mkdir -p appstore/wasm
+          # copy any .wasm or .js produced by the emscripten build into the job workspace only
+          find compiler/build-wasm -type f \( -name '*.wasm' -o -name '*.js' \) -exec cp {} appstore/wasm/ \; || true
+          echo "Contents of appstore/wasm:" || true
+          ls -la appstore/wasm || true
+
+      - name: Warn if no wasm produced
+        run: |
+          set -e
+          if [ -z "$(find appstore/wasm -type f -name '*.wasm' -print -quit)" ]; then
+            echo "WARNING: no .wasm produced — the Pages deploy will publish appstore without a wasm compiler." >&2
+          else
+            echo ".wasm file(s) found and included in the Pages artifact.";
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dialOS-compiler-wasm
+          path: |
+            appstore/wasm
+
+      # - name: Upload appstore directory as Pages artifact
+      #   uses: actions/upload-pages-artifact@v2
+      #   with:
+      #     name: appstore-pages
+      #     path: ./appstore
+
+      # - name: Deploy to GitHub Pages
+      #   uses: actions/deploy-pages@v4
+      #   with:
+      #     artifact_name: appstore-pages

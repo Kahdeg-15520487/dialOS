@@ -20,13 +20,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        platform: [wasm, linux, windows]
         include:
-          - os: ubuntu-latest
+          - platform: wasm
+            os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
             shell: bash
-          - os: windows-latest
+          - platform: linux
+            os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+            shell: bash
+          - platform: windows
+            os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
             shell: pwsh
@@ -40,8 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure CMake (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+      - name: Configure CMake (Linux)
+        if: matrix.platform == 'linux'
         run: |
           if [ -n "${VCPKG_TOOLCHAIN_FILE-}" ]; then
             cmake -B "$BUILD_DIR" \
@@ -60,7 +67,7 @@ jobs:
         shell: bash
 
       - name: Configure CMake (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
         run: |
           ls
           if ($env:VCPKG_TOOLCHAIN_FILE) {
@@ -71,19 +78,19 @@ jobs:
         shell: pwsh
 
       - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
         run: |
           cmake --build "$BUILD_DIR" --config ${{ matrix.build_type }} --target compile -- -j$(nproc || echo 2)
         shell: bash
 
       - name: Build (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
         run: |
           cmake --build "$env:BUILD_DIR" --config ${{ matrix.build_type }} --target compile
         shell: pwsh
 
       - name: Collect `compile` binary (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
         run: |
           mkdir -p "$BUILD_DIR/install/bin"
           # Typical single-config build places the binary at build/compile
@@ -98,7 +105,7 @@ jobs:
         shell: bash
 
       - name: Collect `compile` binary (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
         run: |
           $installDir = "$env:BUILD_DIR\install\bin"
           New-Item -ItemType Directory -Path $installDir -Force | Out-Null
@@ -116,16 +123,16 @@ jobs:
         shell: pwsh
 
       - name: Package artifacts (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
         run: |
           cd "$BUILD_DIR/install"
-          zip -r "$BUILD_DIR/ubuntu-binaries.zip" bin || true
+          zip -r "$BUILD_DIR/linux-binaries.zip" bin || true
         shell: bash
 
       - name: Package artifacts (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          $zipPath = "$env:BUILD_DIR\windows-compile.zip"
+          $zipPath = "$env:BUILD_DIR\windows-binaries.zip"
           if (Test-Path "$env:BUILD_DIR\install") {
             Compress-Archive -Path "$env:BUILD_DIR\install\*" -DestinationPath $zipPath -Force
           } else {
@@ -138,7 +145,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dialOS-compiler-${{ matrix.os }}
+          name: dialOS-compiler-${{ matrix.platform }}
           path: |
-            ${{ env.BUILD_DIR }}/ubuntu-binaries.zip
-            ${{ env.BUILD_DIR }}/windows-compile.zip
+            ${{ env.BUILD_DIR }}/linux-binaries.zip
+            ${{ env.BUILD_DIR }}/windows-binaries.zip
