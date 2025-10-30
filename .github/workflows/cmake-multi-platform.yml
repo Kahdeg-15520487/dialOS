@@ -5,6 +5,11 @@ name: Build and package dialOS compiler
 on:
   push:
     branches: ["master"]
+    paths:
+      - 'compiler/**'
+      - 'include/vm/**'
+      - 'src/vm/**'
+      - '.github/workflows/cmake-multi-platform.yml'
   pull_request:
     branches: ["master"]
 
