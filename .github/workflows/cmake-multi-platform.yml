@@ -41,21 +41,14 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake build-essential curl unzip zip libsdl2-dev libsdl2-ttf-dev libsdl2-mixer-dev
+        sudo apt-get install -y cmake build-essential curl unzip zip
       shell: bash
 
 
-    - name: Setup vcpkg and SDL (Windows)
+    - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        # Clone and bootstrap vcpkg, then install SDL packages so CMake can find them
-        git clone https://github.com/microsoft/vcpkg.git $env:RUNNER_TEMP\vcpkg
-        Push-Location $env:RUNNER_TEMP\vcpkg
-        .\bootstrap-vcpkg.bat -disableMetrics
-        .\vcpkg.exe install sdl2 sdl2-ttf sdl2-mixer
-        # expose vcpkg toolchain for CMake
-        echo "VCPKG_TOOLCHAIN_FILE=$env:RUNNER_TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" | Out-File -FilePath $env:GITHUB_ENV -Encoding ascii -Append
-        Pop-Location
+        Write-Host "Using preinstalled tools on runner (cmake and MSVC). No extra packages required for compiler-only build."
       shell: pwsh
 
     - name: Configure CMake (Linux/macOS)
@@ -87,42 +80,62 @@ jobs:
         }
       shell: pwsh
 
-    - name: Build (Linux/macOS)
-      if: matrix.os != 'windows-latest'
+    - name: Build (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
-        cmake --build "$BUILD_DIR" --config ${{ matrix.build_type }} -- -j$(nproc || echo 2)
+        cmake --build "$BUILD_DIR" --config ${{ matrix.build_type }} --target compile -- -j$(nproc || echo 2)
       shell: bash
 
     - name: Build (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        cmake --build "$env:BUILD_DIR" --config ${{ matrix.build_type }}
+        cmake --build "$env:BUILD_DIR" --config ${{ matrix.build_type }} --target compile
       shell: pwsh
 
-    - name: Install targets to a staging folder (Linux/macOS)
-      if: matrix.os != 'windows-latest'
+    - name: Collect `compile` binary (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
-        cmake --install "$BUILD_DIR" --config ${{ matrix.build_type }} --prefix "$BUILD_DIR/install"
+        mkdir -p "$BUILD_DIR/install/bin"
+        # Typical single-config build places the binary at build/compile
+        if [ -f "$BUILD_DIR/compile" ]; then
+          cp "$BUILD_DIR/compile" "$BUILD_DIR/install/bin/"
+        elif [ -f "$BUILD_DIR/${{ matrix.build_type }}/compile" ]; then
+          cp "$BUILD_DIR/${{ matrix.build_type }}/compile" "$BUILD_DIR/install/bin/"
+        else
+          echo "Cannot find compile binary in build directory"
+          ls -la "$BUILD_DIR" || true
+        fi
       shell: bash
 
-    - name: Install targets to a staging folder (Windows)
+    - name: Collect `compile` binary (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        cmake --install "$env:BUILD_DIR" --config ${{ matrix.build_type }} --prefix "$env:BUILD_DIR\install"
+        $installDir = "$env:BUILD_DIR\install\bin"
+        New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+        $cfgPath = Join-Path $env:BUILD_DIR $env:BUILD_TYPE
+        $exeCandidates = @("$env:BUILD_DIR\compile.exe", "$env:BUILD_DIR\${{ matrix.build_type }}\compile.exe", "$env:BUILD_DIR\Release\compile.exe")
+        $found = $false
+        foreach ($p in $exeCandidates) {
+          if (Test-Path $p) {
+            Copy-Item -Path $p -Destination $installDir -Force
+            $found = $true
+            break
+          }
+        }
+        if (-not $found) { Write-Host "Cannot find compile.exe; listing build tree:"; Get-ChildItem -Recurse $env:BUILD_DIR | Select-Object FullName }
       shell: pwsh
 
-    - name: Package artifacts (Linux/macOS)
-      if: matrix.os != 'windows-latest'
+    - name: Package artifacts (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         cd "$BUILD_DIR/install"
-        # create a zip of the installed runtime (bin/ lib/ etc)
-        zip -r "$BUILD_DIR/${{ matrix.os }}-binaries.zip" . || true
+        zip -r "$BUILD_DIR/ubuntu-binaries.zip" bin || true
       shell: bash
 
     - name: Package artifacts (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        $zipPath = "$env:BUILD_DIR\windows-binaries.zip"
+        $zipPath = "$env:BUILD_DIR\windows-compile.zip"
         if (Test-Path "$env:BUILD_DIR\install") {
           Compress-Archive -Path "$env:BUILD_DIR\install\*" -DestinationPath $zipPath -Force
         } else {
@@ -135,10 +148,10 @@ jobs:
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: dialOS-binaries-${{ matrix.os }}
+        name: dialOS-compiler-${{ matrix.os }}
         path: |
-          ${{ env.BUILD_DIR }}/${{ matrix.os }}-binaries.zip
-          ${{ env.BUILD_DIR }}/windows-binaries.zip
+          ${{ env.BUILD_DIR }}/ubuntu-binaries.zip
+          ${{ env.BUILD_DIR }}/windows-compile.zip
 
     - name: Run tests (ctest) - Linux/macOS
       if: always() && matrix.os != 'windows-latest'
