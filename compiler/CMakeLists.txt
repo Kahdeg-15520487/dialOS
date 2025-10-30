@@ -66,7 +66,7 @@ if(EMSCRIPTEN)
     message(STATUS "Emscripten detected: adding JS API wrapper and linker flags for wasm export")
     target_sources(compile PRIVATE js_api.cpp)
     # Export the APIs and enable modularized output
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_main\",\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"_malloc\",\"_free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"_malloc\",\"_free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
 endif()
 
 # VM test executable

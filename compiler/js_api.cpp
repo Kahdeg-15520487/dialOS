@@ -59,3 +59,11 @@ void free_compiled_buffer(unsigned char* p) {
 }
 
 } // extern "C"
+
+#ifdef EMSCRIPTEN
+// Provide a minimal main when building with Emscripten to satisfy linkers
+extern "C" int main(int argc, char** argv) {
+    (void)argc; (void)argv;
+    return 0;
+}
+#endif
