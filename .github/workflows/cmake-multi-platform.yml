@@ -32,7 +32,8 @@ jobs:
         build_type: [Release]
 
     env:
-      BUILD_DIR: ${{ github.workspace }}/build
+      # Build inside the compiler subdirectory so CMake sees compiler/CMakeLists.txt
+      BUILD_DIR: ${{ github.workspace }}/compiler/build
 
     steps:
     - uses: actions/checkout@v4
@@ -60,13 +61,13 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_TOOLCHAIN_FILE" \
-            -S "${GITHUB_WORKSPACE}"
+              -S "${GITHUB_WORKSPACE}/compiler"
         else
           cmake -B "$BUILD_DIR" \
             -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -S "${GITHUB_WORKSPACE}"
+            -S "${GITHUB_WORKSPACE}/compiler"
         fi
       shell: bash
 
@@ -75,9 +76,9 @@ jobs:
       run: |
         ls
         if ($env:VCPKG_TOOLCHAIN_FILE) {
-          cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE" -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_TOOLCHAIN_FILE"
+          cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE\compiler" -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_TOOLCHAIN_FILE"
         } else {
-          cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE"
+          cmake -B "$env:BUILD_DIR" -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -S "$env:GITHUB_WORKSPACE\compiler"
         }
       shell: pwsh
 
