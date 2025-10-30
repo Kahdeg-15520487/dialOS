@@ -32,8 +32,18 @@ function renderGrid(list){
     const card = document.createElement('article'); card.className = 'card';
 
     const title = document.createElement('div'); title.className = 'title';
-    const img = document.createElement('img'); img.src = a.icon || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="%230e1720"/></svg>';
-    img.alt = a.name + ' icon';
+    const img = document.createElement('img');
+    // Prefer provided icon, then a local logo.png inside the appstore folder, then an embedded SVG fallback
+    const embeddedFallback = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="%230e1720"/></svg>';
+    img.src = a.icon || 'logo.png';
+    // If the chosen src fails to load (missing file or invalid URL), fall back to embedded SVG
+    img.onerror = () => {
+      if (img.src !== embeddedFallback) {
+        img.src = embeddedFallback;
+      }
+      img.onerror = null;
+    };
+    img.alt = (a.name || 'Applet') + ' icon';
     title.appendChild(img);
 
     const h = document.createElement('h3'); h.textContent = a.name || 'Unnamed';
