@@ -1,0 +1,33 @@
+name: Deploy Appstore to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "appstore/**"
+      - ".github/workflows/publish-appstore.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload appstore directory as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: appstore-pages
+          path: ./appstore
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: appstore-pages

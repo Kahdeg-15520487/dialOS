@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>dialOS App Store</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>dialOS App Store</h1>
+    <input id="search" placeholder="Search applets by name, tag, or author..." aria-label="Search applets">
+  </header>
+
+  <main>
+    <div id="meta" class="meta"></div>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" hidden>No applets found.</div>
+  </main>
+
+  <footer>
+    <small>Static index — update <code>index.json</code> manually to add/remove applets.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
