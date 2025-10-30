@@ -35,19 +35,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake build-essential curl unzip zip
-        shell: bash
-
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Write-Host "Using preinstalled tools on runner (cmake and MSVC). No extra packages required for compiler-only build."
-        shell: pwsh
-
       - name: Configure CMake (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
