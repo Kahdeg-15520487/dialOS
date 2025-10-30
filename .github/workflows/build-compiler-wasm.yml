@@ -38,7 +38,7 @@ jobs:
         run: |
           set -e
           emcmake cmake -S compiler -B compiler/build-wasm -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-sSTANDALONE_WASM=1"
-          cmake --build compiler/build-wasm --config Release -- -j$(nproc || echo 2)
+          cmake --build compiler/build-wasm --config Release --target compile -- -j$(nproc || echo 2)
 
       - name: Collect wasm and JS glue (to workspace only)
         run: |
@@ -64,13 +64,13 @@ jobs:
           path: |
             appstore/wasm
 
-      # - name: Upload appstore directory as Pages artifact
-      #   uses: actions/upload-pages-artifact@v2
-      #   with:
-      #     name: appstore-pages
-      #     path: ./appstore
+      - name: Upload appstore directory as Pages artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          name: appstore-pages
+          path: ./appstore
 
-      # - name: Deploy to GitHub Pages
-      #   uses: actions/deploy-pages@v4
-      #   with:
-      #     artifact_name: appstore-pages
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: appstore-pages
