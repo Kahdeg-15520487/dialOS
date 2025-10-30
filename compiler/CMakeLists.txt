@@ -60,6 +60,14 @@ target_link_libraries(parse_file dialscript_parser)
 add_executable(compile compile.cpp)
 target_link_libraries(compile dialscript_parser)
 
+# If building with Emscripten, add a small JS API wrapper and export functions for the wasm build
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Emscripten")
+    message(STATUS "Emscripten detected: adding JS API wrapper and linker flags for wasm export")
+    target_sources(compile PRIVATE js_api.cpp)
+    # Export the APIs and enable modularized output
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_main\",\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"_malloc\",\"_free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
+endif()
+
 # VM test executable
 add_executable(test_vm test_vm.cpp)
 target_link_libraries(test_vm dialscript_vm dialscript_parser)
