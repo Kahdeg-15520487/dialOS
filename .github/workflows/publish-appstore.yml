@@ -5,8 +5,8 @@ on:
     branches:
       - master
     paths:
-      - 'appstore/**'
-      - '.github/workflows/publish-appstore.yml'
+      - "appstore/**"
+      - ".github/workflows/publish-appstore.yml"
   workflow_dispatch:
 
 permissions:
@@ -24,8 +24,10 @@ jobs:
       - name: Upload appstore directory as Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          name: appstore-pages
           path: ./appstore
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-
+          with:
+            artifact_name: appstore-pages
