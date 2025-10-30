@@ -4,6 +4,86 @@ const meta = document.getElementById('meta');
 const empty = document.getElementById('empty');
 const searchInput = document.getElementById('search');
 let apps = [];
+let compilerModulePromise = null;
+
+// Load the compiled compiler module (compile.js) from appstore/wasm.
+// Returns a promise resolving to the Emscripten Module instance.
+async function loadCompilerModule() {
+  if (compilerModulePromise) return compilerModulePromise;
+
+  // Try dynamic import first (ES module build)
+  compilerModulePromise = (async () => {
+    try {
+      const spec = await import('./wasm/compile.js');
+      const factory = spec && (spec.default || spec.createCompilerModule || spec.createModule || spec);
+      if (typeof factory === 'function') {
+        const mod = await factory();
+        return mod;
+      }
+    } catch (e) {
+      // dynamic import may fail if compile.js is not an ES module; fall through to script tag approach
+      console.warn('Dynamic import of compile.js failed, falling back to script tag:', e);
+    }
+
+    // Fallback: inject script tag and use global createCompilerModule
+    return new Promise((resolve, reject) => {
+      if (window.createCompilerModule) {
+        try {
+          window.createCompilerModule().then(resolve).catch(reject);
+          return;
+        } catch (err) {
+          reject(err);
+          return;
+        }
+      }
+      const s = document.createElement('script');
+      s.src = './wasm/compile.js';
+      s.async = true;
+      s.onload = () => {
+        if (window.createCompilerModule) {
+          window.createCompilerModule().then(resolve).catch(reject);
+        } else if (window.createModule) {
+          window.createModule().then(resolve).catch(reject);
+        } else {
+          reject(new Error('compile.js loaded but no factory function found (createCompilerModule/createModule)'));
+        }
+      };
+      s.onerror = (ev) => reject(new Error('Failed to load compile.js'));
+      document.head.appendChild(s);
+    });
+  })();
+
+  return compilerModulePromise;
+}
+
+async function compileWithWasm(sourceText) {
+  const Module = await loadCompilerModule();
+  if (!Module) throw new Error('WASM module not available');
+
+  // cwrap wrapper for compile_source and free
+  const compile_source = Module.cwrap ? Module.cwrap('compile_source', 'number', ['string', 'number']) : null;
+  const free_buf = Module.cwrap ? Module.cwrap('free_compiled_buffer', 'void', ['number']) : null;
+  if (!compile_source || !free_buf) {
+    throw new Error('Required WASM exports (compile_source/free_compiled_buffer) not found');
+  }
+
+  // allocate 4-byte int on wasm heap to receive length
+  const outLenPtr = Module._malloc(4);
+  try {
+    const ptr = compile_source(sourceText, outLenPtr);
+    const len = Module.getValue(outLenPtr, 'i32');
+    if (!ptr || !len) {
+      throw new Error('Compilation returned no output (len=' + len + ')');
+    }
+    // copy bytes out of wasm heap
+    const compiled = new Uint8Array(Module.HEAPU8.buffer, ptr, len).slice();
+    // free native buffer
+    free_buf(ptr);
+    return compiled;
+  } finally {
+    Module._free(outLenPtr);
+  }
+}
 
 async function load() {
   try {
@@ -57,6 +137,49 @@ function renderGrid(list){
     const actions = document.createElement('div'); actions.className = 'actions';
     const dl = document.createElement('a'); dl.className = 'btn'; dl.textContent = 'Download'; dl.href = a.url || '#'; dl.target = '_blank';
     actions.appendChild(dl);
+
+    // Special UI for the WASM compiler entry: add a "Compile sample" button that runs the wasm compiler in-browser
+    if ((a.id || '') === 'compiler-wasm') {
+      const runBtn = document.createElement('button');
+      runBtn.className = 'btn';
+      runBtn.style.background = '#ffd166';
+      runBtn.style.color = '#081426';
+      runBtn.textContent = 'Compile sample in browser';
+      const resultEl = document.createElement('div');
+      resultEl.className = 'compiler-result';
+      resultEl.style.marginTop = '8px';
+      actions.appendChild(runBtn);
+
+      runBtn.addEventListener('click', async () => {
+        runBtn.disabled = true;
+        resultEl.textContent = 'Loading compiler...';
+        try {
+          // sample source; you can replace this with a prompt or textarea UI later
+          const sample = 'var hello: "wasm";';
+          const compiled = await compileWithWasm(sample);
+          // create download link
+          const blob = new Blob([compiled], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          resultEl.innerHTML = '';
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'output.dsb';
+          link.className = 'btn';
+          link.textContent = `Download compiled (${compiled.length} bytes)`;
+          resultEl.appendChild(link);
+          // also show a small info
+          const info = document.createElement('div'); info.style.color = '#94a3b8'; info.style.fontSize = '12px'; info.textContent = 'Compiled in browser — click to download.';
+          resultEl.appendChild(info);
+        } catch (err) {
+          console.error(err);
+          resultEl.textContent = 'Compile error: ' + (err && err.message ? err.message : String(err));
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      card.appendChild(resultEl);
+    }
 
     card.appendChild(title);
     card.appendChild(p);
