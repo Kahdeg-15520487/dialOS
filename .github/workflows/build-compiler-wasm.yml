@@ -65,7 +65,7 @@ jobs:
             appstore/wasm
 
       - name: Upload appstore directory as Pages artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           name: appstore-pages
           path: ./appstore
