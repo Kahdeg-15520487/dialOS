@@ -23,6 +23,7 @@
             <div class="widget" draggable="true" data-type="button">Button</div>
             <div class="widget" draggable="true" data-type="input">Input</div>
             <div class="widget" draggable="true" data-type="circle">Circle</div>
+            <div class="widget" draggable="true" data-type="list">List</div>
         </aside>
 
         <section class="canvas-wrap">
@@ -50,6 +51,20 @@
                 <label>Height: <input id="prop-h" type="number" /></label>
                 <div class="prop-actions">
                     <button id="deleteBtn">Delete</button>
+                </div>
+                <!-- List-specific properties -->
+                <div id="listProps" style="display:none;margin-top:10px">
+                    <h4>List Properties</h4>
+                    <label>Items (one per line):
+                        <textarea id="prop-list-items" rows="6" style="width:100%"></textarea>
+                    </label>
+                    <label>Focused index: <input id="prop-list-focus" type="number" min="0" style="width:80px" /></label>
+                    <div style="display:flex;gap:8px;margin-top:6px">
+                        <button id="prop-list-focus-up">Focus ↑</button>
+                        <button id="prop-list-focus-down">Focus ↓</button>
+                        <button id="prop-list-add">Add Item</button>
+                        <button id="prop-list-remove">Remove Item</button>
+                    </div>
                 </div>
             </div>
         </aside>

@@ -163,23 +163,23 @@ void SDLPlatform::cleanup() {
 }
 
 TTF_Font* SDLPlatform::getFontOfSize(int size) {
-  // Clamp size to reasonable range
-  size = std::max(8, std::min(72, size));
+  // // Clamp size to reasonable range
+  // size = std::max(8, std::min(72, size));
   
-  // Check if we already have this size cached
-  auto it = fontCache_.find(size);
-  if (it != fontCache_.end() && it->second != nullptr) {
-    return it->second;
-  }
+  // // Check if we already have this size cached
+  // auto it = fontCache_.find(size);
+  // if (it != fontCache_.end() && it->second != nullptr) {
+  //   return it->second;
+  // }
   
-  // Load a new font of the specified size
-  if (!fontPath_.empty()) {
-    TTF_Font* newFont = TTF_OpenFont(fontPath_.c_str(), size);
-    if (newFont) {
-      fontCache_[size] = newFont;
-      return newFont;
-    }
-  }
+  // // Load a new font of the specified size
+  // if (!fontPath_.empty()) {
+  //   TTF_Font* newFont = TTF_OpenFont(fontPath_.c_str(), size);
+  //   if (newFont) {
+  //     fontCache_[size] = newFont;
+  //     return newFont;
+  //   }
+  // }
   
   // Fallback to default font if loading failed
   return font_;
@@ -1117,7 +1117,7 @@ void SDLPlatform::renderText(int x, int y, const std::string &text,
   }
 
   // Use actual coordinates without scaling for console text
-  SDL_Rect destRect = {x, y, surface->w, surface->h};
+  SDL_Rect destRect = {x, y, surface->w*size, surface->h*size};
 
   SDL_RenderCopy(renderer_, texture, nullptr, &destRect);
 
@@ -1155,43 +1155,43 @@ void SDLPlatform::debug_drawOverlay() {
   Color textColor(255, 255, 255, 255);
 
   // System info
-  renderText(10, yPos, "=== dialOS Debug Info ===", textColor, 8);
+  renderText(10, yPos, "=== dialOS Debug Info ===", textColor, 1);
   yPos += 20;
 
   renderText(10, yPos, "Time: " + std::to_string(system_getTime()) + "ms",
-             textColor, 6);
+             textColor, 1);
   yPos += 15;
 
   renderText(10, yPos,
              "Encoder: pos=" + std::to_string(encoder_.position) +
                  " btn=" + std::string(encoder_.pressed ? "ON" : "OFF"),
-             textColor, 6);
+             textColor, 1);
   yPos += 15;
 
   renderText(10, yPos,
              "Touch: " + std::string(touch_.pressed ? "ON" : "OFF") + " (" +
                  std::to_string(touch_.x) + "," + std::to_string(touch_.y) +
                  ")",
-             textColor, 6);
+             textColor, 1);
   yPos += 15;
 
   renderText(10, yPos,
              "RFID: " + std::string(rfid_.cardPresent
                                         ? "CARD(" + rfid_.cardUID + ")"
                                         : "NONE"),
-             textColor, 6);
+             textColor, 1);
   yPos += 15;
 
   renderText(10, yPos,
              "Battery: " + std::to_string(power_.batteryLevel) + "% " +
                  std::string(power_.charging ? "CHARGING" : ""),
-             textColor, 6);
+             textColor, 1);
   yPos += 15;
 
   renderText(10, yPos,
              "Buzzer: " + std::string(buzzer_.isPlaying ? "ACTIVE" : "IDLE") +
                  " " + std::to_string(buzzer_.frequency) + "Hz",
-             textColor, 6);
+             textColor, 1);
 
   SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_NONE);
 }
@@ -1978,7 +1978,7 @@ void SDLPlatform::renderLogWindow(int x, int y, int width, int height,
 
   // Render title
   Color titleColor(200, 200, 255); // Light blue
-  renderText(x, y, title, titleColor, 12);
+  renderText(x, y, title, titleColor, 1);
 
   // Calculate text area
   int textY = y + 20;
@@ -2004,13 +2004,13 @@ void SDLPlatform::renderLogWindow(int x, int y, int width, int height,
       line = line.substr(0, 32) + "...";
     }
 
-    renderText(x + 2, lineY, line, textColor, 10);
+    renderText(x + 2, lineY, line, textColor, 1);
   }
 
   // Show scroll indicator if there are more lines
   if (lines.size() > maxLines) {
     Color scrollColor(150, 150, 150);
-    renderText(x + width - 20, y, "^", scrollColor, 10);
+    renderText(x + width - 20, y, "^", scrollColor, 1);
   }
 }
 

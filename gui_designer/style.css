@@ -10,6 +10,11 @@ main{flex:1;display:flex;gap:10px;padding:12px;background:#f4f4f6}
 .widget{background:#eee;border:1px dashed #bbb;padding:8px;margin:8px 0;border-radius:4px;cursor:grab}
 .canvas .el{position:absolute;border:1px solid rgba(0,0,0,0.08);padding:4px;background:rgba(255,255,255,0.8);cursor:move}
 .canvas .el.selected{outline:2px dashed #1e90ff}
+.canvas .el.list {padding:0;border-radius:6px;overflow:hidden;background:#fff}
+.canvas .el .list-container{list-style:none;margin:0;padding:6px}
+.canvas .el .list-item{padding:6px 8px;border-bottom:1px solid #eee;cursor:pointer;color:#222}
+.canvas .el .list-item:last-child{border-bottom:none}
+.canvas .el .list-item.focused{background:#1e90ff;color:#fff}
 .properties label{display:block;margin:8px 0;font-size:13px}
 .properties input{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px}
 .prop-actions{margin-top:8px}

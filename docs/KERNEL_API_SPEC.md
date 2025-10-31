@@ -34,6 +34,10 @@
 
 ---
 
+Defined in [include/vm/platform.h](../include/vm/platform.h)
+
+---
+
 ## Data Types
 All parameters use the VM Value system:
 - `int` - Int32 value
