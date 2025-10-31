@@ -61,9 +61,21 @@ void free_compiled_buffer(unsigned char* p) {
 } // extern "C"
 
 #ifdef EMSCRIPTEN
-// Provide a minimal main when building with Emscripten to satisfy linkers
+// NOTE:
+// When building the 'compile' executable we already provide a full `main` in
+// `compile.cpp`. That causes a duplicate `main` symbol when `js_api.cpp` also
+// defines one. To avoid duplicate symbol errors, we do not provide an extra
+// `main` here by default.
+//
+// If you need to build this file as a standalone minimal module (without
+// `compile.cpp`), define `JSAPI_STANDALONE_MAIN` (e.g. via -DJSAPI_STANDALONE_MAIN)
+// to enable the fallback main below.
+
+#if defined(JSAPI_STANDALONE_MAIN)
 extern "C" int main(int argc, char** argv) {
     (void)argc; (void)argv;
     return 0;
 }
-#endif
+#endif // JSAPI_STANDALONE_MAIN
+
+#endif // EMSCRIPTEN
