@@ -72,14 +72,17 @@ if(EMSCRIPTEN)
     # standalone wasm output, which is why the linker reports undefined
     # exported symbols when both are used together.
     if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "STANDALONE_WASM")
-        # Regular Emscripten JS+WASM build: export helper runtime methods and
-        # modularize the output for use as a JS module.
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"malloc\",\"free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
+        # Regular Emscripten JS+WASM build: export C-level helpers (compile/free
+        # and malloc/free) via EXPORTED_FUNCTIONS and export JS runtime helpers
+        # via EXPORTED_RUNTIME_METHODS. Note: malloc/free must be exported as
+        # C functions (with leading underscores) in EXPORTED_FUNCTIONS so the
+        # JS glue can access Module._malloc/Module._free.
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\",\"_malloc\",\"_free\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
     else()
         # Standalone WASM: only export the C entrypoints; avoid JS runtime
         # helpers and modularization flags which are incompatible with
         # STANDALONE_WASM output.
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]'")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\",\"_malloc\",\"_free\"]'")
     endif()
 endif()
 
