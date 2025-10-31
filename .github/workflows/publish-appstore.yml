@@ -21,6 +21,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Find latest successful wasm build run
+        id: find_run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          workflow_file="build-compiler-wasm.yml"
+          runs_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs?per_page=50"
+          echo "Querying $runs_url"
+          run_id=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" "$runs_url" \
+            | jq -r '.workflow_runs[] | select(.conclusion=="success") | .id' \
+            | head -n1)
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "No successful workflow run found for $workflow_file" >&2
+            exit 1
+          fi
+          echo "Found run id: $run_id"
+          echo "run_id=$run_id" >> $GITHUB_OUTPUT
+
+      - name: Download wasm artifact from build run
+        uses: actions/download-artifact@v5
+        with:
+          name: dialOS-compiler-wasm
+          run-id: ${{ steps.find_run.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy wasm/js into appstore/wasm
+        run: |
+          set -euo pipefail
+          mkdir -p appstore/wasm
+          # download-artifact places files in the workspace (artifact contents preserved)
+          shopt -s globstar || true
+          find . -type f \( -name '*.wasm' -o -name '*.js' \) -exec cp -v {} appstore/wasm/ \; || true
+          echo "Contents of appstore/wasm:" && ls -la appstore/wasm || true
+
+      - name: Upload appstore directory as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: appstore-pages
+          path: ./appstore
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: appstore-pages
+
       - name: Upload appstore directory as Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
