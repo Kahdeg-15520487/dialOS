@@ -206,49 +206,6 @@ function renderGrid(list){
     const dl = document.createElement('a'); dl.className = 'btn'; dl.textContent = 'Download'; dl.href = a.url || '#'; dl.target = '_blank';
     actions.appendChild(dl);
 
-    // Special UI for the WASM compiler entry: add a "Compile sample" button that runs the wasm compiler in-browser
-    if ((a.id || '') === 'compiler-wasm') {
-      const runBtn = document.createElement('button');
-      runBtn.className = 'btn';
-      runBtn.style.background = '#ffd166';
-      runBtn.style.color = '#081426';
-      runBtn.textContent = 'Compile sample in browser';
-      const resultEl = document.createElement('div');
-      resultEl.className = 'compiler-result';
-      resultEl.style.marginTop = '8px';
-      actions.appendChild(runBtn);
-
-      runBtn.addEventListener('click', async () => {
-        runBtn.disabled = true;
-        resultEl.textContent = 'Loading compiler...';
-        try {
-          // sample source; you can replace this with a prompt or textarea UI later
-          const sample = 'var hello: "wasm";';
-          const compiled = await compileWithWasm(sample);
-          // create download link
-          const blob = new Blob([compiled], { type: 'application/octet-stream' });
-          const url = URL.createObjectURL(blob);
-          resultEl.innerHTML = '';
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = 'output.dsb';
-          link.className = 'btn';
-          link.textContent = `Download compiled (${compiled.length} bytes)`;
-          resultEl.appendChild(link);
-          // also show a small info
-          const info = document.createElement('div'); info.style.color = '#94a3b8'; info.style.fontSize = '12px'; info.textContent = 'Compiled in browser — click to download.';
-          resultEl.appendChild(info);
-        } catch (err) {
-          console.error(err);
-          resultEl.textContent = 'Compile error: ' + (err && err.message ? err.message : String(err));
-        } finally {
-          runBtn.disabled = false;
-        }
-      });
-
-      card.appendChild(resultEl);
-    }
-
     card.appendChild(title);
     card.appendChild(p);
     card.appendChild(mm);
