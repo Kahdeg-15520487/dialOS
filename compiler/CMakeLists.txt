@@ -74,7 +74,7 @@ if(EMSCRIPTEN)
     if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "STANDALONE_WASM")
         # Regular Emscripten JS+WASM build: export helper runtime methods and
         # modularize the output for use as a JS module.
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"_malloc\",\"_free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"malloc\",\"free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
     else()
         # Standalone WASM: only export the C entrypoints; avoid JS runtime
         # helpers and modularization flags which are incompatible with
