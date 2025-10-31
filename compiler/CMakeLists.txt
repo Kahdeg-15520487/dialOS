@@ -65,8 +65,22 @@ target_link_libraries(compile dialscript_parser)
 if(EMSCRIPTEN)
     message(STATUS "Emscripten detected: adding JS API wrapper and linker flags for wasm export")
     target_sources(compile PRIVATE js_api.cpp)
-    # Export the APIs and enable modularized output
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"_malloc\",\"_free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
+
+    # If the build requests a standalone wasm (STANDALONE_WASM), do NOT add
+    # JS-only runtime method exports (like _malloc/_free) or modularize flags.
+    # Those runtime helpers live in the JS glue/runtime and are invalid for
+    # standalone wasm output, which is why the linker reports undefined
+    # exported symbols when both are used together.
+    if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "STANDALONE_WASM")
+        # Regular Emscripten JS+WASM build: export helper runtime methods and
+        # modularize the output for use as a JS module.
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]' -sEXPORTED_RUNTIME_METHODS='[\"cwrap\",\"ccall\",\"FS\",\"callMain\",\"getValue\",\"HEAPU8\",\"_malloc\",\"_free\"]' -sMODULARIZE=1 -sEXPORT_NAME=\"createCompilerModule\"")
+    else()
+        # Standalone WASM: only export the C entrypoints; avoid JS runtime
+        # helpers and modularization flags which are incompatible with
+        # STANDALONE_WASM output.
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sEXPORTED_FUNCTIONS='[\"_compile_source\",\"_free_compiled_buffer\"]'")
+    endif()
 endif()
 
 # VM test executable
