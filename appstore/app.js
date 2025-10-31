@@ -13,13 +13,15 @@ async function loadCompilerModule() {
 
   // Try dynamic import first (ES module build)
   compilerModulePromise = (async () => {
-    try {
-      const spec = await import('./wasm/compile.js');
-      const factory = spec && (spec.default || spec.createCompilerModule || spec.createModule || spec);
-      if (typeof factory === 'function') {
-        const mod = await factory();
-        return mod;
-      }
+      try {
+        const spec = await import('./wasm/compile.js');
+        const factory = spec && (spec.default || spec.createCompilerModule || spec.createModule || spec);
+        if (typeof factory === 'function') {
+          // Ensure the runtime does not auto-run main. Pass noInitialRun so
+          // we can safely call cwrap/_malloc and other exports manually.
+          const mod = await factory({ noInitialRun: true });
+          return mod;
+        }
     } catch (e) {
       // dynamic import may fail if compile.js is not an ES module; fall through to script tag approach
       console.warn('Dynamic import of compile.js failed, falling back to script tag:', e);
@@ -29,7 +31,7 @@ async function loadCompilerModule() {
     return new Promise((resolve, reject) => {
       if (window.createCompilerModule) {
         try {
-          window.createCompilerModule().then(resolve).catch(reject);
+          window.createCompilerModule({ noInitialRun: true }).then(resolve).catch(reject);
           return;
         } catch (err) {
           reject(err);
@@ -41,10 +43,15 @@ async function loadCompilerModule() {
       s.async = true;
       s.onload = () => {
         if (window.createCompilerModule) {
-          window.createCompilerModule().then(resolve).catch(reject);
+          window.createCompilerModule({ noInitialRun: true }).then(resolve).catch(reject);
         } else if (window.createModule) {
-          window.createModule().then(resolve).catch(reject);
+          window.createModule({ noInitialRun: true }).then(resolve).catch(reject);
         } else {
+          // As a last resort, if the script used classic (non-modularized)
+          // output, set a Module hint to prevent auto-run before rejecting.
+          if (!window.createCompilerModule && !window.createModule) {
+            window.Module = Object.assign(window.Module || {}, { noInitialRun: true });
+          }
           reject(new Error('compile.js loaded but no factory function found (createCompilerModule/createModule)'));
         }
       };
