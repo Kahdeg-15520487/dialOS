@@ -5,6 +5,31 @@ const empty = document.getElementById('empty');
 const searchInput = document.getElementById('search');
 let apps = [];
 let compilerModulePromise = null;
+// Tab elements (initialized after DOM sections exist)
+const tabBrowseBtn = document.getElementById('tab-browse');
+const tabCompileBtn = document.getElementById('tab-compile');
+const browseTab = document.getElementById('browse-tab');
+const compileTab = document.getElementById('compile-tab');
+
+function showTab(name){
+  if (name === 'compile'){
+    browseTab.hidden = true;
+    compileTab.hidden = false;
+    tabBrowseBtn.setAttribute('aria-selected','false');
+    tabCompileBtn.setAttribute('aria-selected','true');
+  } else {
+    browseTab.hidden = false;
+    compileTab.hidden = true;
+    tabBrowseBtn.setAttribute('aria-selected','true');
+    tabCompileBtn.setAttribute('aria-selected','false');
+  }
+}
+
+// Wire tab buttons
+if (tabBrowseBtn && tabCompileBtn){
+  tabBrowseBtn.addEventListener('click', ()=> showTab('browse'));
+  tabCompileBtn.addEventListener('click', ()=> showTab('compile'));
+}
 
 // Load the compiled compiler module (compile.js) from appstore/wasm.
 // Returns a promise resolving to the Emscripten Module instance.
@@ -90,6 +115,42 @@ async function compileWithWasm(sourceText) {
   } finally {
     Module._free(outLenPtr);
   }
+}
+
+// Compile-tab UI wiring
+const compileSourceEl = document.getElementById('compile-source');
+const compileRunBtn = document.getElementById('compile-run');
+const compileStatus = document.getElementById('compile-status');
+const compileResult = document.getElementById('compile-result');
+
+if (compileRunBtn && compileSourceEl) {
+  compileRunBtn.addEventListener('click', async () => {
+    const src = (compileSourceEl.value || '').trim();
+    if (!src) {
+      compileStatus.textContent = 'Please enter source to compile.';
+      return;
+    }
+    compileRunBtn.disabled = true;
+    compileStatus.textContent = 'Compiling...';
+    compileResult.innerHTML = '';
+    try {
+      const compiled = await compileWithWasm(src);
+      compileStatus.textContent = `Compiled ${compiled.length} bytes`;
+      const blob = new Blob([compiled], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'output.dsb';
+      link.className = 'btn';
+      link.textContent = `Download compiled (${compiled.length} bytes)`;
+      compileResult.appendChild(link);
+    } catch (err) {
+      console.error(err);
+      compileStatus.textContent = 'Compile error: ' + (err && err.message ? err.message : String(err));
+    } finally {
+      compileRunBtn.disabled = false;
+    }
+  });
 }
 
 async function load() {

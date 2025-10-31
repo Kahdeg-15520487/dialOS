@@ -9,13 +9,32 @@
 <body>
   <header class="topbar">
     <h1>dialOS App Store</h1>
+    <nav class="tabs" role="tablist">
+      <button id="tab-browse" role="tab" aria-selected="true">Browse</button>
+      <button id="tab-compile" role="tab" aria-selected="false">Compile</button>
+    </nav>
     <input id="search" placeholder="Search applets by name, tag, or author..." aria-label="Search applets">
   </header>
 
   <main>
     <div id="meta" class="meta"></div>
-    <div id="grid" class="grid"></div>
-    <div id="empty" class="empty" hidden>No applets found.</div>
+
+    <section id="browse-tab">
+      <div id="grid" class="grid"></div>
+      <div id="empty" class="empty" hidden>No applets found.</div>
+    </section>
+
+    <section id="compile-tab" hidden>
+      <h2>Compile Applet (WASM)</h2>
+      <div class="compile-panel">
+        <textarea id="compile-source" rows="12" placeholder="Write DialScript source here..."></textarea>
+        <div class="compile-controls">
+          <button id="compile-run" class="btn">Compile</button>
+          <span id="compile-status" class="muted"></span>
+        </div>
+        <div id="compile-result" class="compile-result"></div>
+      </div>
+    </section>
   </main>
 
   <footer>
