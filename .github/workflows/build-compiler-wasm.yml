@@ -42,7 +42,11 @@ jobs:
       - name: Configure and build with emcmake
         run: |
           set -e
-          emcmake cmake -S compiler -B compiler/build-wasm -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-sSTANDALONE_WASM=1"
+          # Build as JS+WASM module (not standalone WASM). The site expects the
+          # JS glue (compile.js) to provide a factory function (createCompilerModule)
+          # and to load compile.wasm. Passing STANDALONE_WASM previously produced
+          # a wasm-only output that didn't match the JS glue used by the app.
+          emcmake cmake -S compiler -B compiler/build-wasm -DCMAKE_BUILD_TYPE=Release
           cmake --build compiler/build-wasm --config Release --target compile -- -j$(nproc || echo 2)
 
       - name: Collect wasm and JS glue (to workspace only)
