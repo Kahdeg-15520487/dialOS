@@ -1,13 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11512.155 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DialOS.Runtime", "DialOS.Runtime\DialOS.Runtime.csproj", "{D5F63670-0D29-467E-B58B-E5317C364230}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DialOS.Tests", "DialOS.Tests\DialOS.Tests.csproj", "{0A56C0D4-093B-46D8-A56E-A73DB9A7EFA6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DialOS.Maui", "DialOS.Maui\DialOS.Maui.csproj", "{3BA2FC8C-09B7-4FBC-A59C-F29CB94806DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DialOS.Gui", "DialOS.Gui\DialOS.Gui.csproj", "{62F8EC59-F661-4D7C-9E36-86DC654A1E13}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFormsApp1", "WinFormsApp1\WinFormsApp1.csproj", "{BC150CE2-BC7F-BB20-899B-A29BED553BB8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,8 +59,35 @@ Global
 		{3BA2FC8C-09B7-4FBC-A59C-F29CB94806DF}.Release|x64.Build.0 = Release|Any CPU
 		{3BA2FC8C-09B7-4FBC-A59C-F29CB94806DF}.Release|x86.ActiveCfg = Release|Any CPU
 		{3BA2FC8C-09B7-4FBC-A59C-F29CB94806DF}.Release|x86.Build.0 = Release|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Debug|x64.Build.0 = Debug|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Debug|x86.Build.0 = Debug|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Release|x64.ActiveCfg = Release|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Release|x64.Build.0 = Release|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Release|x86.ActiveCfg = Release|Any CPU
+		{62F8EC59-F661-4D7C-9E36-86DC654A1E13}.Release|x86.Build.0 = Release|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Debug|x64.Build.0 = Debug|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Debug|x86.Build.0 = Debug|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Release|x64.ActiveCfg = Release|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Release|x64.Build.0 = Release|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Release|x86.ActiveCfg = Release|Any CPU
+		{BC150CE2-BC7F-BB20-899B-A29BED553BB8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3DD0484C-48D9-4E41-B838-B1623EC00544}
 	EndGlobalSection
 EndGlobal
