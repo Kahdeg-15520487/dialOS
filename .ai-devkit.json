@@ -1,0 +1,14 @@
+{
+  "version": "0.15.0",
+  "environments": [
+    "claude"
+  ],
+  "phases": [
+    "requirements",
+    "design",
+    "planning",
+    "implementation"
+  ],
+  "createdAt": "2026-02-24T02:40:54.681Z",
+  "updatedAt": "2026-02-24T02:40:54.756Z"
+}
