@@ -1,15 +1,76 @@
 # dialScript VM Architecture - Implementation Plan
 
 ## Overview
-Portable virtual machine that runs on both PC (simulator with ImGui) and ESP32 (M5 Dial hardware) with identical bytecode execution.
+Portable virtual machine that runs on both PC (simulator with SDL2) and ESP32 (M5 Dial hardware) with identical bytecode execution.
+
+## System Architecture
+
+```mermaid
+graph TD
+    subgraph "Application Layer"
+        DSB[.dsb Bytecode Files]
+    end
+
+    subgraph "dialOS VM"
+        subgraph "Execution Engine"
+            VMCore[VM Core<br/>Instruction Dispatcher]
+            CallStack[Call Stack<br/>CallFrames]
+            Globals[Globals Table]
+        end
+
+        subgraph "Memory Management"
+            ValuePool[ValuePool<br/>Fixed Heap]
+            Values[Value System<br/>Tagged Union]
+        end
+
+        subgraph "Bytecode Loader"
+            BCLoader[Bytecode Loader]
+            Module[BytecodeModule]
+        end
+    end
+
+    subgraph "Platform Abstraction"
+        Platform[PlatformInterface<br/>64+ APIs]
+    end
+
+    subgraph "PC Platform"
+        SDL[SDLPlatform]
+        SDLRenderer[SDL2 Renderer<br/>240x240 Display]
+        SDLEvents[SDL Events<br/>Mouse/Keyboard]
+    end
+
+    subgraph "ESP32 Platform"
+        ESP32[ESP32Platform]
+        M5Dial[M5Dial Hardware<br/>Display/Encoder/Touch]
+        Kernel[Kernel Services<br/>RAMFS/Scheduler]
+    end
+
+    DSB --> BCLoader
+    BCLoader --> Module
+    Module --> VMCore
+    VMCore --> CallStack
+    VMCore --> Globals
+    VMCore --> ValuePool
+    ValuePool --> Values
+    VMCore --> Platform
+
+    Platform --> SDL
+    SDL --> SDLRenderer
+    SDL --> SDLEvents
+
+    Platform --> ESP32
+    ESP32 --> M5Dial
+    ESP32 --> Kernel
+```
 
 ## Design Decisions ✅
 
-1. **Graphics**: ImGui for PC simulator
+1. **Graphics**: SDL2 for PC simulator (ImGui planned for debugging GUI)
 2. **Binary Format**: Extended .dsb with metadata (app name, version, author, heap size, timestamp)
 3. **Memory**: Fixed heap size (declared in metadata)
 4. **Threading**: Single-threaded cooperative multitasking
 5. **Heap Declaration**: Required in dialScript source code
+6. **Platform Abstraction**: PlatformInterface enables identical bytecode on PC and ESP32
 
 ## Updated Bytecode Format (.dsb v2)
 
@@ -92,8 +153,8 @@ Portable virtual machine that runs on both PC (simulator with ImGui) and ESP32 (
 - Equality comparison
 - Smart memory tracking
 
-### ⏳ VM Core (Header Created)
-**File**: `src/vm/vm_core.h`
+### ✅ VM Core Implementation
+**Files**: `include/vm/vm_core.h`, `src/vm/vm_core.cpp` (~3000 lines)
 
 **VMState Class**:
 - Loads BytecodeModule
@@ -123,24 +184,24 @@ Portable virtual machine that runs on both PC (simulator with ImGui) and ESP32 (
 
 ## Next Steps
 
-### 1. Complete VM Core Implementation
-**File**: `src/vm/vm_core.cpp`
+### 1. VM Core Implementation ✅ COMPLETE
+**File**: `src/vm/vm_core.cpp` (~3000 lines)
 
-Implement:
-- [ ] VMState constructor
-- [ ] execute() main loop
-- [ ] executeInstruction() dispatcher (switch on opcode)
-- [ ] All arithmetic operations
-- [ ] All comparison operations
-- [ ] All logical operations
-- [ ] Stack operations (PUSH, POP, DUP, SWAP)
-- [ ] Jump operations with PC updates
-- [ ] Function call/return
-- [ ] Object/array operations
-- [ ] Exception handling (TRY/THROW/END_TRY)
+Implemented:
+- [x] VMState constructor
+- [x] execute() main loop
+- [x] executeInstruction() dispatcher (switch on opcode)
+- [x] All arithmetic operations
+- [x] All comparison operations
+- [x] All logical operations
+- [x] Stack operations (PUSH, POP, DUP, SWAP)
+- [x] Jump operations with PC updates
+- [x] Function call/return
+- [x] Object/array operations
+- [x] Exception handling (TRY/THROW/END_TRY)
 
-### 2. Platform Abstraction Layer
-**Files**: `src/vm/platform.h`
+### 2. Platform Abstraction Layer ✅ COMPLETE
+**File**: `include/vm/platform.h` (~850 lines)
 
 ```cpp
 class PlatformInterface {
@@ -163,10 +224,17 @@ public:
 };
 ```
 
-### 3. PC Simulator (ImGui)
-**Files**: `simulator/main.cpp`, `simulator/pc_platform.h/cpp`
+### 3. PC Simulator ✅ COMPLETE (SDL2)
+**Files**: `sdl_filesystem/` directory
 
-**ImGui Window Layout**:
+SDL2-based simulator with:
+- Simulated M5 Dial display (240x240)
+- File browser for loading .dsb files
+- Interactive encoder (mouse wheel + click)
+- Console output
+- Step-by-step debugging (planned)
+
+**ImGui Window Layout** (planned for debugging GUI):
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ dialOS Simulator - [timer.dsb]                       × │
@@ -211,8 +279,8 @@ public:
 - Hot reload (.dsb file watcher)
 - Console output
 
-### 4. Task Scheduler
-**File**: `src/vm/vm_scheduler.h/cpp`
+### 4. Task Scheduler ✅ COMPLETE
+**File**: `src/kernel/task.cpp` (integrated with kernel)
 
 ```cpp
 enum class TaskStatus {
@@ -240,8 +308,10 @@ class TaskScheduler {
 };
 ```
 
-### 5. Native Function Bridge
-**File**: `src/vm/vm_native.h/cpp`
+### 5. Native Function Bridge ✅ COMPLETE
+**File**: Integrated into `src/vm/vm_core.cpp` and `include/vm/platform.h`
+
+64+ native functions implemented across 21 namespaces. See [KERNEL_API_SPEC.md](./KERNEL_API_SPEC.md) for full API documentation.
 
 ```cpp
 typedef Value (*NativeFunction)(const std::vector<Value>& args, 
@@ -265,8 +335,8 @@ Value native_display_clear(const std::vector<Value>& args,
 }
 ```
 
-### 6. ESP32 Integration
-**Files**: `src/platform/esp32_platform.h/cpp`, `src/main.cpp`
+### 6. ESP32 Integration ✅ COMPLETE
+**Files**: `src/esp32_platform.cpp`, `src/main.cpp`
 
 ```cpp
 class ESP32Platform : public PlatformInterface {
@@ -387,14 +457,16 @@ build_src_filter =
 
 ✅ Bytecode format updated with metadata
 ✅ Value system with fixed-size heap
-✅ VM core architecture designed
-⏳ VM implementation in progress
-⏳ Platform abstraction layer
-⏳ ImGui simulator
-⏳ Task scheduler
-⏳ Native function bridge
-⏳ ESP32 integration
+✅ VM core implementation (instruction dispatcher)
+✅ Platform abstraction layer (PlatformInterface)
+✅ Native function bridge (64+ APIs implemented)
+✅ ESP32 integration (M5Dial hardware support)
+✅ SDL simulator (PC development/testing)
+✅ Kernel with RAMFS and task scheduler
+⏳ Callback/function support for event-based APIs
+⏳ ImGui simulator (debugging GUI - planned)
+⏳ WiFi/HTTP APIs (platform abstraction exists, ESP32 impl pending)
 
 ---
 
-**Next Immediate Task**: Implement `vm_core.cpp` with instruction dispatcher and all operations.
+**Next Steps**: Implement callback support for event-based APIs (timers, input events, etc.)

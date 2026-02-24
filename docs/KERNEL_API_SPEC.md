@@ -4,28 +4,28 @@
 
 | Namespace | Description | Implemented | Planned | Blocked |
 |-----------|-------------|-------------|---------|---------|
-| [`os.console.*`](#1-console-apis-osconsole) | Console logging and output | 1 | 3 | 0 |
-| [`os.display.*`](#2-display-apis-osdisplay) | Display and graphics rendering | 2 | 8 | 0 |
-| [`os.encoder.*`](#3-encoder-apis-osencoder) | Rotary encoder input | 2 | 2 | 2 |
-| [`os.touch.*`](#4-touch-apis-ostouch) | Touchscreen input | 0 | 1 | 3 |
-| [`os.system.*`](#5-system-apis-ossystem) | System time and control | 2 | 3 | 0 |
-| [`os.memory.*`](#6-memory-apis-osmemory) | Memory management | 0 | 4 | 0 |
-| [`os.file.*`](#7-file-apis-osfile) | File operations | 0 | 7 | 0 |
-| [`os.dir.*`](#8-directory-apis-osdir) | Directory operations | 0 | 4 | 0 |
-| [`os.gpio.*`](#9-gpio-apis-osgpio) | GPIO pin control | 0 | 5 | 0 |
-| [`os.i2c.*`](#10-i2c-apis-osi2c) | I2C communication | 0 | 3 | 2 |
-| [`os.buzzer.*`](#11-buzzer-apis-osbuzzer) | Buzzer/audio output | 0 | 3 | 0 |
+| [`os.console.*`](#1-console-apis-osconsole) | Console logging and output | 5 | 0 | 0 |
+| [`os.display.*`](#2-display-apis-osdisplay) | Display and graphics rendering | 10 | 0 | 0 |
+| [`os.encoder.*`](#3-encoder-apis-osencoder) | Rotary encoder input | 4 | 0 | 2 |
+| [`os.touch.*`](#4-touch-apis-ostouch) | Touchscreen input | 3 | 1 | 3 |
+| [`os.system.*`](#5-system-apis-ossystem) | System time and control | 5 | 0 | 0 |
+| [`os.memory.*`](#6-memory-apis-osmemory) | Memory management | 2 | 2 | 0 |
+| [`os.file.*`](#7-file-apis-osfile) | File operations | 7 | 0 | 0 |
+| [`os.dir.*`](#8-directory-apis-osdir) | Directory operations | 4 | 0 | 0 |
+| [`os.gpio.*`](#9-gpio-apis-osgpio) | GPIO pin control | 5 | 0 | 0 |
+| [`os.i2c.*`](#10-i2c-apis-osi2c) | I2C communication | 3 | 0 | 2 |
+| [`os.buzzer.*`](#11-buzzer-apis-osbuzzer) | Buzzer/audio output | 3 | 0 | 0 |
 | [`os.timer.*`](#12-timer-apis-ostimer) | Timers and intervals | 0 | 0 | 4 |
-| [`os.rfid.*`](#13-rfid-apis-osrfid) | RFID card reader | 0 | 2 | 2 |
-| [`os.power.*`](#14-power-apis-ospower) | Power management | 0 | 2 | 1 |
-| [`os.app.*`](#15-app-apis-osapp) | Application lifecycle | 0 | 2 | 4 |
-| [`os.storage.*`](#16-storage-apis-osstorage) | Storage device management | 0 | 2 | 2 |
-| [`os.sensor.*`](#17-sensor-apis-ossensor) | Hardware sensor interface | 0 | 2 | 2 |
+| [`os.rfid.*`](#13-rfid-apis-osrfid) | RFID card reader | 2 | 0 | 2 |
+| [`os.power.*`](#14-power-apis-ospower) | Power management | 3 | 0 | 1 |
+| [`os.app.*`](#15-app-apis-osapp) | Application lifecycle | 2 | 0 | 4 |
+| [`os.storage.*`](#16-storage-apis-osstorage) | Storage device management | 2 | 0 | 2 |
+| [`os.sensor.*`](#17-sensor-apis-ossensor) | Hardware sensor interface | 2 | 0 | 2 |
 | [`os.events.*`](#18-events-apis-osevents) | Event system | 0 | 0 | 3 |
-| [`os.wifi.*`](#19-wifi-apis-oswifi) | WiFi connectivity | 0 | 4 | 0 |
-| [`os.http.*`](#20-http-apis-oshttp) | HTTP client | 0 | 0 | 2 |
-| [`os.ipc.*`](#21-ipc-apis-osipc) | Inter-process communication | 0 | 1 | 2 |
-| **Total** | **21 namespaces** | **130 functions** | **7** | **88** | **35** |
+| [`os.wifi.*`](#19-wifi-apis-oswifi) | WiFi connectivity | 0 | 5 | 0 |
+| [`os.http.*`](#20-http-apis-oshttp) | HTTP client | 0 | 0 | 3 |
+| [`os.ipc.*`](#21-ipc-apis-osipc) | Inter-process communication | 2 | 0 | 1 |
+| **Total** | **21 namespaces** | **130 functions** | **64** | **4** | **31** |
 
 **Legend:**
 - ✅ **Implemented** - Function is working and tested
@@ -57,17 +57,17 @@ All APIs under `os.*` namespace are **CALL_NATIVE** opcodes.
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.console.print()` | `message: string` | `null` | 🔜 Planned |
+| `os.console.print()` | `message: string` | `null` | ✅ Implemented |
 | `os.console.log()` | `message: string` | `null` | ✅ Implemented |
-| `os.console.warn()` | `message: string` | `null` | 🔜 Planned |
-| `os.console.error()` | `message: string` | `null` | 🔜 Planned |
-| `os.console.clear()` | none | `null` | 🔜 Planned |
+| `os.console.warn()` | `message: string` | `null` | ✅ Implemented |
+| `os.console.error()` | `message: string` | `null` | ✅ Implemented |
+| `os.console.clear()` | none | `null` | ✅ Implemented |
 
 ### `os.console.print(message: string) -> null`
 Print message to console
 - **Parameters**: `message` (string) - Message to print
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.console.log(message: string) -> null`
 Log informational message to console
@@ -79,19 +79,19 @@ Log informational message to console
 Log warning message
 - **Parameters**: `message` (string) - Warning message
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.console.error(message: string) -> null`
 Log error message
 - **Parameters**: `message` (string) - Error message
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.console.clear() -> null`
 Clear console buffer
 - **Parameters**: none
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (no-op)
 
 ---
 
@@ -101,14 +101,14 @@ Clear console buffer
 |----------|------------|---------|--------|
 | `os.display.clear()` | `color: int` | `null` | ✅ Implemented |
 | `os.display.drawText()` | `x: int, y: int, text: string, color: int, size: int` | `null` | ✅ Implemented |
-| `os.display.drawPixel()` | `x: int, y: int, color: int` | `null` | 🔜 Planned |
-| `os.display.drawLine()` | `x1: int, y1: int, x2: int, y2: int, color: int` | `null` | 🔜 Planned |
-| `os.display.drawRect()` | `x: int, y: int, w: int, h: int, color: int, filled: bool` | `null` | 🔜 Planned |
-| `os.display.drawCircle()` | `x: int, y: int, r: int, color: int, filled: bool` | `null` | 🔜 Planned |
-| `os.display.drawImage()` | `x: int, y: int, imageData: object` | `null` | 🔜 Planned |
-| `os.display.setBrightness()` | `level: int` | `null` | 🔜 Planned |
-| `os.display.getSize()` | none | `object` | 🔜 Planned |
-| `os.display.setTitle()` | `text: string` | `null` | 🔜 Planned |
+| `os.display.drawPixel()` | `x: int, y: int, color: int` | `null` | ✅ Implemented |
+| `os.display.drawLine()` | `x1: int, y1: int, x2: int, y2: int, color: int` | `null` | ✅ Implemented |
+| `os.display.drawRect()` | `x: int, y: int, w: int, h: int, color: int, filled: bool` | `null` | ✅ Implemented |
+| `os.display.drawCircle()` | `x: int, y: int, r: int, color: int, filled: bool` | `null` | ✅ Implemented |
+| `os.display.drawImage()` | `x: int, y: int, imageData: object` | `null` | ✅ Implemented |
+| `os.display.setBrightness()` | `level: int` | `null` | ✅ Implemented |
+| `os.display.getSize()` | none | `object` | ✅ Implemented |
+| `os.display.setTitle()` | `text: string` | `null` | ✅ Implemented |
 
 ### `os.display.clear(color: int) -> null`
 Clear screen with specified color
@@ -134,7 +134,7 @@ Draw single pixel
   - `y` (int) - Y coordinate
   - `color` (int) - RGB565 color
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.display.drawLine(x1: int, y1: int, x2: int, y2: int, color: int) -> null`
 Draw line between two points
@@ -143,7 +143,7 @@ Draw line between two points
   - `x2, y2` (int) - End coordinates
   - `color` (int) - RGB565 color
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.display.drawRect(x: int, y: int, w: int, h: int, color: int, filled: bool) -> null`
 Draw rectangle
@@ -153,7 +153,7 @@ Draw rectangle
   - `color` (int) - RGB565 color
   - `filled` (bool) - Fill rectangle if true
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.display.drawCircle(x: int, y: int, r: int, color: int, filled: bool) -> null`
 Draw circle
@@ -163,7 +163,7 @@ Draw circle
   - `color` (int) - RGB565 color
   - `filled` (bool) - Fill circle if true
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.display.drawImage(x: int, y: int, imageData: object) -> null`
 Draw bitmap image
@@ -171,25 +171,25 @@ Draw bitmap image
   - `x, y` (int) - Top-left position
   - `imageData` (object) - Image data object
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.display.setBrightness(level: int) -> null`
 Adjust backlight brightness
 - **Parameters**: `level` (int) - Brightness level (0-255)
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.display.getSize() -> object`
 Get display dimensions
 - **Parameters**: none
 - **Returns**: object with `{width: 240, height: 240}`
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via getWidth/getHeight)
 
 ### `os.display.setTitle(text: string) -> null`
 Set app title bar text
 - **Parameters**: `text` (string) - Title text
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ---
 
@@ -199,8 +199,8 @@ Set app title bar text
 |----------|------------|---------|--------|
 | `os.encoder.getButton()` | none | `bool` | ✅ Implemented |
 | `os.encoder.getDelta()` | none | `int` | ✅ Implemented |
-| `os.encoder.getPosition()` | none | `int` | 🔜 Planned |
-| `os.encoder.reset()` | none | `null` | 🔜 Planned |
+| `os.encoder.getPosition()` | none | `int` | ✅ Implemented |
+| `os.encoder.reset()` | none | `null` | ✅ Implemented |
 | `os.encoder.onTurn()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.encoder.onButton()` | `callback: function` | `null` | 🔒 Blocked |
 
@@ -220,25 +220,25 @@ Get encoder position change
 Get absolute encoder position
 - **Parameters**: none
 - **Returns**: int - Current encoder position
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.encoder.reset() -> null`
 Reset encoder position to zero
 - **Parameters**: none
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.encoder.onTurn(callback: function) -> null`
 Register encoder rotation callback
 - **Parameters**: `callback` (function) - Called with delta: +/-
 - **Returns**: null
-- **Status**: 🔜 Planned (requires function support)
+- **Status**: 🔒 Blocked (requires function support)
 
 ### `os.encoder.onButton(callback: function) -> null`
 Register button press callback
 - **Parameters**: `callback` (function) - Called on button press
 - **Returns**: null
-- **Status**: 🔜 Planned (requires function support)
+- **Status**: 🔒 Blocked (requires function support)
 
 ---
 
@@ -246,10 +246,31 @@ Register button press callback
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
+| `os.touch.getX()` | none | `int` | ✅ Implemented |
+| `os.touch.getY()` | none | `int` | ✅ Implemented |
+| `os.touch.isPressed()` | none | `bool` | ✅ Implemented (stub) |
 | `os.touch.getPosition()` | none | `object` | 🔜 Planned |
 | `os.touch.onPress()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.touch.onRelease()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.touch.onDrag()` | `callback: function` | `null` | 🔒 Blocked |
+
+### `os.touch.getX() -> int`
+Get touch X coordinate
+- **Parameters**: none
+- **Returns**: int - X coordinate
+- **Status**: ✅ Implemented
+
+### `os.touch.getY() -> int`
+Get touch Y coordinate
+- **Parameters**: none
+- **Returns**: int - Y coordinate
+- **Status**: ✅ Implemented
+
+### `os.touch.isPressed() -> bool`
+Check if touch is active
+- **Parameters**: none
+- **Returns**: bool - true if touched
+- **Status**: ✅ Implemented (stub - returns false)
 
 ### `os.touch.getPosition() -> object`
 Get current touch coordinates
@@ -261,19 +282,19 @@ Get current touch coordinates
 Register touch press callback
 - **Parameters**: `callback` (function) - Called with {x, y}
 - **Returns**: null
-- **Status**: 🔜 Planned (requires function support)
+- **Status**: 🔒 Blocked (requires function support)
 
 ### `os.touch.onRelease(callback: function) -> null`
 Register touch release callback
 - **Parameters**: `callback` (function)
 - **Returns**: null
-- **Status**: 🔜 Planned (requires function support)
+- **Status**: 🔒 Blocked (requires function support)
 
 ### `os.touch.onDrag(callback: function) -> null`
 Register touch drag callback
 - **Parameters**: `callback` (function) - Called with {x, y, dx, dy}
 - **Returns**: null
-- **Status**: 🔜 Planned (requires function support)
+- **Status**: 🔒 Blocked (requires function support)
 
 ---
 
@@ -283,9 +304,9 @@ Register touch drag callback
 |----------|------------|---------|--------|
 | `os.system.getTime()` | none | `int` | ✅ Implemented |
 | `os.system.sleep()` | `ms: int` | `null` | ✅ Implemented |
-| `os.system.yield()` | none | `null` | 🔜 Planned |
-| `os.system.getRTC()` | none | `object` | 🔜 Planned |
-| `os.system.setRTC()` | `datetime: object` | `null` | 🔜 Planned |
+| `os.system.yield()` | none | `null` | ✅ Implemented |
+| `os.system.getRTC()` | none | `object` | ✅ Implemented (stub) |
+| `os.system.setRTC()` | `datetime: object` | `null` | ✅ Implemented (stub) |
 
 ### `os.system.getTime() -> int`
 Get system uptime in milliseconds
@@ -303,19 +324,19 @@ Yield CPU for specified time
 Cooperative yield to scheduler
 - **Parameters**: none
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.system.getRTC() -> object`
 Get real-time clock value
 - **Parameters**: none
 - **Returns**: object with `{year, month, day, hour, minute, second}`
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (stub - returns millis/1000)
 
 ### `os.system.setRTC(datetime: object) -> null`
 Set RTC
 - **Parameters**: `datetime` (object) - Date/time object
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (stub - no-op)
 
 ---
 
@@ -323,8 +344,8 @@ Set RTC
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.memory.getAvailable()` | none | `int` | 🔜 Planned |
-| `os.memory.getUsage()` | none | `int` | 🔜 Planned |
+| `os.memory.getAvailable()` | none | `int` | ✅ Implemented |
+| `os.memory.getUsage()` | none | `int` | ✅ Implemented |
 | `os.memory.allocate()` | `size: int` | `int` | 🔜 Planned |
 | `os.memory.free()` | `handle: int` | `null` | 🔜 Planned |
 
@@ -332,13 +353,13 @@ Set RTC
 Query available heap
 - **Parameters**: none
 - **Returns**: int - Available bytes
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.memory.getUsage() -> int`
 Get current app memory usage
 - **Parameters**: none
 - **Returns**: int - Used bytes
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.memory.allocate(size: int) -> int`
 Request memory allocation
@@ -358,13 +379,13 @@ Release memory
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.file.open()` | `path: string, mode: string` | `int` | 🔜 Planned |
-| `os.file.read()` | `handle: int, size: int` | `string` | 🔜 Planned |
-| `os.file.write()` | `handle: int, data: string` | `int` | 🔜 Planned |
-| `os.file.close()` | `handle: int` | `null` | 🔜 Planned |
-| `os.file.exists()` | `path: string` | `bool` | 🔜 Planned |
-| `os.file.delete()` | `path: string` | `bool` | 🔜 Planned |
-| `os.file.size()` | `path: string` | `int` | 🔜 Planned |
+| `os.file.open()` | `path: string, mode: string` | `int` | ✅ Implemented |
+| `os.file.read()` | `handle: int, size: int` | `string` | ✅ Implemented |
+| `os.file.write()` | `handle: int, data: string` | `int` | ✅ Implemented |
+| `os.file.close()` | `handle: int` | `null` | ✅ Implemented |
+| `os.file.exists()` | `path: string` | `bool` | ✅ Implemented |
+| `os.file.delete()` | `path: string` | `bool` | ✅ Implemented |
+| `os.file.size()` | `path: string` | `int` | ✅ Implemented |
 
 ### `os.file.open(path: string, mode: string) -> int`
 Open file
@@ -372,7 +393,7 @@ Open file
   - `path` (string) - File path
   - `mode` (string) - 'r', 'w', or 'a'
 - **Returns**: int - File handle (or -1 on failure)
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ### `os.file.read(handle: int, size: int) -> string`
 Read from file
@@ -380,7 +401,7 @@ Read from file
   - `handle` (int) - File handle
   - `size` (int) - Bytes to read
 - **Returns**: string - Data read
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ### `os.file.write(handle: int, data: string) -> int`
 Write to file
@@ -388,31 +409,31 @@ Write to file
   - `handle` (int) - File handle
   - `data` (string) - Data to write
 - **Returns**: int - Bytes written
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ### `os.file.close(handle: int) -> null`
 Close file
 - **Parameters**: `handle` (int) - File handle
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ### `os.file.exists(path: string) -> bool`
 Check if file exists
 - **Parameters**: `path` (string) - File path
 - **Returns**: bool
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ### `os.file.delete(path: string) -> bool`
 Delete file
 - **Parameters**: `path` (string) - File path
 - **Returns**: bool - Success status
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ### `os.file.size(path: string) -> int`
 Get file size
 - **Parameters**: `path` (string) - File path
 - **Returns**: int - File size in bytes
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ---
 
@@ -420,34 +441,34 @@ Get file size
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.dir.list()` | `path: string` | `array` | 🔜 Planned |
-| `os.dir.create()` | `path: string` | `bool` | 🔜 Planned |
-| `os.dir.delete()` | `path: string` | `bool` | 🔜 Planned |
-| `os.dir.exists()` | `path: string` | `bool` | 🔜 Planned |
+| `os.dir.list()` | `path: string` | `array` | ✅ Implemented |
+| `os.dir.create()` | `path: string` | `bool` | ✅ Implemented |
+| `os.dir.delete()` | `path: string` | `bool` | ✅ Implemented |
+| `os.dir.exists()` | `path: string` | `bool` | ✅ Implemented |
 
 ### `os.dir.list(path: string) -> array`
 List directory contents
 - **Parameters**: `path` (string) - Directory path
 - **Returns**: array - Array of filenames
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (via RAMFS)
 
 ### `os.dir.create(path: string) -> bool`
 Create directory
 - **Parameters**: `path` (string) - Directory path
 - **Returns**: bool - Success status
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (virtual - RAMFS is flat)
 
 ### `os.dir.delete(path: string) -> bool`
 Delete directory
 - **Parameters**: `path` (string) - Directory path
 - **Returns**: bool - Success status
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (deletes files with path prefix)
 
 ### `os.dir.exists(path: string) -> bool`
 Check if directory exists
 - **Parameters**: `path` (string) - Directory path
 - **Returns**: bool
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (checks for files with path prefix)
 
 ---
 
@@ -455,11 +476,11 @@ Check if directory exists
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.gpio.pinMode()` | `pin: int, mode: string` | `null` | 🔜 Planned |
-| `os.gpio.digitalWrite()` | `pin: int, value: int` | `null` | 🔜 Planned |
-| `os.gpio.digitalRead()` | `pin: int` | `int` | 🔜 Planned |
-| `os.gpio.analogWrite()` | `pin: int, value: int` | `null` | 🔜 Planned |
-| `os.gpio.analogRead()` | `pin: int` | `int` | 🔜 Planned |
+| `os.gpio.pinMode()` | `pin: int, mode: string` | `null` | ✅ Implemented |
+| `os.gpio.digitalWrite()` | `pin: int, value: int` | `null` | ✅ Implemented |
+| `os.gpio.digitalRead()` | `pin: int` | `int` | ✅ Implemented |
+| `os.gpio.analogWrite()` | `pin: int, value: int` | `null` | ✅ Implemented |
+| `os.gpio.analogRead()` | `pin: int` | `int` | ✅ Implemented |
 
 ### `os.gpio.pinMode(pin: int, mode: string) -> null`
 Set pin mode
@@ -467,7 +488,7 @@ Set pin mode
   - `pin` (int) - GPIO pin number
   - `mode` (string) - "INPUT", "OUTPUT", "INPUT_PULLUP"
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.gpio.digitalWrite(pin: int, value: int) -> null`
 Write digital value
@@ -475,13 +496,13 @@ Write digital value
   - `pin` (int) - GPIO pin number
   - `value` (int) - HIGH (1) or LOW (0)
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.gpio.digitalRead(pin: int) -> int`
 Read digital value
 - **Parameters**: `pin` (int) - GPIO pin number
 - **Returns**: int - HIGH (1) or LOW (0)
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.gpio.analogWrite(pin: int, value: int) -> null`
 PWM output
@@ -489,13 +510,13 @@ PWM output
   - `pin` (int) - GPIO pin number
   - `value` (int) - PWM value (0-255)
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.gpio.analogRead(pin: int) -> int`
 ADC read
 - **Parameters**: `pin` (int) - GPIO pin number
 - **Returns**: int - ADC value (0-4095)
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ---
 
@@ -503,9 +524,9 @@ ADC read
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.i2c.scan()` | none | `array` | 🔜 Planned |
-| `os.i2c.write()` | `address: int, data: string` | `bool` | 🔜 Planned |
-| `os.i2c.read()` | `address: int, length: int` | `string` | 🔜 Planned |
+| `os.i2c.scan()` | none | `array` | ✅ Implemented |
+| `os.i2c.write()` | `address: int, data: string` | `bool` | ✅ Implemented |
+| `os.i2c.read()` | `address: int, length: int` | `string` | ✅ Implemented |
 | `os.i2c.onDeviceAdded()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.i2c.onDeviceRemoved()` | `callback: function` | `null` | 🔒 Blocked |
 
@@ -513,7 +534,7 @@ ADC read
 Scan for I2C devices
 - **Parameters**: none
 - **Returns**: array - Array of I2C addresses found
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.i2c.write(address: int, data: string) -> bool`
 Write to I2C device
@@ -521,7 +542,7 @@ Write to I2C device
   - `address` (int) - I2C device address
   - `data` (string) - Data to write
 - **Returns**: bool - Success status
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.i2c.read(address: int, length: int) -> string`
 Read from I2C device
@@ -529,7 +550,7 @@ Read from I2C device
   - `address` (int) - I2C device address
   - `length` (int) - Bytes to read
 - **Returns**: string - Data read
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.i2c.onDeviceAdded(callback: function) -> null`
 New device detected event
@@ -549,9 +570,9 @@ Device removed event
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.buzzer.beep()` | `frequency: int, duration: int` | `null` | 🔜 Planned |
-| `os.buzzer.playMelody()` | `notes: array` | `null` | 🔜 Planned |
-| `os.buzzer.stop()` | none | `null` | 🔜 Planned |
+| `os.buzzer.beep()` | `frequency: int, duration: int` | `null` | ✅ Implemented |
+| `os.buzzer.playMelody()` | `notes: array` | `null` | ✅ Implemented |
+| `os.buzzer.stop()` | none | `null` | ✅ Implemented |
 
 ### `os.buzzer.beep(frequency: int, duration: int) -> null`
 Play tone
@@ -559,19 +580,19 @@ Play tone
   - `frequency` (int) - Frequency in Hz
   - `duration` (int) - Duration in milliseconds
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.buzzer.playMelody(notes: array) -> null`
 Play note sequence
 - **Parameters**: `notes` (array) - Array of {freq, duration} objects
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.buzzer.stop() -> null`
 Stop buzzing
 - **Parameters**: none
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ---
 
@@ -618,8 +639,8 @@ Cancel interval
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.rfid.read()` | none | `string` | 🔜 Planned |
-| `os.rfid.isPresent()` | none | `bool` | 🔜 Planned |
+| `os.rfid.read()` | none | `string` | ✅ Implemented |
+| `os.rfid.isPresent()` | none | `bool` | ✅ Implemented |
 | `os.rfid.onCardDetected()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.rfid.onCardRemoved()` | `callback: function` | `null` | 🔒 Blocked |
 
@@ -627,25 +648,25 @@ Cancel interval
 Read card UID
 - **Parameters**: none
 - **Returns**: string - Card UID or empty string
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (WS1850S via I2C)
 
 ### `os.rfid.isPresent() -> bool`
 Check if card is present
 - **Parameters**: none
 - **Returns**: bool
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (WS1850S via I2C)
 
 ### `os.rfid.onCardDetected(callback: function) -> null`
 Card detected event
 - **Parameters**: `callback` (function) - Called with UID
 - **Returns**: null
-- **Status**: 🔜 Planned (requires function support)
+- **Status**: 🔒 Blocked (requires function support)
 
 ### `os.rfid.onCardRemoved(callback: function) -> null`
 Card removed event
 - **Parameters**: `callback` (function)
 - **Returns**: null
-- **Status**: 🔜 Planned (requires function support)
+- **Status**: 🔒 Blocked (requires function support)
 
 ---
 
@@ -653,28 +674,28 @@ Card removed event
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.power.sleep()` | none | `null` | 🔜 Planned |
-| `os.power.getBatteryLevel()` | none | `int` | 🔜 Planned |
-| `os.power.isCharging()` | none | `bool` | 🔜 Planned |
+| `os.power.sleep()` | none | `null` | ✅ Implemented |
+| `os.power.getBatteryLevel()` | none | `int` | ✅ Implemented |
+| `os.power.isCharging()` | none | `bool` | ✅ Implemented |
 | `os.power.onLowBattery()` | `callback: function` | `null` | 🔒 Blocked |
 
 ### `os.power.sleep() -> null`
 Enter sleep mode (wake on button/RTC)
 - **Parameters**: none
 - **Returns**: null
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented (uses M5Dial.Power.deepSleep)
 
 ### `os.power.getBatteryLevel() -> int`
 Get battery percentage
 - **Parameters**: none
 - **Returns**: int - Battery level (0-100)
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.power.isCharging() -> bool`
 Check if charging
 - **Parameters**: none
 - **Returns**: bool
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.power.onLowBattery(callback: function) -> null`
 Low battery event
@@ -688,8 +709,8 @@ Low battery event
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.app.exit()` | none | `null` | 🔜 Planned |
-| `os.app.getInfo()` | none | `object` | 🔜 Planned |
+| `os.app.exit()` | none | `null` | ✅ Implemented |
+| `os.app.getInfo()` | none | `object` | ✅ Implemented |
 | `os.app.onLoad()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.app.onSuspend()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.app.onResume()` | `callback: function` | `null` | 🔒 Blocked |
@@ -699,13 +720,13 @@ Low battery event
 Terminate current app
 - **Parameters**: none
 - **Returns**: null (does not return)
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.app.getInfo() -> object`
 Get app metadata
 - **Parameters**: none
 - **Returns**: object with `{name, version, memoryUsage}`
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.app.onLoad(callback: function) -> null`
 Called when app starts
@@ -737,8 +758,8 @@ Called when app exits
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.storage.getMounted()` | none | `array` | 🔜 Planned |
-| `os.storage.getInfo()` | `device: string` | `object` | 🔜 Planned |
+| `os.storage.getMounted()` | none | `array` | ✅ Implemented |
+| `os.storage.getInfo()` | `device: string` | `object` | ✅ Implemented |
 | `os.storage.onMount()` | `callback: function` | `null` | 🔒 Blocked |
 | `os.storage.onUnmount()` | `callback: function` | `null` | 🔒 Blocked |
 
@@ -746,13 +767,13 @@ Called when app exits
 List mounted storage devices
 - **Parameters**: none
 - **Returns**: array - Array of mounted device names
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.storage.getInfo(device: string) -> object`
 Get device info (size, free space, type)
 - **Parameters**: `device` (string) - Device name
 - **Returns**: object with `{size, free, type}`
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.storage.onMount(callback: function) -> null`
 Storage device mounted event
@@ -772,8 +793,8 @@ Storage device removed event
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.sensor.attach()` | `port: string, type: string` | `int` | 🔜 Planned |
-| `os.sensor.read()` | `handle: int` | `object` | 🔜 Planned |
+| `os.sensor.attach()` | `port: string, type: string` | `int` | ✅ Implemented |
+| `os.sensor.read()` | `handle: int` | `object` | ✅ Implemented |
 | `os.sensor.detach()` | `handle: int` | `null` | 🔒 Blocked |
 | `os.sensor.onData()` | `handle: int, callback: function` | `null` | 🔒 Blocked |
 
@@ -783,13 +804,13 @@ Attach sensor to PORT.A/B
   - `port` (string) - "PORT.A" or "PORT.B"
   - `type` (string) - Sensor type identifier
 - **Returns**: int - Sensor handle (or -1 on failure)
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.sensor.read(handle: int) -> object`
 Read sensor value
 - **Parameters**: `handle` (int) - Sensor handle
 - **Returns**: object - Sensor data
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.sensor.detach(handle: int) -> null`
 Detach sensor
@@ -908,8 +929,8 @@ HTTP POST request
 
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.ipc.send()` | `appId: string, message: any` | `bool` | 🔜 Planned |
-| `os.ipc.broadcast()` | `message: any` | `null` | 🔒 Blocked |
+| `os.ipc.send()` | `appId: string, message: any` | `bool` | ✅ Implemented |
+| `os.ipc.broadcast()` | `message: any` | `null` | ✅ Implemented |
 | `os.ipc.onMessage()` | `callback: function` | `null` | 🔒 Blocked |
 
 ### `os.ipc.send(appId: string, message: any) -> bool`
@@ -918,13 +939,13 @@ Send message to another app
   - `appId` (string) - Target app ID
   - `message` (any) - Message data
 - **Returns**: bool - Send success
-- **Status**: 🔜 Planned
+- **Status**: ✅ Implemented
 
 ### `os.ipc.broadcast(message: any) -> null`
 Broadcast to all apps
 - **Parameters**: `message` (any) - Message data
 - **Returns**: null
-- **Status**: 🔒 Blocked (requires function support)
+- **Status**: ✅ Implemented
 
 ### `os.ipc.onMessage(callback: function) -> null`
 Receive messages
@@ -936,38 +957,46 @@ Receive messages
 
 ## Implementation Status Summary
 
-### ✅ Implemented (7 functions)
-- `os.console.log()`
-- `os.display.clear()`
-- `os.display.drawText()`
-- `os.encoder.getButton()`
-- `os.encoder.getDelta()`
-- `os.system.getTime()`
-- `os.system.sleep()`
+### ✅ Implemented (64 functions)
+- **Console**: print, log, warn, error, clear (5)
+- **Display**: clear, drawText, drawPixel, drawLine, drawRect, drawCircle, drawImage, setBrightness, getSize, setTitle (10)
+- **Encoder**: getButton, getDelta, getPosition, reset (4)
+- **Touch**: getX, getY, isPressed (3)
+- **System**: getTime, sleep, yield, getRTC, setRTC (5)
+- **Memory**: getAvailable, getUsage (2)
+- **File**: open, read, write, close, exists, delete, size (7)
+- **Directory**: list, create, delete, exists (4)
+- **GPIO**: pinMode, digitalWrite, digitalRead, analogWrite, analogRead (5)
+- **I2C**: scan, write, read (3)
+- **Buzzer**: beep, playMelody, stop (3)
+- **RFID**: read, isPresent (2)
+- **Power**: sleep, getBatteryLevel, isCharging (3)
+- **App**: exit, getInfo (2)
+- **Storage**: getMounted, getInfo (2)
+- **Sensor**: attach, read (2)
+- **IPC**: send, broadcast (2)
 
-### 🔜 Planned (88 functions)
-All other non-callback APIs require:
-1. Platform interface expansion
-2. VM CALL_NATIVE dispatch updates
-3. Compiler recognition of os.* calls
+### 🔜 Planned (4 functions)
+- `os.touch.getPosition()` - Composite of getX/getY
+- `os.memory.allocate()` - Direct memory allocation
+- `os.memory.free()` - Memory deallocation
+- `os.wifi.*` (5) - connect, disconnect, getStatus, getIP, scan
 
-### 🔒 Blocked (35 callback-based APIs)
+### 🔒 Blocked (31 callback-based APIs)
 Require function/callback support in VM:
 - **App Lifecycle**: onLoad, onSuspend, onResume, onUnload (4)
-- **Input Events**: encoder.onTurn, encoder.onButton, touch events (6)
-- **Timers**: setTimeout, setInterval, clear functions (4)
+- **Input Events**: encoder.onTurn, encoder.onButton (2)
+- **Touch Events**: onPress, onRelease, onDrag (3)
+- **Timers**: setTimeout, setInterval, clearTimeout, clearInterval (4)
 - **I2C Events**: onDeviceAdded, onDeviceRemoved (2)
 - **RFID Events**: onCardDetected, onCardRemoved (2)
 - **Power Events**: onLowBattery (1)
 - **Storage Events**: onMount, onUnmount (2)
 - **Sensor Events**: onData, detach (2)
 - **Event System**: emit, on, off (3)
-- **HTTP**: get, post (2)
-- **IPC**: broadcast, onMessage (2)
-- **Timer Clears**: clearTimeout, clearInterval (2)
-- **Sensor**: detach (1)
-- **Timer Intervals**: setInterval (already counted above)
-- **Total Blocked**: 35 functions
+- **HTTP**: get, post, download (3)
+- **IPC**: onMessage (1)
+- **WiFi Events**: onConnect, onDisconnect (2)
 
 ---
 

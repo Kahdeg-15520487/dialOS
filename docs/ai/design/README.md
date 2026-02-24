@@ -6,55 +6,46 @@ description: Define the technical architecture, components, and data models
 
 # System Design & Architecture
 
+> **Note**: The main design documentation for dialOS is located in the `docs/` directory.
+> This file serves as a pointer to the comprehensive design docs.
+
+## Primary Design Documents
+
+| Document | Location | Description |
+|----------|----------|-------------|
+| VM Architecture | [VM_ARCHITECTURE.md](../../VM_ARCHITECTURE.md) | VM system design, bytecode format, components |
+| Kernel API Spec | [KERNEL_API_SPEC.md](../../KERNEL_API_SPEC.md) | 130+ native function specifications |
+| Function Values | [FUNCTION_VALUE_DESIGN.md](../../FUNCTION_VALUE_DESIGN.md) | Callback/function support design |
+| Native Functions | [NATIVE_FUNCTIONS.md](../../NATIVE_FUNCTIONS.md) | Native function implementation guide |
+
 ## Architecture Overview
-**What is the high-level system structure?**
 
-- Include a mermaid diagram that captures the main components and their relationships. Example:
-  ```mermaid
-  graph TD
-    Client -->|HTTPS| API
-    API --> ServiceA
-    API --> ServiceB
-    ServiceA --> Database[(DB)]
-  ```
-- Key components and their responsibilities
-- Technology stack choices and rationale
+dialOS is a portable virtual machine that runs on both PC (SDL2 simulator) and ESP32 (M5 Dial hardware) with identical bytecode execution.
 
-## Data Models
-**What data do we need to manage?**
+```mermaid
+graph TD
+    subgraph "dialOS Architecture"
+        DSB[.dsb Bytecode] --> VM[VM Core]
+        VM --> Platform[PlatformInterface]
+        Platform --> ESP32[ESP32Platform]
+        Platform --> SDL[SDLPlatform]
+        ESP32 --> M5Dial[M5Dial Hardware]
+        SDL --> Display[SDL2 Display]
+    end
+```
 
-- Core entities and their relationships
-- Data schemas/structures
-- Data flow between components
+## Key Components
 
-## API Design
-**How do components communicate?**
+- **VM Core**: Stack-based bytecode interpreter with cooperative multitasking
+- **ValuePool**: Fixed-size heap memory manager
+- **PlatformInterface**: Hardware abstraction layer (64+ APIs)
+- **Kernel**: System services including RAMFS and task scheduler
+- **Compiler**: dialScript → .dsb bytecode compiler
 
-- External APIs (if applicable)
-- Internal interfaces
-- Request/response formats
-- Authentication/authorization approach
+## Technology Stack
 
-## Component Breakdown
-**What are the major building blocks?**
-
-- Frontend components (if applicable)
-- Backend services/modules
-- Database/storage layer
-- Third-party integrations
-
-## Design Decisions
-**Why did we choose this approach?**
-
-- Key architectural decisions and trade-offs
-- Alternatives considered
-- Patterns and principles applied
-
-## Non-Functional Requirements
-**How should the system perform?**
-
-- Performance targets
-- Scalability considerations
-- Security requirements
-- Reliability/availability needs
+- **Language**: C++ (embedded-friendly)
+- **Build**: PlatformIO for ESP32, CMake for PC
+- **Display**: SDL2 (PC) / M5Dial library (ESP32)
+- **Scripting**: dialScript (custom domain-specific language)
 

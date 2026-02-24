@@ -539,35 +539,35 @@ os.app.onResume(onResume);
 
 ## Implementation Roadmap
 
-### Milestone 1: Core Function Values (Week 1-2)
-- [ ] Add `ValueType::FUNCTION` to vm_value.h
-- [ ] Add `Function` struct and factory methods
-- [ ] Update `ValuePool` to allocate functions
-- [ ] Add `functionParamCounts` to BytecodeModule
-- [ ] Implement `LOAD_FUNCTION` opcode in VM
-- [ ] Test: Create and pass function references
+### Milestone 1: Core Function Values ✅ COMPLETE
+- [x] Add `ValueType::FUNCTION` to vm_value.h
+- [x] Add `Function` struct and factory methods
+- [x] Update `ValuePool` to allocate functions
+- [x] Add `functionParamCounts` to BytecodeModule
+- [x] Implement `LOAD_FUNCTION` opcode in VM (0x83)
+- [x] Test: Create and pass function references
 
-### Milestone 2: Function Invocation (Week 3-4)
-- [ ] Implement `CALL_INDIRECT` opcode in VM
-- [ ] Update compiler to detect function-as-value usage
-- [ ] Emit correct opcodes for indirect calls
-- [ ] Test: Call functions stored in variables
+### Milestone 2: Function Invocation ✅ COMPLETE
+- [x] Implement `CALL_INDIRECT` opcode in VM (0x84)
+- [x] Update compiler to detect function-as-value usage
+- [x] Emit correct opcodes for indirect calls
+- [x] Test: Call functions stored in variables
 
-### Milestone 3: Callback Registry (Week 5-6)
-- [ ] Add `CallbackRegistry` to PlatformInterface
-- [ ] Add `setVM()` to link platform to VM
+### Milestone 3: Callback Registry 🔄 IN PROGRESS
+- [x] Add `CallbackRegistry` to PlatformInterface (callbacks_ member exists)
+- [x] Add `setVM()` to link platform to VM
 - [ ] Implement event queue in VMState
 - [ ] Add `processEvents()` to VM execution loop
 - [ ] Test: Basic callback invocation
 
-### Milestone 4: Event APIs (Week 7-8)
+### Milestone 4: Event APIs ⏳ BLOCKED (needs Milestone 3)
 - [ ] Implement `encoder.onTurn()` / `encoder.onButton()`
 - [ ] Implement `touch.onPress()` / `onRelease()` / `onDrag()`
 - [ ] Implement `timer.setTimeout()` / `setInterval()`
 - [ ] Implement `app.onLoad()` / lifecycle callbacks
 - [ ] Test: All callback-based APIs working
 
-### Milestone 5: Advanced Features (Week 9+)
+### Milestone 5: Advanced Features ⏳ FUTURE
 - [ ] Add closure support (captured variables)
 - [ ] Add anonymous function syntax
 - [ ] Implement remaining event APIs

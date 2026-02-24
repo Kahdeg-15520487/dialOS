@@ -187,9 +187,6 @@ namespace dialos
             // Display functions (full namespace paths)
             if (name == "display.clear")
                 return NativeFunctionID::DISPLAY_CLEAR;
-            // Display functions (full namespace paths)
-            if (name == "display.clear")
-                return NativeFunctionID::DISPLAY_CLEAR;
             if (name == "display.drawText")
                 return NativeFunctionID::DISPLAY_DRAW_TEXT;
             if (name == "display.drawRect")
