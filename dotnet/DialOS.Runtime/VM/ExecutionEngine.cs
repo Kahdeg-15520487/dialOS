@@ -1053,6 +1053,18 @@ public class ExecutionEngine
             return ExecuteIpcNative(nativeId, args);
         }
 
+        // SPI namespace (0x15xx)
+        if (nativeId >= 0x1500 && nativeId < 0x1600)
+        {
+            return ExecuteSpiNative(nativeId, args);
+        }
+
+        // Device namespace (0x16xx)
+        if (nativeId >= 0x1600 && nativeId < 0x1700)
+        {
+            return ExecuteDeviceNative(nativeId, args);
+        }
+
         return Value.Null();
     }
 
@@ -1433,6 +1445,60 @@ public class ExecutionEngine
                 if (args.Length >= 1)
                     _platform.IpcBroadcast(args[0].ToString());
                 break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteSpiNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x1500: // SPI_OPEN
+                if (args.Length >= 1)
+                    return Value.Int32(_platform.SpiOpen(args[0].ToString()));
+                break;
+            case 0x1501: // SPI_TRANSFER
+                if (args.Length >= 3)
+                {
+                    var tx = System.Text.Encoding.UTF8.GetBytes(args[1].ToString());
+                    return Value.String(_platform.SpiTransfer(args[0].ToInt(), tx, args[2].ToInt()));
+                }
+                break;
+            case 0x1502: // SPI_WRITE
+                if (args.Length >= 2)
+                {
+                    var tx = System.Text.Encoding.UTF8.GetBytes(args[1].ToString());
+                    return Value.Int32(_platform.SpiWrite(args[0].ToInt(), tx));
+                }
+                break;
+            case 0x1503: // SPI_CLOSE
+                if (args.Length >= 1)
+                    return Value.Bool(_platform.SpiClose(args[0].ToInt()));
+                break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteDeviceNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x1600: // DEVICE_LIST
+                return Value.String(_platform.DeviceList());
+            case 0x1601: // DEVICE_OPEN
+                if (args.Length >= 1)
+                    return Value.Int32(_platform.DeviceOpen(args[0].ToString(), 0));
+                break;
+            case 0x1602: // DEVICE_CLOSE
+                if (args.Length >= 1)
+                    return Value.Bool(_platform.DeviceClose(args[0].ToInt(), 0));
+                break;
+            case 0x1603: // DEVICE_GETINFO
+                if (args.Length >= 1)
+                    return Value.String(_platform.DeviceGetInfo(args[0].ToInt()));
+                break;
+            case 0x1604: // DEVICE_PROBE
+                return Value.String(_platform.DeviceProbe());
         }
         return Value.Null();
     }

@@ -20,12 +20,14 @@
 | [`os.power.*`](#14-power-apis-ospower) | Power management | 3 | 0 | 1 |
 | [`os.app.*`](#15-app-apis-osapp) | Application lifecycle | 2 | 0 | 4 |
 | [`os.storage.*`](#16-storage-apis-osstorage) | Storage device management | 2 | 0 | 2 |
-| [`os.sensor.*`](#17-sensor-apis-ossensor) | Hardware sensor interface | 2 | 0 | 2 |
+| [`os.sensor.*`](#17-sensor-apis-ossensor) | Hardware sensor interface | 0 | 2 | 2 |
 | [`os.events.*`](#18-events-apis-osevents) | Event system | 0 | 0 | 3 |
 | [`os.wifi.*`](#19-wifi-apis-oswifi) | WiFi connectivity | 0 | 5 | 0 |
 | [`os.http.*`](#20-http-apis-oshttp) | HTTP client | 0 | 0 | 3 |
 | [`os.ipc.*`](#21-ipc-apis-osipc) | Inter-process communication | 2 | 0 | 1 |
-| **Total** | **21 namespaces** | **130 functions** | **64** | **4** | **31** |
+| [`os.spi.*`](#22-spi-apis-osspi) | SPI bus for external modules | 4 | 0 | 0 |
+| [`os.device.*`](#23-device-apis-osdevice) | Device driver model (discovery, handles) | 5 | 0 | 0 |
+| **Total** | **23 namespaces** | **139 functions** | **64** | **4** | **31** |
 
 **Legend:**
 - ✅ **Implemented** - Function is working and tested
@@ -791,32 +793,37 @@ Storage device removed event
 
 ## 17. Sensor APIs (`os.sensor.*`)
 
+> ⚠️ **Status correction (2026-02):** This section previously claimed `attach`/`read` were
+> "✅ Implemented". That was inaccurate — **every platform returns a stub**
+> (`-1` / `"{}"` with a `NOT IMPLEMENTED` warning). The sensor API is being redesigned
+> as part of the **device driver model** — see [`DRIVER_MODEL.md`](./DRIVER_MODEL.md).
+
 | Function | Parameters | Returns | Status |
 |----------|------------|---------|--------|
-| `os.sensor.attach()` | `port: string, type: string` | `int` | ✅ Implemented |
-| `os.sensor.read()` | `handle: int` | `object` | ✅ Implemented |
-| `os.sensor.detach()` | `handle: int` | `null` | 🔒 Blocked |
-| `os.sensor.onData()` | `handle: int, callback: function` | `null` | 🔒 Blocked |
+| `os.sensor.attach()` | `driver: string` | `int` | ❌ **Stub** (all platforms return -1) |
+| `os.sensor.read()` | `handle: int` | `object` | ❌ **Stub** (all platforms return "{}") |
+| `os.sensor.detach()` | `handle: int` | `null` | ❌ **Stub** |
+| `os.sensor.onData()` | `handle: int, callback: function` | `null` | 🔒 Blocked (requires callbacks) |
 
-### `os.sensor.attach(port: string, type: string) -> int`
-Attach sensor to PORT.A/B
+### `os.sensor.attach(driver: string) -> int`
+Attach a device by **registered driver name** (e.g. `"bmp280"`, `"mpu6886"`). The old
+`PORT.A/PORT.B` parameter was not backed by any port enumeration and is dropped in v2.
 - **Parameters**:
-  - `port` (string) - "PORT.A" or "PORT.B"
-  - `type` (string) - Sensor type identifier
-- **Returns**: int - Sensor handle (or -1 on failure)
-- **Status**: ✅ Implemented
+  - `driver` (string) - Driver/device name from the device registry
+- **Returns**: int - Device handle (or -1 on failure) — **currently always -1**
+- **Status**: ❌ Stub — see [DRIVER_MODEL.md](./DRIVER_MODEL.md)
 
 ### `os.sensor.read(handle: int) -> object`
-Read sensor value
-- **Parameters**: `handle` (int) - Sensor handle
-- **Returns**: object - Sensor data
-- **Status**: ✅ Implemented
+Read driver-formatted sensor data
+- **Parameters**: `handle` (int) - Device handle from `attach`
+- **Returns**: object - Driver-defined data object — **currently always "{}"**
+- **Status**: ❌ Stub
 
 ### `os.sensor.detach(handle: int) -> null`
-Detach sensor
+Detach sensor and release the device handle
 - **Parameters**: `handle` (int) - Sensor handle
 - **Returns**: null
-- **Status**: 🔒 Blocked (requires function support)
+- **Status**: ❌ Stub
 
 ### `os.sensor.onData(handle: int, callback: function) -> null`
 Sensor data event
@@ -955,6 +962,78 @@ Receive messages
 
 ---
 
+## 22. SPI APIs (`os.spi.*`)
+
+> New namespace (native IDs `0x15xx`) — part of the [device driver model](./DRIVER_MODEL.md).
+> Serial Peripheral Interface for external modules.
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.spi.open()` | `config: string` | `int` | ✅ ESP32 (real) · ✅ SDL (simulated) · ❌ .NET stub |
+| `os.spi.transfer()` | `handle: int, tx: string, rxLen: int` | `string` | ✅ ESP32 · ✅ SDL (echo sim) · ❌ .NET stub |
+| `os.spi.write()` | `handle: int, tx: string` | `int` | ✅ ESP32 · ✅ SDL · ❌ .NET stub |
+| `os.spi.close()` | `handle: int` | `bool` | ✅ ESP32 · ✅ SDL · ❌ .NET stub |
+
+### `os.spi.open(config: string) -> int`
+Open the SPI bus. Config JSON fields (all optional, defaults shown):
+`{"clockHz":1000000,"mode":0,"csPin":5,"sclk":18,"miso":19,"mosi":23}`
+- **Returns**: int - Handle (≥ 0), or -1 on failure. Max 4 concurrent handles on ESP32.
+- **Status**: ✅ Implemented (ESP32: Arduino `SPI` host + per-handle CS; SDL: simulated)
+
+### `os.spi.transfer(handle: int, tx: string, rxLen: int) -> string`
+Write `tx` bytes, then clock in `rxLen` bytes. Binary payloads follow the `os.i2c`
+convention: raw bytes inside a dialScript string.
+- **Returns**: string - Raw received bytes (empty on error)
+- **Status**: ✅ Implemented (SDL sim returns a deterministic echo pattern)
+
+### `os.spi.write(handle: int, tx: string) -> int`
+Write-only transaction. **Returns**: bytes written, or -1. **Status**: ✅ Implemented
+
+### `os.spi.close(handle: int) -> bool`
+Release the handle. **Status**: ✅ Implemented
+
+---
+
+## 23. Device APIs (`os.device.*`)
+
+> New namespace (native IDs `0x16xx`) — the front door of the
+> [device driver model](./DRIVER_MODEL.md). Discovery + ownership-tracked handles
+> for modules on the I2C/SPI buses.
+
+| Function | Parameters | Returns | Status |
+|----------|------------|---------|--------|
+| `os.device.list()` | none | `string` (JSON array) | ✅ ESP32 · ✅ SDL · ❌ .NET stub |
+| `os.device.open()` | `nameOrAddress: string` | `int` | ✅ ESP32 · ✅ SDL · ❌ .NET stub |
+| `os.device.close()` | `handle: int` | `bool` | ✅ ESP32 · ✅ SDL · ❌ .NET stub |
+| `os.device.getInfo()` | `handle: int` | `string` (JSON object) | ✅ ESP32 · ✅ SDL · ❌ .NET stub |
+| `os.device.probe()` | none | `string` (JSON array) | ✅ ESP32 · ✅ SDL · ❌ .NET stub |
+
+### `os.device.list() -> string`
+Run discovery and return present devices:
+`[{"name":"bmp280","bus":"i2c","address":"0x76","capabilities":{...}}, ...]`
+- **Status**: ✅ Implemented (ESP32: real WHO_AM_I probes over Wire; SDL: simulated
+  `bmp280` + `w25q32` present, `pn532` absent)
+
+### `os.device.open(nameOrAddress: string) -> int`
+Open by driver name (`"bmp280"`) or by address (`"i2c:0x76"`, `"spi:5"`).
+One open handle per device; max 16 handles; ownership recorded for the calling task.
+- **Returns**: int - Handle (≥ 0), or -1 (unknown/not present/already open/no slots)
+- **Status**: ✅ Implemented
+
+### `os.device.close(handle: int) -> bool`
+Release a handle. Fails if the handle is not owned by the calling task.
+- **Status**: ✅ Implemented
+
+### `os.device.getInfo(handle: int) -> string`
+Descriptor JSON for an open handle (`"{}"` if invalid). **Status**: ✅ Implemented
+
+### `os.device.probe() -> string`
+Re-run bus discovery (e.g. after physically plugging a module) — same format as
+`list()`. Hotplug *events* remain blocked on the callback infrastructure.
+- **Status**: ✅ Implemented
+
+---
+
 ## Implementation Status Summary
 
 ### ✅ Implemented (64 functions)
@@ -973,8 +1052,10 @@ Receive messages
 - **Power**: sleep, getBatteryLevel, isCharging (3)
 - **App**: exit, getInfo (2)
 - **Storage**: getMounted, getInfo (2)
-- **Sensor**: attach, read (2)
+- **Sensor**: attach, read (2) *(⚠️ stubs on all platforms — see §17 correction)*
 - **IPC**: send, broadcast (2)
+- **SPI**: open, transfer, write, close (4) *(ESP32 real, SDL simulated, .NET stub)*
+- **Device**: list, open, close, getInfo, probe (5) *(ESP32/SDL registry-backed, .NET stub)*
 
 ### 🔜 Planned (4 functions)
 - `os.touch.getPosition()` - Composite of getX/getY

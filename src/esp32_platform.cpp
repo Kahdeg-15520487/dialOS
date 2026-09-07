@@ -7,7 +7,9 @@
 #include <Arduino.h>
 #include <M5Dial.h>
 #include <Wire.h>
+#include <SPI.h>
 #include <vector>
+#include <cstring>
 
 using namespace dialos::vm;
 
@@ -555,4 +557,213 @@ bool ESP32Platform::dir_exists(const std::string& path) {
   }
   
   return false;
+}
+// ===== SPI Operations =====
+// NOTE: M5Dial's StampS3 exposes limited SPI-capable pins; defaults here are
+// the documented common ones and can be overridden per-call via configJson.
+
+namespace {
+struct SpiConfig {
+  uint32_t clockHz;
+  int mode;    // SPI mode 0-3
+  int csPin;
+  int sclkPin;
+  int misoPin;
+  int mosiPin;
+  bool initialized;
+};
+
+const int MAX_SPI_HANDLES = 4;
+SpiConfig spiConfigs[MAX_SPI_HANDLES] = {};
+bool spiHostInitialized = false;
+
+bool parseSpiConfig(const std::string& json, SpiConfig& out) {
+  // Minimal JSON number extraction: "key":value
+  auto extractNum = [&json](const char* key, int def) -> long {
+    std::string pat = std::string("\"") + key + "\"";
+    size_t pos = json.find(pat);
+    if (pos == std::string::npos) return def;
+    pos = json.find(':', pos);
+    if (pos == std::string::npos) return def;
+    return strtol(json.c_str() + pos + 1, nullptr, 10);
+  };
+  out.clockHz = (uint32_t)extractNum("clockHz", 1000000);
+  out.mode = (int)extractNum("mode", 0);
+  out.csPin = (int)extractNum("csPin", 5);
+  out.sclkPin = (int)extractNum("sclk", 18);
+  out.misoPin = (int)extractNum("miso", 19);
+  out.mosiPin = (int)extractNum("mosi", 23);
+  out.initialized = false;
+  return out.mode >= 0 && out.mode <= 3;
+}
+} // namespace
+
+int ESP32Platform::spi_open(const std::string &configJson) {
+  SpiConfig cfg;
+  if (!parseSpiConfig(configJson, cfg)) {
+    return -1;
+  }
+
+  if (!spiHostInitialized) {
+    // First open defines the bus pins; subsequent opens reuse the host.
+    SPI.begin(cfg.sclkPin, cfg.misoPin, cfg.mosiPin, -1);
+    spiHostInitialized = true;
+  }
+
+  // Find or allocate a slot for this CS pin
+  int slot = -1;
+  for (int i = 0; i < MAX_SPI_HANDLES; i++) {
+    if (spiConfigs[i].initialized && spiConfigs[i].csPin == cfg.csPin) {
+      slot = i;
+      break;
+    }
+  }
+  if (slot < 0) {
+    for (int i = 0; i < MAX_SPI_HANDLES; i++) {
+      if (!spiConfigs[i].initialized) { slot = i; break; }
+    }
+  }
+  if (slot < 0) {
+    return -1; // Too many SPI handles
+  }
+
+  spiConfigs[slot] = cfg;
+  spiConfigs[slot].initialized = true;
+
+  pinMode(cfg.csPin, OUTPUT);
+  digitalWrite(cfg.csPin, HIGH); // Deselect
+
+  return slot;
+}
+
+std::string ESP32Platform::spi_transfer(int handle, const std::vector<uint8_t> &tx, int rxLen) {
+  if (handle < 0 || handle >= MAX_SPI_HANDLES || !spiConfigs[handle].initialized) {
+    return "";
+  }
+  if (rxLen <= 0) {
+    return "";
+  }
+
+  const SpiConfig& cfg = spiConfigs[handle];
+  SPISettings settings(cfg.clockHz, MSBFIRST, (uint8_t)cfg.mode);
+
+  std::string result;
+  result.reserve(rxLen);
+
+  SPI.beginTransaction(settings);
+  digitalWrite(cfg.csPin, LOW);
+
+  // Write phase
+  for (uint8_t b : tx) {
+    SPI.transfer(b);
+  }
+  // Read phase (clock out dummy bytes)
+  for (int i = 0; i < rxLen; i++) {
+    result += (char)SPI.transfer(0x00);
+  }
+
+  digitalWrite(cfg.csPin, HIGH);
+  SPI.endTransaction();
+
+  return result;
+}
+
+int ESP32Platform::spi_write(int handle, const std::vector<uint8_t> &tx) {
+  if (handle < 0 || handle >= MAX_SPI_HANDLES || !spiConfigs[handle].initialized) {
+    return -1;
+  }
+
+  const SpiConfig& cfg = spiConfigs[handle];
+  SPISettings settings(cfg.clockHz, MSBFIRST, (uint8_t)cfg.mode);
+
+  SPI.beginTransaction(settings);
+  digitalWrite(cfg.csPin, LOW);
+  for (uint8_t b : tx) {
+    SPI.transfer(b);
+  }
+  digitalWrite(cfg.csPin, HIGH);
+  SPI.endTransaction();
+
+  return (int)tx.size();
+}
+
+bool ESP32Platform::spi_close(int handle) {
+  if (handle < 0 || handle >= MAX_SPI_HANDLES || !spiConfigs[handle].initialized) {
+    return false;
+  }
+  spiConfigs[handle].initialized = false;
+  return true;
+}
+
+// ===== Device Driver Model Operations =====
+
+namespace {
+dialos::vm::DeviceRegistry deviceRegistry;
+bool devicesRegistered = false;
+
+// Real hardware probe: BMP280/BME280 WHO_AM_I over the shared I2C bus.
+// BMP280: addr 0x76/0x77, reg 0xD0 -> 0x58 (BMP280) / 0x60 (BME280)
+bool probeBmp280(void* /*busContext*/, uint8_t address) {
+  Wire.beginTransmission(address);
+  Wire.write(0xD0); // WHO_AM_I / id register
+  if (Wire.endTransmission(false) != 0) {
+    return false;
+  }
+  if (Wire.requestFrom((int)address, 1) != 1) {
+    return false;
+  }
+  uint8_t id = Wire.read();
+  return id == 0x58 || id == 0x60; // BMP280 or BME280
+}
+
+void registerNativeDrivers() {
+  if (devicesRegistered) {
+    return;
+  }
+  devicesRegistered = true;
+
+  using namespace dialos::vm;
+  DeviceDescriptor bmp280;
+  bmp280.name = "bmp280";
+  bmp280.bus = BusType::I2C;
+  bmp280.address = 0x76;
+  bmp280.capabilities = "{\"type\":\"sensor\",\"provides\":[\"tempC\",\"pressurePa\"]}";
+  bmp280.hotplug = true;
+  deviceRegistry.registerDriver(bmp280, &probeBmp280);
+
+  // Also probe the alternate BMP280 address.
+  DeviceDescriptor bmp280alt;
+  bmp280alt.name = "bmp280-alt";
+  bmp280alt.bus = BusType::I2C;
+  bmp280alt.address = 0x77;
+  bmp280alt.capabilities = bmp280.capabilities;
+  bmp280alt.hotplug = true;
+  deviceRegistry.registerDriver(bmp280alt, &probeBmp280);
+
+  deviceRegistry.scan(nullptr);
+}
+} // namespace
+
+std::string ESP32Platform::device_list() {
+  registerNativeDrivers();
+  return deviceRegistry.listDiscoveredJson();
+}
+
+int ESP32Platform::device_open(const std::string &nameOrAddress, uint32_t taskId) {
+  registerNativeDrivers();
+  return deviceRegistry.open(nameOrAddress, taskId);
+}
+
+bool ESP32Platform::device_close(int handle, uint32_t taskId) {
+  return deviceRegistry.close(handle, taskId);
+}
+
+std::string ESP32Platform::device_getInfo(int handle) {
+  return deviceRegistry.getInfoJson(handle);
+}
+
+std::string ESP32Platform::device_probe() {
+  registerNativeDrivers();
+  deviceRegistry.scan(nullptr);
+  return deviceRegistry.listDiscoveredJson();
 }

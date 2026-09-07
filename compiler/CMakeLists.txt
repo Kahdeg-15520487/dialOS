@@ -11,6 +11,10 @@ if(MSVC)
     add_compile_options(/W4)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
+    # GCC >= 11 makes -Wchanges-meaning a default error: Value::Object(Object*) etc.
+    # in vm_value.h redeclare the member name 'Object'/'Array'/'Function' as methods.
+    # Valid C++ (matches MSVC/older GCC); suppress rather than churn the public API.
+    add_compile_options(-Wno-changes-meaning)
 endif()
 
 # Source files
@@ -29,6 +33,7 @@ set(VM_SOURCES
     ../src/vm/vm_value.cpp
     ../src/vm/vm_core.cpp
     ../src/vm/platform.cpp
+    ../src/vm/device_registry.cpp
 )
 
 # Create a library for the parser (can be linked to other projects)

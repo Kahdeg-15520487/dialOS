@@ -209,6 +209,25 @@ public abstract class PlatformBase : IPlatform
 
     #endregion
 
+    #region SPI Operations (default: not supported)
+
+    public virtual int SpiOpen(string configJson) => -1;
+    public virtual string SpiTransfer(int handle, byte[] tx, int rxLen) => "";
+    public virtual int SpiWrite(int handle, byte[] tx) => -1;
+    public virtual bool SpiClose(int handle) => false;
+
+    #endregion
+
+    #region Device Driver Model Operations (default: no devices)
+
+    public virtual string DeviceList() => "[]";
+    public virtual int DeviceOpen(string nameOrAddress, uint taskId) => -1;
+    public virtual bool DeviceClose(int handle, uint taskId) => false;
+    public virtual string DeviceGetInfo(int handle) => "{}";
+    public virtual string DeviceProbe() => "[]";
+
+    #endregion
+
     #region VM Integration
 
     public virtual void SetVM(VMState vm) => VM = vm;

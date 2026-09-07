@@ -1412,7 +1412,139 @@ std::string SDLPlatform::sensor_read(int handle) {
 void SDLPlatform::sensor_detach(int handle) {
   // TODO: Implement sensor detachment
   console_log("sensor_detach: handle=" + std::to_string(handle));
-  console_warn("NOT IMPLEMENTED: os.sensor.detach - sensor simulation missing");
+  console_warn("NOT IMPLEMENTED: os.sensor.detach - use device registry (os.device.*) instead");
+}
+
+// === SPI Operations (simulated) ===
+
+int SDLPlatform::spi_open(const std::string &configJson) {
+  // Minimal config parsing: accept clockHz/mode if present; simulation ignores wiring.
+  SpiHandle h;
+  h.isOpen = true;
+  h.clockHz = 1000000;
+  h.mode = 0;
+
+  // Very small JSON scan for "clockHz" and "mode"
+  auto extractNum = [&configJson](const std::string &key, int def) -> int {
+    size_t pos = configJson.find("\"" + key + "\"");
+    if (pos == std::string::npos)
+      return def;
+    pos = configJson.find(':', pos);
+    if (pos == std::string::npos)
+      return def;
+    return std::atoi(configJson.c_str() + pos + 1);
+  };
+  h.clockHz = (uint32_t)extractNum("clockHz", 1000000);
+  h.mode = extractNum("mode", 0);
+
+  int handle = nextSpiHandle_++;
+  spiHandles_[handle] = h;
+  console_log("spi_open: clockHz=" + std::to_string(h.clockHz) +
+              " mode=" + std::to_string(h.mode) + " (simulated)");
+  return handle;
+}
+
+std::string SDLPlatform::spi_transfer(int handle, const std::vector<uint8_t> &tx,
+                                      int rxLen) {
+  auto it = spiHandles_.find(handle);
+  if (it == spiHandles_.end() || !it->second.isOpen)
+    return "";
+  if (rxLen <= 0)
+    return "";
+
+  // Simulated device: echoes a deterministic signature pattern.
+  std::string result;
+  result.reserve(rxLen);
+  for (int i = 0; i < rxLen; i++) {
+    result += (char)(0x10 + ((tx.empty() ? 0 : tx.back()) + i) % 0x10);
+  }
+  return result;
+}
+
+int SDLPlatform::spi_write(int handle, const std::vector<uint8_t> &tx) {
+  auto it = spiHandles_.find(handle);
+  if (it == spiHandles_.end() || !it->second.isOpen)
+    return -1;
+  return (int)tx.size();
+}
+
+bool SDLPlatform::spi_close(int handle) {
+  auto it = spiHandles_.find(handle);
+  if (it == spiHandles_.end() || !it->second.isOpen)
+    return false;
+  it->second.isOpen = false;
+  return true;
+}
+
+// === Device Driver Model Operations (simulated devices) ===
+
+static bool simBmp280Probe(void * /*busContext*/, uint8_t /*address*/) {
+  return true; // Always present in the simulator
+}
+
+static bool simSpiFlashProbe(void * /*busContext*/, uint8_t /*address*/) {
+  return true;
+}
+
+static bool simAbsentProbe(void * /*busContext*/, uint8_t /*address*/) {
+  return false; // Registered but "not plugged in" - exercises the absent path
+}
+
+void SDLPlatform::registerSimulatedDevices() {
+  if (devicesRegistered_)
+    return;
+  devicesRegistered_ = true;
+
+  using namespace dialos::vm;
+  DeviceDescriptor bmp280;
+  bmp280.name = "bmp280";
+  bmp280.bus = BusType::I2C;
+  bmp280.address = 0x76;
+  bmp280.capabilities = "{\"type\":\"sensor\",\"provides\":[\"tempC\",\"pressurePa\"]}";
+  bmp280.hotplug = false;
+  deviceRegistry_.registerDriver(bmp280, &simBmp280Probe);
+
+  DeviceDescriptor flash;
+  flash.name = "w25q32";
+  flash.bus = BusType::SPI;
+  flash.address = 5; // CS pin 5
+  flash.capabilities = "{\"type\":\"storage\",\"sizeBytes\":4194304}";
+  flash.hotplug = false;
+  deviceRegistry_.registerDriver(flash, &simSpiFlashProbe);
+
+  DeviceDescriptor absent;
+  absent.name = "pn532";
+  absent.bus = BusType::I2C;
+  absent.address = 0x24;
+  absent.capabilities = "{\"type\":\"rfid\"}";
+  absent.hotplug = true;
+  deviceRegistry_.registerDriver(absent, &simAbsentProbe);
+
+  deviceRegistry_.scan(nullptr);
+}
+
+std::string SDLPlatform::device_list() {
+  registerSimulatedDevices();
+  return deviceRegistry_.listDiscoveredJson();
+}
+
+int SDLPlatform::device_open(const std::string &nameOrAddress, uint32_t taskId) {
+  registerSimulatedDevices();
+  return deviceRegistry_.open(nameOrAddress, taskId);
+}
+
+bool SDLPlatform::device_close(int handle, uint32_t taskId) {
+  return deviceRegistry_.close(handle, taskId);
+}
+
+std::string SDLPlatform::device_getInfo(int handle) {
+  return deviceRegistry_.getInfoJson(handle);
+}
+
+std::string SDLPlatform::device_probe() {
+  registerSimulatedDevices();
+  deviceRegistry_.scan(nullptr);
+  return deviceRegistry_.listDiscoveredJson();
 }
 
 // === WiFi Operations ===

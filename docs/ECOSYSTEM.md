@@ -152,6 +152,8 @@ Legend: ✅ implemented · 🟨 partial/simulated · ❌ stub returns default/`"
 | `dir.*` | ✅ | 🟨 prefix-simulated dirs | ✅ | 🟨 prefix-simulated |
 | `gpio.*` | ✅ sim | ✅ real | ❌ base stub | 🟨 simulated values |
 | `i2c.*` | ✅ sim | ✅ real Wire | ❌ base stub | 🟨 returns empty |
+| `spi.*` | ✅ simulated echo | ✅ real SPI host + CS | 🟨 base stub | 🟨 base stub |
+| `device.*` (driver model) | ✅ simulated devices | ✅ real WHO_AM_I probes | 🟨 base stub | 🟨 base stub |
 | `buzzer.*` | ✅ SDL_mixer | ✅ `tone()` GPIO3 | ❌ base stub | 🟨 event only |
 | `rfid.*` | ✅ sim | 🟨 raw I2C protocol, unverified | ❌ base stub | 🟨 scriptable sim |
 | `timer.*` | ❌ needs callbacks | ❌ blocked | ❌ stubs return IDs, never fire | ❌ stubs return IDs, never fire |
@@ -170,6 +172,7 @@ Legend: ✅ implemented · 🟨 partial/simulated · ❌ stub returns default/`"
 2. **Networking**: use SDL or .NET WinForms. Don't ship `http.*` calls expecting ESP32 to answer.
 3. **File persistence**: real on SDL & .NET WinForms; ephemeral RAM on ESP32 (power loss = gone) and .NET GuiPlatform.
 4. A dialScript app using only `console/display/encoder/touch/system/file` runs on **all four hosts**. Anything beyond that — check the table.
+5. **External modules**: `os.device.*` + `os.spi.*` (driver model, `0x15xx`/`0x16xx`) are real on ESP32 and simulated on SDL — see [`DRIVER_MODEL.md`](./DRIVER_MODEL.md).
 
 ---
 
@@ -242,6 +245,8 @@ Priorities reflect "what unlocks the most users". Contribution welcome on any it
 - [ ] ESP32: app install/launch (flash-backed registry, mirror SDL's `registry.json` design)
 - [ ] .NET: consolidate `WinFormsPlatform` + `GuiPlatform` into one emulator platform (keep real IO/HTTP, adopt GuiPlatform's RFID/battery/GPIO simulation surface)
 - [ ] Fix `.dsb` integrity hash mismatch (§7.5) — make C++ and .NET checksums agree, re-enable strict verification
+- [x] Device driver model Tier 1: SPI namespace + device registry + probes (see `DRIVER_MODEL.md`)
+- [ ] Driver model Tier 2: userspace (dialScript) driver registration; re-base `os.sensor.*` on the registry; thread task IDs through `VMState`
 
 ### Phase 4 — Ecosystem polish
 - [ ] In-browser VM (run `.dsb` on the App Store site — WASM build of `vm_core`)

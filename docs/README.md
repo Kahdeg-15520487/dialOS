@@ -6,6 +6,7 @@ This directory contains all documentation for the dialOS project.
 
 ### Start Here
 - [ECOSYSTEM.md](./ECOSYSTEM.md) - **What's implemented, platform support matrix (discrepancies between hosts), known bugs, and roadmap** — read this first
+- [DRIVER_MODEL.md](./DRIVER_MODEL.md) - Device driver model: I2C/SPI modules, discovery, probes, handles
 
 ### Core Documentation
 - [VM_ARCHITECTURE.md](./VM_ARCHITECTURE.md) - Virtual Machine architecture and design

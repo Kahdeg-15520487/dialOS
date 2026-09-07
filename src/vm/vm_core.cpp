@@ -1928,6 +1928,136 @@ VMResult VMState::executeInstruction() {
                     break;
                 }
                 
+                // ===== SPI Functions =====
+                case NativeFunctionID::SPI_OPEN: {
+                    if (argCount < 1) {
+                        setError("open() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value configVal = pop();
+                    
+                    int handle = platform_.spi_open(configVal.toString());
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(handle));
+                    break;
+                }
+                
+                case NativeFunctionID::SPI_TRANSFER: {
+                    if (argCount < 3) {
+                        setError("transfer() requires 3 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value rxLenVal = pop();
+                    Value txVal = pop();
+                    Value handleVal = pop();
+                    
+                    // Convention (same as os.i2c): binary payloads are strings
+                    std::string txStr = txVal.toString();
+                    std::vector<uint8_t> tx(txStr.begin(), txStr.end());
+                    
+                    std::string result = platform_.spi_transfer(
+                        handleVal.isInt32() ? handleVal.int32Val : -1,
+                        tx,
+                        rxLenVal.isInt32() ? rxLenVal.int32Val : 0
+                    );
+                    
+                    for (uint8_t i = 3; i < argCount; i++) pop();
+                    push(Value::String(result));
+                    break;
+                }
+                
+                case NativeFunctionID::SPI_WRITE: {
+                    if (argCount < 2) {
+                        setError("write() requires 2 arguments");
+                        return VMResult::ERROR;
+                    }
+                    Value txVal = pop();
+                    Value handleVal = pop();
+                    
+                    std::string txStr = txVal.toString();
+                    std::vector<uint8_t> tx(txStr.begin(), txStr.end());
+                    
+                    int written = platform_.spi_write(
+                        handleVal.isInt32() ? handleVal.int32Val : -1,
+                        tx
+                    );
+                    
+                    for (uint8_t i = 2; i < argCount; i++) pop();
+                    push(Value::Int32(written));
+                    break;
+                }
+                
+                case NativeFunctionID::SPI_CLOSE: {
+                    if (argCount < 1) {
+                        setError("close() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value handleVal = pop();
+                    
+                    bool ok = platform_.spi_close(handleVal.isInt32() ? handleVal.int32Val : -1);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Bool(ok));
+                    break;
+                }
+                
+                // ===== Device Driver Model Functions =====
+                case NativeFunctionID::DEVICE_LIST: {
+                    push(Value::String(platform_.device_list()));
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    break;
+                }
+                
+                case NativeFunctionID::DEVICE_OPEN: {
+                    if (argCount < 1) {
+                        setError("open() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value nameVal = pop();
+                    
+                    // TODO: thread the owning kernel task id through VMState
+                    // (0 = system, matches file_open fallback)
+                    int handle = platform_.device_open(nameVal.toString(), 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Int32(handle));
+                    break;
+                }
+                
+                case NativeFunctionID::DEVICE_CLOSE: {
+                    if (argCount < 1) {
+                        setError("close() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value handleVal = pop();
+                    
+                    bool ok = platform_.device_close(handleVal.isInt32() ? handleVal.int32Val : -1, 0);
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    push(Value::Bool(ok));
+                    break;
+                }
+                
+                case NativeFunctionID::DEVICE_GETINFO: {
+                    if (argCount < 1) {
+                        setError("getInfo() requires 1 argument");
+                        return VMResult::ERROR;
+                    }
+                    Value handleVal = pop();
+                    
+                    push(Value::String(platform_.device_getInfo(handleVal.isInt32() ? handleVal.int32Val : -1)));
+                    
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    break;
+                }
+                
+                case NativeFunctionID::DEVICE_PROBE: {
+                    push(Value::String(platform_.device_probe()));
+                    for (uint8_t i = 1; i < argCount; i++) pop();
+                    break;
+                }
+                
                 // ===== WiFi Functions =====
                 case NativeFunctionID::WIFI_CONNECT: {
                     if (argCount < 2) {

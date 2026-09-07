@@ -2,6 +2,7 @@
 #define ESP32_PLATFORM_H
 
 #include "vm/platform.h"
+#include "vm/device_registry.h"
 #include <vector>
 #include <string>
 
@@ -97,6 +98,19 @@ public:
   bool dir_create(const std::string& path) override;
   bool dir_delete(const std::string& path) override;
   bool dir_exists(const std::string& path) override;
+
+  // ===== SPI Operations =====
+  int spi_open(const std::string& configJson) override;
+  std::string spi_transfer(int handle, const std::vector<uint8_t>& tx, int rxLen) override;
+  int spi_write(int handle, const std::vector<uint8_t>& tx) override;
+  bool spi_close(int handle) override;
+
+  // ===== Device Driver Model Operations =====
+  std::string device_list() override;
+  int device_open(const std::string& nameOrAddress, uint32_t taskId) override;
+  bool device_close(int handle, uint32_t taskId) override;
+  std::string device_getInfo(int handle) override;
+  std::string device_probe() override;
 };
 
 } // namespace vm

@@ -15,6 +15,7 @@
 
 #include "vm/platform.h"
 #include "vm/vm_value.h"
+#include "vm/device_registry.h"
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
@@ -228,6 +229,19 @@ public:
     
     // === Buzzer Operations ===
     void buzzer_playMelody(const std::vector<int>& notes) override;
+
+    // === SPI Operations (simulated) ===
+    int spi_open(const std::string& configJson) override;
+    std::string spi_transfer(int handle, const std::vector<uint8_t>& tx, int rxLen) override;
+    int spi_write(int handle, const std::vector<uint8_t>& tx) override;
+    bool spi_close(int handle) override;
+
+    // === Device Driver Model Operations (simulated devices) ===
+    std::string device_list() override;
+    int device_open(const std::string& nameOrAddress, uint32_t taskId) override;
+    bool device_close(int handle, uint32_t taskId) override;
+    std::string device_getInfo(int handle) override;
+    std::string device_probe() override;
     
     // === Extended Emulator Features ===
     void touch_getPosition(int& x, int& y);
@@ -419,6 +433,21 @@ private:
     // Timer container
     std::map<int, TimerEntry> timers_;
     int nextTimerId_ = 1;
+
+    // ===== Device driver model (simulated) =====
+    DeviceRegistry deviceRegistry_;
+    bool devicesRegistered_ = false;
+    void registerSimulatedDevices();
+
+    // ===== SPI simulation =====
+    struct SpiHandle {
+        uint32_t clockHz;
+        int mode;
+        bool isOpen;
+        SpiHandle() : clockHz(0), mode(0), isOpen(false) {}
+    };
+    std::map<int, SpiHandle> spiHandles_;
+    int nextSpiHandle_ = 1;
 };
 
 } // namespace vm

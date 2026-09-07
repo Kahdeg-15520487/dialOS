@@ -201,6 +201,39 @@ public interface IPlatform
 
     #endregion
 
+    #region SPI Operations
+
+    /// <summary>Open SPI bus with config JSON {"clockHz":..,"mode":0,"csPin":..}. Returns handle or -1.</summary>
+    int SpiOpen(string configJson);
+
+    /// <summary>Full-duplex transfer: write tx bytes, then read rxLen bytes (raw payload as string).</summary>
+    string SpiTransfer(int handle, byte[] tx, int rxLen);
+
+    /// <summary>Write only. Returns bytes written or -1.</summary>
+    int SpiWrite(int handle, byte[] tx);
+
+    bool SpiClose(int handle);
+
+    #endregion
+
+    #region Device Driver Model Operations
+
+    /// <summary>Discovered devices as JSON array (see docs/DRIVER_MODEL.md).</summary>
+    string DeviceList();
+
+    /// <summary>Open by driver name ("bmp280") or address ("i2c:0x76"). Returns handle or -1.</summary>
+    int DeviceOpen(string nameOrAddress, uint taskId);
+
+    bool DeviceClose(int handle, uint taskId);
+
+    /// <summary>Descriptor JSON for an open handle.</summary>
+    string DeviceGetInfo(int handle);
+
+    /// <summary>Re-run bus discovery; returns same format as DeviceList().</summary>
+    string DeviceProbe();
+
+    #endregion
+
     #region VM Integration
 
     /// <summary>

@@ -164,6 +164,19 @@ namespace dialos
             APP_LAUNCH = 0x1404,            // Launch installed app (replace current)
             APP_VALIDATE = 0x1405,          // Validate DSB file integrity
 
+            // SPI namespace (0x15xx) - Serial Peripheral Interface
+            SPI_OPEN = 0x1500,              // Open SPI bus with config, returns handle
+            SPI_TRANSFER = 0x1501,          // Full-duplex transfer (write + read)
+            SPI_WRITE = 0x1502,             // Write only
+            SPI_CLOSE = 0x1503,             // Release SPI handle
+
+            // Device namespace (0x16xx) - Device driver model (see docs/DRIVER_MODEL.md)
+            DEVICE_LIST = 0x1600,           // List discovered devices -> JSON array
+            DEVICE_OPEN = 0x1601,           // Open device by name/address -> handle
+            DEVICE_CLOSE = 0x1602,          // Release device handle
+            DEVICE_GETINFO = 0x1603,        // Device descriptor -> JSON object
+            DEVICE_PROBE = 0x1604,          // Re-run bus discovery
+
             UNKNOWN = 0xFFFF
         };
 
@@ -367,6 +380,28 @@ namespace dialos
                 return NativeFunctionID::SENSOR_READ;
             if (name == "sensor.detach")
                 return NativeFunctionID::SENSOR_DETACH;
+
+            // SPI functions (full namespace paths)
+            if (name == "spi.open")
+                return NativeFunctionID::SPI_OPEN;
+            if (name == "spi.transfer")
+                return NativeFunctionID::SPI_TRANSFER;
+            if (name == "spi.write")
+                return NativeFunctionID::SPI_WRITE;
+            if (name == "spi.close")
+                return NativeFunctionID::SPI_CLOSE;
+
+            // Device functions (full namespace paths)
+            if (name == "device.list")
+                return NativeFunctionID::DEVICE_LIST;
+            if (name == "device.open")
+                return NativeFunctionID::DEVICE_OPEN;
+            if (name == "device.close")
+                return NativeFunctionID::DEVICE_CLOSE;
+            if (name == "device.getInfo")
+                return NativeFunctionID::DEVICE_GETINFO;
+            if (name == "device.probe")
+                return NativeFunctionID::DEVICE_PROBE;
 
             // WiFi functions (full namespace paths)
             if (name == "wifi.connect")
@@ -596,6 +631,28 @@ namespace dialos
             case NativeFunctionID::SENSOR_DETACH:
                 return "detach";
 
+            // SPI
+            case NativeFunctionID::SPI_OPEN:
+                return "open";
+            case NativeFunctionID::SPI_TRANSFER:
+                return "transfer";
+            case NativeFunctionID::SPI_WRITE:
+                return "write";
+            case NativeFunctionID::SPI_CLOSE:
+                return "close";
+
+            // Device
+            case NativeFunctionID::DEVICE_LIST:
+                return "list";
+            case NativeFunctionID::DEVICE_OPEN:
+                return "open";
+            case NativeFunctionID::DEVICE_CLOSE:
+                return "close";
+            case NativeFunctionID::DEVICE_GETINFO:
+                return "getInfo";
+            case NativeFunctionID::DEVICE_PROBE:
+                return "probe";
+
             // WiFi
             case NativeFunctionID::WIFI_CONNECT:
                 return "connect";
@@ -796,6 +853,29 @@ namespace dialos
             virtual std::string app_getMetadata(const std::string & /*dsbFilePath*/) { return "{}"; }
             virtual std::string app_launch(const std::string & /*appId*/) { return "{\"status\":\"error\",\"message\":\"Not supported\"}"; }
             virtual std::string app_validate(const std::string & /*dsbFilePath*/) { return "{\"status\":\"error\",\"message\":\"Not supported\"}"; }
+
+            // ===== SPI Operations =====
+            // args: [configJson] -> handle (int, -1 on failure)
+            // configJson: {"clockHz":1000000,"mode":0,"csPin":5,"mosi":23,"miso":19,"sclk":18}
+            virtual int spi_open(const std::string & /*configJson*/) { return -1; }
+            // Full-duplex transfer: write txBytes, then read rxLen bytes. Returns read bytes as string (raw).
+            virtual std::string spi_transfer(int /*handle*/, const std::vector<uint8_t> & /*tx*/, int /*rxLen*/) { return ""; }
+            // Write only. Returns bytes written or -1.
+            virtual int spi_write(int /*handle*/, const std::vector<uint8_t> & /*tx*/) { return -1; }
+            virtual bool spi_close(int /*handle*/) { return false; }
+
+            // ===== Device Driver Model Operations =====
+            // See docs/DRIVER_MODEL.md. Default: no device registry (empty list).
+            // Scan/probe buses and return JSON array of descriptors:
+            // [{"name":"bmp280","bus":"i2c","address":118,"driver":"bmp280"}, ...]
+            virtual std::string device_list() { return "[]"; }
+            // Open by name ("bmp280") or bus:address ("i2c:0x76"). Returns handle or -1.
+            virtual int device_open(const std::string & /*nameOrAddress*/, uint32_t /*taskId*/) { return -1; }
+            virtual bool device_close(int /*handle*/, uint32_t /*taskId*/) { return false; }
+            // Descriptor JSON for an open handle.
+            virtual std::string device_getInfo(int /*handle*/) { return "{}"; }
+            // Re-run discovery; returns same format as device_list().
+            virtual std::string device_probe() { return "[]"; }
 
             // ===== Callback System =====
             /**
