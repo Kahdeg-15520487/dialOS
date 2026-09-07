@@ -36,7 +36,6 @@ public class GuiPlatform : PlatformBase
     // Simulated hardware state
     private bool _rfidPresent;
     private string _rfidData = "";
-    private bool _buzzerActive;
     private int _batteryLevel = 75;
     private bool _isCharging;
 
@@ -533,7 +532,6 @@ public class GuiPlatform : PlatformBase
 
     public override void BuzzerBeep(int frequency, int duration)
     {
-        _buzzerActive = true;
         BuzzerPlayed?.Invoke($"Beep: {frequency}Hz for {duration}ms");
     }
 
@@ -544,7 +542,6 @@ public class GuiPlatform : PlatformBase
 
     public override void BuzzerStop()
     {
-        _buzzerActive = false;
     }
 
     #endregion
