@@ -981,6 +981,42 @@ public class ExecutionEngine
             return ExecuteTouchNative(nativeId, args);
         }
 
+        // RFID namespace (0x05xx)
+        if (nativeId >= 0x0500 && nativeId < 0x0600)
+        {
+            return ExecuteRfidNative(nativeId, args);
+        }
+
+        // File namespace (0x06xx)
+        if (nativeId >= 0x0600 && nativeId < 0x0700)
+        {
+            return ExecuteFileNative(nativeId, args);
+        }
+
+        // Directory namespace (0x07xx)
+        if (nativeId >= 0x0700 && nativeId < 0x0800)
+        {
+            return ExecuteDirectoryNative(nativeId, args);
+        }
+
+        // GPIO namespace (0x08xx)
+        if (nativeId >= 0x0800 && nativeId < 0x0900)
+        {
+            return ExecuteGpioNative(nativeId, args);
+        }
+
+        // I2C namespace (0x09xx)
+        if (nativeId >= 0x0900 && nativeId < 0x0A00)
+        {
+            return ExecuteI2cNative(nativeId, args);
+        }
+
+        // Buzzer namespace (0x0Axx)
+        if (nativeId >= 0x0A00 && nativeId < 0x0B00)
+        {
+            return ExecuteBuzzerNative(nativeId, args);
+        }
+
         // Memory namespace (0x0Cxx)
         if (nativeId >= 0x0C00 && nativeId < 0x0D00)
         {
@@ -997,6 +1033,24 @@ public class ExecutionEngine
         if (nativeId >= 0x0E00 && nativeId < 0x0F00)
         {
             return ExecuteAppNative(nativeId, args);
+        }
+
+        // WiFi namespace (0x11xx)
+        if (nativeId >= 0x1100 && nativeId < 0x1200)
+        {
+            return ExecuteWifiNative(nativeId, args);
+        }
+
+        // HTTP namespace (0x12xx)
+        if (nativeId >= 0x1200 && nativeId < 0x1300)
+        {
+            return ExecuteHttpNative(nativeId, args);
+        }
+
+        // IPC namespace (0x13xx)
+        if (nativeId >= 0x1300 && nativeId < 0x1400)
+        {
+            return ExecuteIpcNative(nativeId, args);
         }
 
         return Value.Null();
@@ -1172,6 +1226,213 @@ public class ExecutionEngine
                 break;
             case 0x0E01: // APP_GET_INFO
                 return Value.String(_platform.AppGetInfo());
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteRfidNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x0500: // RFID_READ
+                return Value.String(_platform.RfidRead());
+            case 0x0501: // RFID_IS_PRESENT
+                return Value.Bool(_platform.RfidIsPresent());
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteFileNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x0600: // FILE_OPEN
+                if (args.Length >= 2)
+                    return Value.Int32(_platform.FileOpen(args[0].ToString(), args[1].ToString()));
+                break;
+            case 0x0601: // FILE_READ
+                if (args.Length >= 2)
+                    return Value.String(_platform.FileRead(args[0].ToInt(), args[1].ToInt()));
+                break;
+            case 0x0602: // FILE_WRITE
+                if (args.Length >= 2)
+                    return Value.Int32(_platform.FileWrite(args[0].ToInt(), args[1].ToString()));
+                break;
+            case 0x0603: // FILE_CLOSE
+                if (args.Length >= 1)
+                    _platform.FileClose(args[0].ToInt());
+                break;
+            case 0x0604: // FILE_EXISTS
+                if (args.Length >= 1)
+                    return Value.Bool(_platform.FileExists(args[0].ToString()));
+                break;
+            case 0x0605: // FILE_DELETE
+                if (args.Length >= 1)
+                    return Value.Bool(_platform.FileDelete(args[0].ToString()));
+                break;
+            case 0x0606: // FILE_SIZE
+                if (args.Length >= 1)
+                    return Value.Int32(_platform.FileSize(args[0].ToString()));
+                break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteDirectoryNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x0700: // DIR_LIST
+                if (args.Length >= 1)
+                {
+                    var entries = _platform.DirList(args[0].ToString());
+                    var arr = _pool.AllocateArray(entries.Length);
+                    for (int i = 0; i < entries.Length; i++)
+                    {
+                        arr[i] = Value.String(_pool.InternString(entries[i]));
+                    }
+                    return Value.Array(arr);
+                }
+                break;
+            case 0x0701: // DIR_CREATE
+                if (args.Length >= 1)
+                    return Value.Bool(_platform.DirCreate(args[0].ToString()));
+                break;
+            case 0x0702: // DIR_DELETE
+                if (args.Length >= 1)
+                    return Value.Bool(_platform.DirDelete(args[0].ToString()));
+                break;
+            case 0x0703: // DIR_EXISTS
+                if (args.Length >= 1)
+                    return Value.Bool(_platform.DirExists(args[0].ToString()));
+                break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteGpioNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x0800: // GPIO_PIN_MODE
+                if (args.Length >= 2)
+                    _platform.GpioPinMode(args[0].ToInt(), args[1].ToInt());
+                break;
+            case 0x0801: // GPIO_DIGITAL_WRITE
+                if (args.Length >= 2)
+                    _platform.GpioDigitalWrite(args[0].ToInt(), args[1].ToInt());
+                break;
+            case 0x0802: // GPIO_DIGITAL_READ
+                if (args.Length >= 1)
+                    return Value.Int32(_platform.GpioDigitalRead(args[0].ToInt()));
+                break;
+            case 0x0803: // GPIO_ANALOG_WRITE
+                if (args.Length >= 2)
+                    _platform.GpioAnalogWrite(args[0].ToInt(), args[1].ToInt());
+                break;
+            case 0x0804: // GPIO_ANALOG_READ
+                if (args.Length >= 1)
+                    return Value.Int32(_platform.GpioAnalogRead(args[0].ToInt()));
+                break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteI2cNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x0900: // I2C_SCAN
+                {
+                    var addresses = _platform.I2cScan();
+                    var arr = _pool.AllocateArray(addresses.Length);
+                    for (int i = 0; i < addresses.Length; i++)
+                    {
+                        arr[i] = Value.Int32(addresses[i]);
+                    }
+                    return Value.Array(arr);
+                }
+            case 0x0901: // I2C_WRITE
+                // TODO: Convert Value array to byte[]
+                break;
+            case 0x0902: // I2C_READ
+                // TODO: Convert byte[] to Value array
+                break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteBuzzerNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x0A00: // BUZZER_BEEP
+                if (args.Length >= 2)
+                    _platform.BuzzerBeep(args[0].ToInt(), args[1].ToInt());
+                break;
+            case 0x0A01: // BUZZER_PLAY_MELODY
+                // TODO: Convert Value array to int[]
+                break;
+            case 0x0A02: // BUZZER_STOP
+                _platform.BuzzerStop();
+                break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteWifiNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x1100: // WIFI_CONNECT
+                if (args.Length >= 2)
+                    return Value.Bool(_platform.WifiConnect(args[0].ToString(), args[1].ToString()));
+                break;
+            case 0x1101: // WIFI_DISCONNECT
+                _platform.WifiDisconnect();
+                break;
+            case 0x1102: // WIFI_GET_STATUS
+                return Value.String(_platform.WifiGetStatus());
+            case 0x1103: // WIFI_GET_IP
+                return Value.String(_platform.WifiGetIP());
+            case 0x1104: // WIFI_SCAN
+                return Value.String(_platform.WifiScan());
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteHttpNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x1200: // HTTP_GET
+                if (args.Length >= 1)
+                    return Value.String(_platform.HttpGet(args[0].ToString()));
+                break;
+            case 0x1201: // HTTP_POST
+                if (args.Length >= 2)
+                    return Value.String(_platform.HttpPost(args[0].ToString(), args[1].ToString()));
+                break;
+            case 0x1202: // HTTP_DOWNLOAD
+                if (args.Length >= 2)
+                    return Value.String(_platform.HttpDownload(args[0].ToString(), args[1].ToString()));
+                break;
+        }
+        return Value.Null();
+    }
+
+    private Value ExecuteIpcNative(ushort nativeId, Value[] args)
+    {
+        switch (nativeId)
+        {
+            case 0x1300: // IPC_SEND
+                if (args.Length >= 2)
+                    return Value.Bool(_platform.IpcSend(args[0].ToString(), args[1].ToString()));
+                break;
+            case 0x1301: // IPC_BROADCAST
+                if (args.Length >= 1)
+                    _platform.IpcBroadcast(args[0].ToString());
+                break;
         }
         return Value.Null();
     }

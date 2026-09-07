@@ -59,26 +59,32 @@ public class BytecodeModule
     /// <summary>
     /// Load a bytecode module from a .dsb file.
     /// </summary>
-    public static BytecodeModule Load(string path)
+    /// <param name="path">Path to the .dsb file</param>
+    /// <param name="verifyIntegrity">Whether to verify checksum/hash (default: true)</param>
+    public static BytecodeModule Load(string path, bool verifyIntegrity = true)
     {
         var data = File.ReadAllBytes(path);
-        return Deserialize(data);
+        return Deserialize(data, verifyIntegrity);
     }
 
     /// <summary>
     /// Load a bytecode module from a stream.
     /// </summary>
-    public static BytecodeModule Load(Stream stream)
+    /// <param name="stream">Stream containing bytecode data</param>
+    /// <param name="verifyIntegrity">Whether to verify checksum/hash (default: true)</param>
+    public static BytecodeModule Load(Stream stream, bool verifyIntegrity = true)
     {
         using var ms = new MemoryStream();
         stream.CopyTo(ms);
-        return Deserialize(ms.ToArray());
+        return Deserialize(ms.ToArray(), verifyIntegrity);
     }
 
     /// <summary>
     /// Deserialize bytecode module from binary format.
     /// </summary>
-    public static BytecodeModule Deserialize(byte[] data)
+    /// <param name="data">Raw bytecode data</param>
+    /// <param name="verifyIntegrity">Whether to verify checksum/hash (default: true)</param>
+    public static BytecodeModule Deserialize(byte[] data, bool verifyIntegrity = true)
     {
         var reader = new BytecodeReader(data);
         var module = new BytecodeModule();
@@ -150,8 +156,8 @@ public class BytecodeModule
             }
         }
 
-        // Verify bytecode integrity
-        if (!module.VerifyIntegrity())
+        // Verify bytecode integrity (optional)
+        if (verifyIntegrity && !module.VerifyIntegrity())
         {
             throw new InvalidDataException("Bytecode integrity check failed - file may be corrupted");
         }
