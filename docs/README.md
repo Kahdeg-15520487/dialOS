@@ -4,6 +4,9 @@ This directory contains all documentation for the dialOS project.
 
 ## Documentation Index
 
+### Start Here
+- [ECOSYSTEM.md](./ECOSYSTEM.md) - **What's implemented, platform support matrix (discrepancies between hosts), known bugs, and roadmap** — read this first
+
 ### Core Documentation
 - [VM_ARCHITECTURE.md](./VM_ARCHITECTURE.md) - Virtual Machine architecture and design
 - [BUILD_SYSTEM.md](./BUILD_SYSTEM.md) - Build system configuration and setup
