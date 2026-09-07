@@ -15,8 +15,6 @@ namespace DialOS.Gui;
 public class GuiPlatform : PlatformBase
 {
     // Display constants
-    public const int DisplayWidth = 240;
-    public const int DisplayHeight = 240;
     public const int Scale = 3;
 
     // Display state
@@ -39,7 +37,6 @@ public class GuiPlatform : PlatformBase
     private bool _rfidPresent;
     private string _rfidData = "";
     private bool _buzzerActive;
-    private int _buzzerFrequency;
     private int _batteryLevel = 75;
     private bool _isCharging;
 
@@ -238,8 +235,7 @@ public class GuiPlatform : PlatformBase
         _brightness = Math.Clamp(level, 0, 255);
     }
 
-    public override int DisplayWidth => GuiPlatform.DisplayWidth;
-    public override int DisplayHeight => GuiPlatform.DisplayHeight;
+    // DisplayWidth/DisplayHeight inherited from PlatformBase (both 240)
 
     public override void DisplaySetTitle(string title)
     {
@@ -538,15 +534,7 @@ public class GuiPlatform : PlatformBase
     public override void BuzzerBeep(int frequency, int duration)
     {
         _buzzerActive = true;
-        _buzzerFrequency = frequency;
         BuzzerPlayed?.Invoke($"Beep: {frequency}Hz for {duration}ms");
-
-        // Auto-stop after duration (simplified)
-        Task.Run(async () =>
-        {
-            await Task.Delay(duration);
-            _buzzerActive = false;
-        });
     }
 
     public override void BuzzerPlayMelody(int[] notes)
