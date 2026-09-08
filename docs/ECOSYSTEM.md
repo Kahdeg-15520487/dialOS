@@ -85,7 +85,8 @@ pio run -t upload          # builds + flashes src/main.cpp to M5 Dial
 | .NET Runtime port | `dotnet/DialOS.Runtime` | ✅ Working | Bytecode loader, values, full opcode engine, native dispatch |
 | .NET WinForms emulator | `dotnet/DialOS.Gui` (WinFormsPlatform + Form1) | ⚠️ Beta | Wired & runnable; real file IO + HTTP |
 | .NET GuiPlatform | `dotnet/DialOS.Gui/GuiPlatform.cs` | 🚧 Unwired | Rich hardware *simulation*, but not connected to any UI yet |
-| .NET tests | `dotnet/DialOS.Tests` | ✅ 60 passing | Unit + integration tests with real `.dsb` files |
+| .NET tests | `dotnet/DialOS.Tests` | ✅ 76 passing | Unit + integration tests, plus cross-runtime E2E conformance suite |
+| E2E conformance suite | `tests/e2e/` + `compiler/e2e_runner.cpp` | ✅ Working | Same `.ds` scripts executed on C++ VM and .NET runtime; outputs must match byte-for-byte. CI-gated (ctest + dotnet workflow) |
 | App Store web app | `appstore/` | ⚠️ Prototype | Browse works (index.json-driven); Compile tab works; no in-browser VM |
 | GUI Designer | `gui_designer/` | 🚧 Prototype | Drag-drop widgets → exports `.ds` snippet / JSON |
 

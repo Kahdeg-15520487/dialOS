@@ -95,6 +95,21 @@ endif()
 add_executable(test_vm test_vm.cpp)
 target_link_libraries(test_vm dialscript_vm dialscript_parser)
 
+# E2E test runner: compile + execute + verify console output against expected files
+add_executable(e2e_runner e2e_runner.cpp)
+target_link_libraries(e2e_runner dialscript_vm dialscript_parser)
+
+# Register each E2E script as its own ctest entry
+file(GLOB E2E_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/../tests/e2e/scripts/*.ds")
+foreach(script ${E2E_SCRIPTS})
+    get_filename_component(name ${script} NAME_WE)
+    add_test(
+        NAME e2e_${name}
+        COMMAND e2e_runner ${script} "${CMAKE_CURRENT_SOURCE_DIR}/../tests/e2e/expected/${name}.expected"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+    )
+endforeach()
+
 # SDL Emulator executable (optional, requires SDL2)
 # Try vcpkg first (Windows), then pkg-config (Linux/macOS), then find_package
 set(SDL2_FOUND FALSE)

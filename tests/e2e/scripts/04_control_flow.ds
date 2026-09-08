@@ -1,0 +1,21 @@
+// Conditionals and loops
+var x: 10;
+if (x > 5) {
+    os.console.println("big");
+} else {
+    os.console.println("small");
+}
+var total: 0;
+var i: 0;
+while (i < 5) {
+    assign total total + i;
+    assign i i + 1;
+}
+os.console.println(total);
+for (var j: 0; j < 3; assign j j + 1) {
+    os.console.println(`j=${j}`);
+}
+var n: 0;
+if (n = 0) {
+    os.console.println("zero");
+}

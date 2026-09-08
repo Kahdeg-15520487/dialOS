@@ -1,0 +1,14 @@
+// Module-level globals accessed and mutated from functions
+var counter: 0;
+function bump(): void {
+    assign counter counter + 1;
+}
+bump();
+bump();
+bump();
+os.console.println(counter);
+var label: "base";
+function describe(): string {
+    return `state=${label}`;
+}
+os.console.println(describe());

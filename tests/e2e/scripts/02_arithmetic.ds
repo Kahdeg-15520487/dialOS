@@ -1,0 +1,9 @@
+// Integer arithmetic and precedence
+os.console.println(2 + 3 * 4);
+os.console.println((2 + 3) * 4);
+os.console.println(10 - 4 - 3);
+os.console.println(17 % 5);
+os.console.println(100 / 10);
+os.console.println(-7 + 10);
+var x: 42;
+os.console.println(x + 1);

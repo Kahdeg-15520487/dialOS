@@ -1,5 +1,14 @@
 # Function Value Design - dialOS VM
 
+> **⚠️ Status update (see [callback-execution-model.md](ai/design/callback-execution-model.md)):**
+> Function-as-value, `LOAD_FUNCTION`, `CALL_INDIRECT`, and `invokeFunction()` listed as
+> missing below are **now implemented**. The "Option 2 (RECOMMENDED)" mutable closure
+> design (`capturedVars` map) was **rejected** during the language-design review:
+> dialScript forbids implicit variable capture — nested functions are a compile error,
+> unresolved identifiers are a compile error, and any future capture will be explicit,
+> immutable, copy-only. Timers/events/async-IO now proceed via the VM event pump instead
+> of this doc's registry approach.
+
 ## Overview
 This document outlines the design for adding first-class function support to the dialOS VM, enabling callbacks, event handlers, and functional programming patterns.
 

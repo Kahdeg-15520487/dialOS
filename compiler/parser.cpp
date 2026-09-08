@@ -799,6 +799,11 @@ std::unique_ptr<Expression> Parser::parsePrimary() {
     }
     
     error("Expected expression");
+    // Consume the offending token so callers that loop on the current token
+    // (statement/expression loops) are guaranteed progress instead of hanging.
+    if (!check(TokenType::END_OF_FILE)) {
+        advance();
+    }
     auto dummy = std::make_unique<Identifier>();
     dummy->line = current_.line;
     dummy->column = current_.column;

@@ -1,0 +1,9 @@
+// String concat and template literals
+var greeting: "Hello";
+var name: "dialOS";
+os.console.println(greeting + ", " + name + "!");
+os.console.println(`Count: ${42}`);
+os.console.println(`${greeting} ${name}`);
+var a: "left";
+var b: "right";
+os.console.println(`${a}-${b}`);

@@ -1,0 +1,9 @@
+// Ternary operator incl. nesting
+var a: 10;
+var b: 20;
+var max: (a > b) ? a : b;
+os.console.println(max);
+var status: (a > 100) ? "high" : "low";
+os.console.println(status);
+var nested: (a > 5) ? (b > 15) ? "both" : "a-only" : "none";
+os.console.println(nested);

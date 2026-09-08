@@ -1,0 +1,16 @@
+// Functions, parameters, returns, recursion
+function add(a: int, b: int): int {
+    return a + b;
+}
+function factorial(n: int): int {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+function greet(who: string): string {
+    return `Hi, ${who}`;
+}
+os.console.println(add(3, 7));
+os.console.println(factorial(5));
+os.console.println(greet("e2e"));

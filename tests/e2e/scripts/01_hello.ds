@@ -1,0 +1,5 @@
+// Basic console output
+os.console.println("Hello world");
+os.console.println("dialOS e2e suite");
+os.console.print("no newline");
+os.console.println(" <- same line");

@@ -80,13 +80,23 @@ jobs:
       - name: Build (Linux)
         if: matrix.platform == 'linux'
         run: |
-          cmake --build "$BUILD_DIR" --config ${{ matrix.build_type }} --target compile -- -j$(nproc || echo 2)
+          cmake --build "$BUILD_DIR" --config ${{ matrix.build_type }} --target dialscript_vm compile test_parser e2e_runner -- -j$(nproc || echo 2)
         shell: bash
 
       - name: Build (Windows)
         if: matrix.platform == 'windows'
         run: |
-          cmake --build "$env:BUILD_DIR" --config ${{ matrix.build_type }} --target compile
+          cmake --build "$env:BUILD_DIR" --config ${{ matrix.build_type }} --target dialscript_vm compile test_parser e2e_runner
+        shell: pwsh
+
+      - name: Test (Linux)
+        if: matrix.platform == 'linux'
+        run: ctest --test-dir "$BUILD_DIR" --output-on-failure
+        shell: bash
+
+      - name: Test (Windows)
+        if: matrix.platform == 'windows'
+        run: ctest --test-dir "$env:BUILD_DIR" -C ${{ matrix.build_type }} --output-on-failure
         shell: pwsh
 
       - name: Collect `compile` binary (Linux)

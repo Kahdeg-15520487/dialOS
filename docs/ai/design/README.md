@@ -14,8 +14,9 @@ description: Define the technical architecture, components, and data models
 | Document | Location | Description |
 |----------|----------|-------------|
 | VM Architecture | [VM_ARCHITECTURE.md](../../VM_ARCHITECTURE.md) | VM system design, bytecode format, components |
+| Callback Execution Model | [callback-execution-model.md](callback-execution-model.md) | VM event pump (timers/events/async IO) + language scoping & capture rules |
 | Kernel API Spec | [KERNEL_API_SPEC.md](../../KERNEL_API_SPEC.md) | 130+ native function specifications |
-| Function Values | [FUNCTION_VALUE_DESIGN.md](../../FUNCTION_VALUE_DESIGN.md) | Callback/function support design |
+| Function Values | [FUNCTION_VALUE_DESIGN.md](../../FUNCTION_VALUE_DESIGN.md) | Callback/function support design *(partially superseded — see note in that doc)* |
 | Native Functions | [NATIVE_FUNCTIONS.md](../../NATIVE_FUNCTIONS.md) | Native function implementation guide |
 
 ## Architecture Overview

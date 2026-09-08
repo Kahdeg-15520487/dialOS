@@ -178,12 +178,12 @@ namespace dialos
 
         void BytecodeCompiler::compileAssignment(const Assignment &assign)
         {
-            // Compile value
-            compileExpression(*assign.value);
-
             // Check if target is identifier
             if (auto *id = dynamic_cast<const Identifier *>(assign.target.get()))
             {
+                // Compile value
+                compileExpression(*assign.value);
+
                 // Check if it's a local variable
                 auto it = locals_.find(id->name);
                 if (it != locals_.end())
@@ -204,8 +204,9 @@ namespace dialos
             else if (auto *member = dynamic_cast<const MemberAccess *>(assign.target.get()))
             {
                 // Member assignment: object.field = value
+                // Stack order contract (matches VM SET_FIELD): value first, then receiver
+                compileExpression(*assign.value);
                 compileExpression(*member->object); // Push object
-                // Value is already on stack
                 uint16_t fieldIdx = module_.addConstant(member->property);
                 Instruction instr(Opcode::SET_FIELD);
                 instr.addOperandU16(fieldIdx);
@@ -214,9 +215,10 @@ namespace dialos
             else if (auto *arrayAccess = dynamic_cast<const ArrayAccess *>(assign.target.get()))
             {
                 // Array assignment: array[index] = value
-                compileExpression(*arrayAccess->array); // Push array
-                compileExpression(*arrayAccess->index); // Push index
-                // Value is already on stack
+                // Stack order contract (matches VM SET_INDEX): array, index, then value on top
+                compileExpression(*arrayAccess->array);   // Push array
+                compileExpression(*arrayAccess->index);   // Push index
+                compileExpression(*assign.value);         // Push value
                 module_.emit(Instruction(Opcode::SET_INDEX), arrayAccess->line);
             }
         }

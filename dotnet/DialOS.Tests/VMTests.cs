@@ -354,13 +354,13 @@ public class VMTests
             constants: new List<string> { "TestClass", "value" }
         );
         // Simpler approach: store object in local 0, then get field
+        // SET_FIELD stack contract (C++): [value, receiver] — receiver pushed last
         var module2 = CreateTestModule(
             new byte[] {
                 (byte)Opcode.NewObject, 0x00, 0x00,  // class index 0
                 (byte)Opcode.StoreLocal, 0,          // store object in local 0
-                (byte)Opcode.PushI8, 42,
-                (byte)Opcode.LoadLocal, 0,           // load object
-                (byte)Opcode.Swap,                   // swap to get [obj, value]
+                (byte)Opcode.PushI8, 42,             // push value first (C++ SET_FIELD contract)
+                (byte)Opcode.LoadLocal, 0,           // push receiver last (on top)
                 (byte)Opcode.SetField, 0x01, 0x00,   // set field
                 (byte)Opcode.Pop,                    // pop result
                 (byte)Opcode.LoadLocal, 0,           // load object

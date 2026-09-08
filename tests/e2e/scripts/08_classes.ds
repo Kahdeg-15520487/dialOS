@@ -1,0 +1,31 @@
+// Classes: fields, constructor, methods
+class Counter {
+    value: int;
+    constructor(initial: int) {
+        assign this.value initial;
+    }
+    increment(): void {
+        assign this.value this.value + 1;
+    }
+    get(): int {
+        return this.value;
+    }
+}
+var c: Counter(42);
+c.increment();
+c.increment();
+os.console.println(c.get());
+class Point {
+    x: int;
+    y: int;
+    constructor(px: int, py: int) {
+        assign this.x px;
+        assign this.y py;
+    }
+    sum(): int {
+        return this.x + this.y;
+    }
+}
+var p: Point(3, 4);
+os.console.println(p.sum());
+os.console.println(p.x);

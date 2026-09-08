@@ -1,0 +1,16 @@
+// Booleans and comparisons (dialScript uses and/or/not keywords)
+os.console.println(true);
+os.console.println(false);
+var flag: true;
+os.console.println(flag);
+os.console.println(1 < 2);
+os.console.println(2 < 1);
+os.console.println(3 >= 3);
+os.console.println(4 != 4);
+if (1 = 1) {
+    os.console.println("eq works");
+}
+os.console.println(not flag);
+os.console.println(flag and (1 < 2));
+os.console.println(flag and (2 < 1));
+os.console.println(flag or (2 < 1));

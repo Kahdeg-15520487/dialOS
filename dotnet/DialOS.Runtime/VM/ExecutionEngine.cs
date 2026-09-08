@@ -444,21 +444,44 @@ public class ExecutionEngine
     private VMResult ExecuteTemplateFormat()
     {
         var argCount = _module.Code[_state.Pc++];
+
+        // Stack contract (C++ TEMPLATE_FORMAT): [..., arg0, ..., argN-1, template]
+        // The template string is on TOP; pop it first, then the args in reverse.
+        var template = _state.Pop().ToString();
         var args = new Value[argCount];
         for (int i = argCount - 1; i >= 0; i--)
         {
             args[i] = _state.Pop();
         }
-        var template = _state.Pop().ToString();
 
-        // Simple template formatting: replace {0}, {1}, etc.
-        var result = template;
-        for (int i = 0; i < argCount; i++)
+        // Template formatting — port of C++ VMState::formatTemplate:
+        // placeholders are "${index}"; unknown/malformed placeholders are kept as-is.
+        var sb = new System.Text.StringBuilder(template.Length + 16);
+        int pos = 0;
+        while (pos < template.Length)
         {
-            result = result.Replace($"{{{i}}}", args[i].ToString());
+            int start = template.IndexOf("${", pos, System.StringComparison.Ordinal);
+            if (start < 0)
+            {
+                sb.Append(template, pos, template.Length - pos);
+                break;
+            }
+            sb.Append(template, pos, start - pos);
+            int end = template.IndexOf('}', start + 2);
+            if (end < 0)
+            {
+                sb.Append(template, start, template.Length - start);
+                break;
+            }
+            var indexStr = template.Substring(start + 2, end - start - 2);
+            if (uint.TryParse(indexStr, out var idx) && idx < (uint)args.Length)
+                sb.Append(args[(int)idx].ToString());
+            else
+                sb.Append(template, start, end - start + 1);
+            pos = end + 1;
         }
 
-        _state.Push(Value.String(_pool.InternString(result)));
+        _state.Push(Value.String(_pool.InternString(sb.ToString())));
         return VMResult.Ok;
     }
 
@@ -638,7 +661,9 @@ public class ExecutionEngine
 
     private VMResult ExecuteCallNative()
     {
-        var nativeId = (ushort)(_module.Code[_state.Pc] | (_module.Code[_state.Pc + 1] << 8));
+        // The operand is a function-table index whose entry NAMES the native function
+        // (C++ semantics: VMState::getNativeFunctionID(module_.functions[funcIndex])).
+        var funcIndex = (ushort)(_module.Code[_state.Pc] | (_module.Code[_state.Pc + 1] << 8));
         var argCount = _module.Code[_state.Pc + 2];
         _state.Pc += 3;
 
@@ -647,6 +672,26 @@ public class ExecutionEngine
         for (int i = argCount - 1; i >= 0; i--)
         {
             args[i] = _state.Pop();
+        }
+
+        // Resolve the native ID from the function-table entry's name.
+        // Fallback: modules without a function table (hand-built unit-test bytecode)
+        // store the raw native ID in the operand directly.
+        ushort nativeId;
+        if (funcIndex < _module.Functions.Count)
+        {
+            var name = _module.Functions[funcIndex].Name;
+            var resolved = NativeFunctionResolver.Resolve(name);
+            if (resolved == null)
+            {
+                _state.LastError = $"Unknown native function: '{name}'";
+                return VMResult.Error;
+            }
+            nativeId = resolved.Value;
+        }
+        else
+        {
+            nativeId = funcIndex;
         }
 
         // Execute native function
@@ -672,8 +717,10 @@ public class ExecutionEngine
         // Restore PC
         _state.Pc = frame.ReturnPc;
 
-        // Push return value
-        _state.Push(returnValue);
+        // Constructors return 'this' (local 0) instead of the return value
+        // (matches C++ RETURN constructor special-case)
+        var isConstructor = frame.FunctionName.EndsWith("::constructor", System.StringComparison.Ordinal);
+        _state.Push(isConstructor ? frame.GetLocal(0) : returnValue);
 
         return VMResult.Ok;
     }
@@ -784,6 +831,25 @@ public class ExecutionEngine
         var fieldName = _module.GetConstant(fieldIdx);
         var objValue = _state.Pop();
 
+        // Arrays and strings support "length" (matches C++ GET_FIELD)
+        if (objValue.IsArray)
+        {
+            var arr = objValue.AsArray();
+            if (fieldName == "length")
+                _state.Push(Value.Int32(arr.Length));
+            else
+                _state.Push(Value.Null());
+            return VMResult.Ok;
+        }
+        if (objValue.IsString)
+        {
+            if (fieldName == "length")
+                _state.Push(Value.Int32(objValue.AsString().Length));
+            else
+                _state.Push(Value.Null());
+            return VMResult.Ok;
+        }
+
         if (!objValue.IsObject)
         {
             _state.Push(Value.Null());
@@ -801,8 +867,9 @@ public class ExecutionEngine
         _state.Pc += 2;
 
         var fieldName = _module.GetConstant(fieldIdx);
-        var value = _state.Pop();
+        // Stack order (C++ contract): [value, receiver] — receiver on top, pop it first
         var objValue = _state.Pop();
+        var value = _state.Pop();
 
         if (objValue.IsObject)
         {
@@ -857,14 +924,63 @@ public class ExecutionEngine
 
         var className = _module.GetConstant(classIdx);
         var obj = _pool.AllocateObject(className);
+
+        // Bind Class::method functions onto the instance as fields
+        // (matches C++ NEW_OBJECT; methods are invoked via CALL_METHOD field lookup)
+        var prefix = className + "::";
+        for (int i = 0; i < _module.Functions.Count; i++)
+        {
+            var fname = _module.Functions[i].Name;
+            if (fname.Length > prefix.Length && fname.StartsWith(prefix, System.StringComparison.Ordinal))
+            {
+                var method = fname.Substring(prefix.Length);
+                if (method == "constructor") continue;
+                var fn = _pool.AllocateFunction((ushort)i, _module.Functions[i].ParamCount);
+                obj.SetField(method, Value.Function(fn));
+            }
+        }
+
+        // Find and invoke the constructor: "Class::constructor"
+        int ctorIdx = -1;
+        for (int i = 0; i < _module.Functions.Count; i++)
+        {
+            if (_module.Functions[i].Name == prefix + "constructor") { ctorIdx = i; break; }
+        }
+
+        if (ctorIdx >= 0)
+        {
+            var func = _module.Functions[ctorIdx];
+            var argCount = func.ParamCount; // constructor params from function table
+            var frame = new CallFrame(_state.Pc, _state.StackHeight, 256, func.Name);
+            frame.ArgCount = argCount + 1;
+
+            // Args are on the stack (pushed before NEW_OBJECT); pop into locals[1..]
+            for (int i = argCount - 1; i >= 0; i--)
+            {
+                frame.SetLocal(i + 1, _state.Pop());
+            }
+            frame.SetLocal(0, Value.Object(obj)); // this
+
+            _state.CallStack.Add(frame);
+            _state.Pc = (int)func.EntryPoint;
+            return VMResult.Ok;
+        }
+
         _state.Push(Value.Object(obj));
         return VMResult.Ok;
     }
 
     private VMResult ExecuteNewArray()
     {
+        // C++ contract: [elem0, elem1, ..., elemN-1, size] on stack;
+        // pop size, then pop and fill the elements (reverse order)
         var size = _state.Pop().ToInt();
+        if (size < 0) size = 0;
         var arr = _pool.AllocateArray(size);
+        for (int i = size - 1; i >= 0; i--)
+        {
+            arr.Elements[i] = _state.Pop();
+        }
         _state.Push(Value.Array(arr));
         return VMResult.Ok;
     }

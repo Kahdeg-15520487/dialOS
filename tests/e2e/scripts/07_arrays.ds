@@ -1,0 +1,10 @@
+// Arrays: creation, indexing, length, element assignment
+var nums: [10, 20, 30];
+os.console.println(nums.length);
+os.console.println(nums[0]);
+os.console.println(nums[1] + nums[2]);
+assign nums[1] 99;
+os.console.println(nums[1]);
+var names: ["Ada", "Linus"];
+os.console.println(names[0]);
+os.console.println(names[1]);
